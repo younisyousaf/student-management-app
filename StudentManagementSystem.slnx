@@ -1,0 +1,11 @@
+<Solution>
+  <Project Path="StudentManagement.Core/StudentManagement.Core.csproj" />
+  <Project Path="StudentManagement.Infrastructure.Dapper/StudentManagement.Infrastructure.Dapper.csproj" Id="bb53b339-3302-4d10-a496-fbec077acea4" />
+  <Project Path="StudentManagement.Infrastructure.EntityFramework/StudentManagement.Infrastructure.EntityFramework.csproj" Id="ea4dd602-a18d-42c2-8362-c6a20b332b68" />
+  <Project Path="StudentManagement.Infrastructure.Hybrid/StudentManagement.Infrastructure.Hybrid.csproj" Id="8f051a17-996f-46f2-91fe-fd8462fbbde6" />
+  <Project Path="StudentManagement.Infrastructure/StudentManagement.Infrastructure.csproj" />
+  <Project Path="StudentManagementApp.Console/StudentManagementSystem.Console.csproj" />
+  <Project Path="StudentManagementApp.MVC/StudentManagementApp.MVC.csproj" />
+  <Project Path="StudentManagementApp.WebApi/StudentManagementApp.WebApi.csproj" />
+  <Project Path="StudentManagementApp.WPF/StudentManagementApp.WPF.csproj" />
+</Solution>
