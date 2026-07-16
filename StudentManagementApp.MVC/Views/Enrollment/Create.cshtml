@@ -1,0 +1,140 @@
+﻿@model StudentManagementApp.MVC.ViewModels.CreateEnrollmentViewModel
+
+@{
+    ViewData["Title"] = "New Enrollment";
+}
+
+<div class="container mt-5">
+    <div class="card shadow border-0">
+        <div class="card-header bg-warning text-dark py-3">
+            <h4 class="mb-0"><i class="fas fa-user-plus me-2"></i> Enroll Student in Course</h4>
+        </div>
+        <div class="card-body p-4">
+            <form asp-action="Create" method="post">
+                @Html.AntiForgeryToken()
+
+                <div class="text-danger mb-3" asp-validation-summary="ModelOnly"></div>
+
+                <!-- Searchable Student Select (Strongly Bound) -->
+                <div class="mb-4">
+                    <label asp-for="StudentId" class="form-label fw-bold">Select Student (Search by Roll No or Name)</label>
+                    <select asp-for="StudentId" id="studentSelect" class="form-control select2-ajax" required>
+                        <option value=""></option> @* Empty option is required for Select2 placeholders to render *@
+                    </select>
+                    <!-- This span displays the client-side/server-side validation message -->
+                    <span asp-validation-for="StudentId" class="text-danger small d-block mt-1"></span>
+                </div>
+
+                <!-- Searchable Course Select (Strongly Bound) -->
+                <div class="mb-4">
+                    <label asp-for="CourseId" class="form-label fw-bold">Select Course (Search by Code or Name)</label>
+                    <select asp-for="CourseId" id="courseSelect" class="form-control select2-ajax" required>
+                        <option value=""></option>
+                    </select>
+                    <span asp-validation-for="CourseId" class="text-danger small d-block mt-1"></span>
+                </div>
+
+                <!-- Enrollment Date Input (Defaults to today's date from ViewModel) -->
+                <div class="mb-4">
+                    <label asp-for="EnrollmentDate" class="form-label fw-bold"></label>
+                    <input asp-for="EnrollmentDate" type="date" class="form-control" />
+                    <span asp-validation-for="EnrollmentDate" class="text-danger small d-block mt-1"></span>
+                </div>
+
+                <div class="mt-4 d-flex gap-2">
+                    <button type="submit" class="btn btn-success px-4">
+                        <i class="fas fa-check me-1"></i> Enroll Student
+                    </button>
+                    <a asp-action="Index" class="btn btn-secondary px-4">Cancel</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+        $(document).ready(function() {
+            // FIX: Safely check if jQuery Validation is loaded before setting defaults
+            if ($.validator) {
+                $.validator.setDefaults({
+                    ignore: []
+                });
+            } else {
+                console.warn("jQuery Validation plugin was not detected. Client-side validation might be limited.");
+            }
+
+            // Student Auto-complete Select
+            var studentSelect = $('#studentSelect').select2({
+                placeholder: 'Type Roll No or Name...',
+                minimumInputLength: 0,
+                width: '100%',
+                allowClear: true,
+                ajax: {
+                    url: '/Student/SearchStudents',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            searchTerm: params.term || ""
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                }
+            });
+
+            // Course Auto-complete Select
+            var courseSelect = $('#courseSelect').select2({
+                placeholder: 'Type Code or Name...',
+                minimumInputLength: 0,
+                width: '100%',
+                allowClear: true,
+                ajax: {
+                    url: '/Course/SearchCourses',
+                    dataType: 'json',
+                    delay: 250,
+                    data: function(params) {
+                        return {
+                            searchTerm: params.term || ""
+                        };
+                    },
+                    processResults: function(data) {
+                        return {
+                            results: data
+                        };
+                    },
+                    cache: true
+                }
+            });
+
+            // Manually trigger validation checks on Select2 dropdowns when selection changes
+            // Only bind these if $.validator is actually available
+            if ($.validator) {
+                studentSelect.on('change', function() {
+                    $(this).valid();
+                });
+
+                courseSelect.on('change', function() {
+                    $(this).valid();
+                });
+            }
+
+            // Global focus fix to allow keyboard input/typing inside Select2 search fields
+            $(document).on('select2:open', function() {
+                setTimeout(function() {
+                    var searchField = document.querySelector('.select2-container--open .select2-search__field');
+                    if (searchField) {
+                        searchField.focus();
+                    }
+                }, 50);
+            });
+        });
+    </script>
+}

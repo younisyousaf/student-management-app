@@ -1,0 +1,77 @@
+﻿@model  IEnumerable<StudentManagement.Core.Models.Student>
+
+@{
+    ViewData["Title"] = "Students Directory";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-sm border-0">
+        <!-- Header matches the styling and provides a link to Register/Create -->
+        <div class="card-header bg-dark text-white d-flex justify-content-between align-items-center">
+            <h4 class="mb-0"><i class="fas fa-users me-2"></i> Student Directory</h4>
+            <a asp-action="Create" class="btn btn-sm btn-warning text-dark fw-bold">
+                <i class="fas fa-user-plus me-1"></i> Register Student
+            </a>
+        </div>
+
+        <div class="card-body">
+            <!-- Search Bar (Hooks into your Search action) -->
+            <form method="get" asp-action="Index" class="row g-3 mb-4">
+                <div class="col-md-9">
+                    <input type="text" name="search" value="@ViewData["CurrentFilter"]" class="form-control" placeholder="Search by Roll Number, Name, or Email..." />
+                </div>
+                <div class="col-md-3 d-grid">
+                    <button type="submit" class="btn btn-dark">Search</button>
+                </div>
+            </form>
+
+            <table class="table table-striped table-hover align-middle">
+                <thead class="table-dark">
+                    <tr>
+                        <th>Roll Number</th>
+                        <th>Full Name</th>
+                        <th>Email Address</th>
+                        <th>Date of Birth</th>
+                        <th class="text-end">Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @if (Model == null || !Model.Any())
+                    {
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-user-slash fa-2x mb-2 d-block"></i>
+                                No students registered yet.
+                            </td>
+                        </tr>
+                    }
+                    else
+                    {
+                        foreach (var student in Model)
+                        {
+                            <tr>
+                                <td><span class="badge bg-secondary font-monospace px-2 py-1">@student.RollNumber</span></td>
+                                <td><strong>@student.FirstName @student.LastName</strong></td>
+                                <td>@student.Email</td>
+                                <td>@student.DateOfBirth.ToString("yyyy-MM-dd")</td>
+                                <td class="text-end">
+                                    @* <div class="btn-group" role="group"> *@
+                                        <a asp-action="Edit" asp-route-id="@student.Id" class="btn btn-sm btn-primary" title="Edit">
+                                            <i class="fas fa-edit"></i> Edit
+                                        </a>
+                                        <a asp-action="Details" asp-route-id="@student.Id" class="btn btn-sm btn-secondary" title="Details">
+                                            <i class="fas fa-eye"></i> Details
+                                        </a>
+                                        <a asp-action="Delete" asp-route-id="@student.Id" class="btn btn-sm btn-danger" title="Delete">
+                                            <i class="fas fa-trash-alt"></i> Delete
+                                        </a>
+                                    @* </div> *@
+                                </td>
+                            </tr>
+                        }
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

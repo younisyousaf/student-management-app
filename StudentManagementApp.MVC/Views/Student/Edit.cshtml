@@ -1,0 +1,73 @@
+﻿@model StudentManagementApp.MVC.ViewModels.EditStudentViewModel
+
+@{
+    ViewData["Title"] = "Edit Student";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-dark text-white py-3">
+                    <h4 class="mb-0"><i class="fas fa-user-edit me-2"></i> Edit Student Details</h4>
+                </div>
+                <div class="card-body p-4">
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <form asp-action="Edit" method="post">
+                        <input type="hidden" asp-for="Id" />
+                        <!-- Send the existing roll number back in the POST request to pass validation binding -->
+                        <input type="hidden" asp-for="RollNumber" />
+
+                        <div class="row">
+                            <!-- Roll Number is now Read-Only for security -->
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="RollNumber" class="form-label fw-bold"></label>
+                                <input class="form-control bg-light text-muted font-monospace" value="@Model.RollNumber" readonly />
+                                <span class="text-muted small">Roll Numbers are permanent system identifiers.</span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="FirstName" class="form-label fw-bold"></label>
+                                <input asp-for="FirstName" class="form-control" />
+                                <span asp-validation-for="FirstName" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="LastName" class="form-label fw-bold"></label>
+                                <input asp-for="LastName" class="form-control" />
+                                <span asp-validation-for="LastName" class="text-danger small"></span>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DateOfBirth" class="form-label fw-bold"></label>
+                                <!-- DOB is set to read-only during edit or kept simple -->
+                                <input asp-for="DateOfBirth" class="form-control bg-light text-muted" type="date" readonly />
+                                <span class="text-muted small">Date of Birth can only be modified by administrators.</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="Email" class="form-label fw-bold"></label>
+                            <input asp-for="Email" class="form-control" />
+                            <span asp-validation-for="Email" class="text-danger small"></span>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a asp-action="Index" class="btn btn-outline-secondary">
+                                Cancel
+                            </a>
+                            <button type="submit" class="btn btn-dark px-4">Update Student</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

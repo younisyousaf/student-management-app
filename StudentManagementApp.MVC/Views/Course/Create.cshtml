@@ -1,0 +1,61 @@
+﻿@model StudentManagementApp.MVC.ViewModels.RegisterCourseViewModel
+
+@{
+    ViewData["Title"] = "Add New Course";
+}
+
+<div class="container mt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-success text-white py-3">
+                    <h4 class="mb-0">Add New Course to Catalog</h4>
+                </div>
+                <div class="card-body p-4">
+
+                    <div asp-validation-summary="ModelOnly" class="alert alert-danger" role="alert"></div>
+
+                    <form asp-action="Create" method="post">
+                        <div class="mb-3">
+                            <label asp-for="CourseCode" class="form-label fw-bold"></label>
+                            <input asp-for="CourseCode" class="form-control" placeholder="e.g. CS-101" />
+                            <span asp-validation-for="CourseCode" class="text-danger small"></span>
+                        </div>
+
+                        <div class="mb-3">
+                            <label asp-for="CourseName" class="form-label fw-bold"></label>
+                            <input asp-for="CourseName" class="form-control" placeholder="e.g. Introduction to Programming" />
+                            <span asp-validation-for="CourseName" class="text-danger small"></span>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="DurationMonths" class="form-label fw-bold"></label>
+                                <input asp-for="DurationMonths" type="number" class="form-control" min="1" max="48" />
+                                <span asp-validation-for="DurationMonths" class="text-danger small"></span>
+                            </div>
+
+                            <div class="col-md-6 mb-3">
+                                <label asp-for="FeeAmount" class="form-label fw-bold"></label>
+                                <input asp-for="FeeAmount" type="number" step="0.01" class="form-control" />
+                                <span asp-validation-for="FeeAmount" class="text-danger small"></span>
+                            </div>
+                        </div>
+
+                        <div class="d-flex justify-content-between align-items-center mt-4">
+                            <a asp-action="Index" class="btn btn-secondary">
+                                <i class="bi bi-arrow-left"></i> Back to Catalog
+                            </a>
+                            <button type="submit" class="btn btn-success px-4">Save Course</button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <partial name="_ValidationScriptsPartial" />
+}

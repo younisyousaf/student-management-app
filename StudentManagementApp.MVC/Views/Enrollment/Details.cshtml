@@ -1,0 +1,100 @@
+﻿@model StudentManagementApp.MVC.Models.EnrollmentIndexViewModel
+
+@{
+    ViewData["Title"] = "Enrollment File Details";
+}
+
+<div class="container mt-5">
+    @if (TempData["SuccessMessage"] != null)
+    {
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-1"></i> @TempData["SuccessMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+    @if (TempData["ErrorMessage"] != null)
+    {
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-1"></i> @TempData["ErrorMessage"]
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+        </div>
+    }
+
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card shadow border-0">
+                <div class="card-header bg-primary text-white py-3 d-flex justify-content-between align-items-center">
+                    <h4 class="mb-0"><i class="fas fa-clipboard-list me-2"></i> Enrollment Registry</h4>
+                    <span class="badge @(Model.Status == "Active" ? "bg-success" : Model.Status == "Completed" ? "bg-dark text-white" : "bg-danger") px-2 py-2 fs-6">
+                        @Model.Status
+                    </span>
+                </div>
+
+                <div class="card-body p-4">
+                    <div class="row mb-4">
+                        <div class="col text-center">
+                            <h3 class="mt-3 mb-1">@Model.StudentName</h3>
+                            <p class="text-muted mb-0">Roll Number: <strong>@Model.RollNumber</strong></p>
+                        </div>
+                    </div>
+
+                    <!-- Enrollment Details Table -->
+                    <table class="table table-bordered align-middle">
+                        <tbody>
+                            <tr>
+                                <th class="table-light w-33"><i class="fas fa-book me-2 text-muted"></i> Enrolled Program</th>
+                                <td><span class="fw-bold text-primary">@Model.CourseName</span></td>
+                            </tr>
+                            <tr>
+                                <th class="table-light"><i class="fas fa-calendar-check me-2 text-muted"></i> Enrollment Date</th>
+                                <td>@Model.EnrollDate.ToString("yyyy-MM-dd hh:mm tt")</td>
+                            </tr>
+                            <tr>
+                                <th class="table-light"><i class="fas fa-dollar-sign me-2 text-muted"></i> Tuition Rate</th>
+                                <td>@Model.CourseFee.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <th class="table-light"><i class="fas fa-cash-register me-2 text-muted"></i> Total Paid</th>
+                                <td class="text-success fw-bold">@Model.AmountPaid.ToString("C")</td>
+                            </tr>
+                            <tr>
+                                <th class="table-light"><i class="fas fa-file-invoice-dollar me-2 text-muted"></i> Outstanding Due</th>
+                                <td class="text-danger font-monospace fw-bold">@Model.AmountDue.ToString("C")</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <!-- Operational / State Change Controls (Hidden if Dropped or Completed) -->
+                    @if (Model.Status == "Active")
+                    {
+                        <div class="bg-light p-3 rounded border mt-4">
+                            <h5 class="text-secondary mb-3"><i class="fas fa-cogs me-2"></i>Enrollment Operations</h5>
+                            <div class="d-flex gap-3">
+                                <!-- Graduate / Complete Course -->
+                                <form asp-action="Complete" asp-route-id="@Model.Id" method="post">
+                                    <button type="submit" class="btn btn-success" onclick="return confirm('Complete this enrollment profile?')">
+                                        <i class="fas fa-graduation-cap me-1"></i> Graduate Student
+                                    </button>
+                                </form>
+
+                                <!-- Drop Course -->
+                                <form asp-action="Drop" asp-route-id="@Model.Id" method="post">
+                                    <button type="submit" class="btn btn-danger" onclick="return confirm('Are you sure you want to drop this student from the course?')">
+                                        <i class="fas fa-user-slash me-1"></i> Drop Course
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+                    }
+
+                    <!-- Back Navigation Footer -->
+                    <div class="d-flex justify-content-start mt-4 pt-3 border-top">
+                        <a asp-action="Index" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left me-1"></i> Back to Enrollments
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
