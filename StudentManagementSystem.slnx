@@ -1,4 +1,7 @@
 <Solution>
+  <Folder Name="/README/">
+    <File Path="README.txt" />
+  </Folder>
   <Project Path="StudentManagement.Core/StudentManagement.Core.csproj" />
   <Project Path="StudentManagement.Infrastructure.Dapper/StudentManagement.Infrastructure.Dapper.csproj" Id="bb53b339-3302-4d10-a496-fbec077acea4" />
   <Project Path="StudentManagement.Infrastructure.EntityFramework/StudentManagement.Infrastructure.EntityFramework.csproj" Id="ea4dd602-a18d-42c2-8362-c6a20b332b68" />
