@@ -4,28 +4,38 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 
-namespace StudentManagementApp.API.Controllers
+namespace StudentManagementApp.WebApi.Controllers
 {
     [ApiController]
     [Route("api/[controller]")]
     [Authorize]
-    public class FeesController : ControllerBase
+    public class FeesController(IFeeService feeService) : ControllerBase
     {
-        private readonly IFeeService _feeService;
-
-        public FeesController(IFeeService feeService)
-        {
-            _feeService = feeService;
-        }
+        private readonly IFeeService _feeService = feeService;
 
         [HttpGet]
-        public ActionResult<ApiResponse<IEnumerable<Fee>>> GetAll()
+        public ActionResult<ApiResponse<IEnumerable<FeeResponseDto>>> GetAll()
         {
             var fees = _feeService.GetAllFeeLedgers();
-            return Ok(new ApiResponse<IEnumerable<Fee>>
+
+            var data = fees.Select(f => new FeeResponseDto
+            {
+                Id = f.Id,
+                StudentId = f.StudentId,
+                CourseId = f.CourseId,
+                AmountDue = f.AmountDue,
+                AmountPaid = f.AmountPaid,
+                PaymentDate = f.PaymentDate,
+                Remarks = f.Remarks,
+                Status = (int)f.Status,
+                RemainingBalance = f.RemainingBalance,
+                IsFullySettled = f.IsFullySettled
+            });
+
+            return Ok(new ApiResponse<IEnumerable<FeeResponseDto>>
             {
                 Message = "Fee records retrieved successfully.",
-                Data = fees
+                Data = data
             });
         }
 
@@ -96,7 +106,6 @@ namespace StudentManagementApp.API.Controllers
             }
             catch (InvalidOperationException ex)
             {
-                // Catches rich domain rules (e.g., trying to overpay an invoice balance)
                 return Conflict(new ApiResponse { Message = ex.Message });
             }
         }

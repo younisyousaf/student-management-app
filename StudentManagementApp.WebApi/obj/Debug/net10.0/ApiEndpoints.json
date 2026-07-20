@@ -184,6 +184,64 @@
   },
   {
     "ContainingType": "StudentManagementApp.API.Controllers.EnrollmentsController",
+    "Method": "GetById",
+    "RelativePath": "api/Enrollments/{id}",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "StudentManagementApp.WebApi.DTOs.ApiResponse\u00601[[StudentManagement.Core.Models.Enrollment, StudentManagement.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "StudentManagementApp.API.Controllers.EnrollmentsController",
+    "Method": "Delete",
+    "RelativePath": "api/Enrollments/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "StudentManagementApp.API.Controllers.EnrollmentsController",
+    "Method": "Complete",
+    "RelativePath": "api/Enrollments/complete",
+    "HttpMethod": "POST",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "request",
+        "Type": "StudentManagementApp.API.Controllers.CompleteRequest",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "StudentManagementApp.API.Controllers.EnrollmentsController",
     "Method": "Drop",
     "RelativePath": "api/Enrollments/drop",
     "HttpMethod": "POST",
@@ -199,16 +257,22 @@
     "ReturnTypes": []
   },
   {
-    "ContainingType": "StudentManagementApp.API.Controllers.FeesController",
-    "Method": "GetAll",
-    "RelativePath": "api/Fees",
+    "ContainingType": "StudentManagementApp.API.Controllers.EnrollmentsController",
+    "Method": "GetByStudent",
+    "RelativePath": "api/Enrollments/student/{studentId}",
     "HttpMethod": "GET",
     "IsController": true,
     "Order": 0,
-    "Parameters": [],
+    "Parameters": [
+      {
+        "Name": "studentId",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
     "ReturnTypes": [
       {
-        "Type": "StudentManagementApp.WebApi.DTOs.ApiResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[StudentManagement.Core.Models.Fee, StudentManagement.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "Type": "StudentManagementApp.WebApi.DTOs.ApiResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[StudentManagement.Core.Models.Enrollment, StudentManagement.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
         "MediaTypes": [
           "text/plain",
           "application/json",
@@ -219,7 +283,27 @@
     ]
   },
   {
-    "ContainingType": "StudentManagementApp.API.Controllers.FeesController",
+    "ContainingType": "StudentManagementApp.WebApi.Controllers.FeesController",
+    "Method": "GetAll",
+    "RelativePath": "api/Fees",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [],
+    "ReturnTypes": [
+      {
+        "Type": "StudentManagementApp.WebApi.DTOs.ApiResponse\u00601[[System.Collections.Generic.IEnumerable\u00601[[StudentManagementApp.WebApi.DTOs.FeeResponseDto, StudentManagementApp.WebApi, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]], System.Private.CoreLib, Version=10.0.0.0, Culture=neutral, PublicKeyToken=7cec85d7bea7798e]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
+  },
+  {
+    "ContainingType": "StudentManagementApp.WebApi.Controllers.FeesController",
     "Method": "GetById",
     "RelativePath": "api/Fees/{id}",
     "HttpMethod": "GET",
@@ -245,7 +329,23 @@
     ]
   },
   {
-    "ContainingType": "StudentManagementApp.API.Controllers.FeesController",
+    "ContainingType": "StudentManagementApp.WebApi.Controllers.FeesController",
+    "Method": "Delete",
+    "RelativePath": "api/Fees/{id}",
+    "HttpMethod": "DELETE",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "id",
+        "Type": "System.Int32",
+        "IsRequired": true
+      }
+    ],
+    "ReturnTypes": []
+  },
+  {
+    "ContainingType": "StudentManagementApp.WebApi.Controllers.FeesController",
     "Method": "ProcessPayment",
     "RelativePath": "api/Fees/pay",
     "HttpMethod": "POST",
@@ -259,6 +359,37 @@
       }
     ],
     "ReturnTypes": []
+  },
+  {
+    "ContainingType": "StudentManagementApp.WebApi.Controllers.FeesController",
+    "Method": "GetStatement",
+    "RelativePath": "api/Fees/statement",
+    "HttpMethod": "GET",
+    "IsController": true,
+    "Order": 0,
+    "Parameters": [
+      {
+        "Name": "studentId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      },
+      {
+        "Name": "courseId",
+        "Type": "System.Int32",
+        "IsRequired": false
+      }
+    ],
+    "ReturnTypes": [
+      {
+        "Type": "StudentManagementApp.WebApi.DTOs.ApiResponse\u00601[[StudentManagement.Core.Models.Fee, StudentManagement.Core, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null]]",
+        "MediaTypes": [
+          "text/plain",
+          "application/json",
+          "text/json"
+        ],
+        "StatusCode": 200
+      }
+    ]
   },
   {
     "ContainingType": "StudentManagementApp.API.Controllers.StudentsController",
