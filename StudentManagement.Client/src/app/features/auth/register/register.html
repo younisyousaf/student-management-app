@@ -1,0 +1,34 @@
+<div class="auth-container">
+  <h2>Create account</h2>
+
+  @if (success()) {
+    <p class="success">Registered! Redirecting to login...</p>
+  } @else {
+    <form (ngSubmit)="onSubmit()">
+      <label>
+        Username
+        <input type="text" [ngModel]="username()" (ngModelChange)="username.set($event)" name="username" required />
+      </label>
+
+      <label>
+        Email
+        <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" required />
+      </label>
+
+      <label>
+        Password
+        <input type="password" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" required />
+      </label>
+
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+
+      <button type="submit" [disabled]="isLoading()">
+        {{ isLoading() ? 'Registering...' : 'Register' }}
+      </button>
+    </form>
+
+    <p>Already have an account? <a routerLink="/login">Sign in</a></p>
+  }
+</div>

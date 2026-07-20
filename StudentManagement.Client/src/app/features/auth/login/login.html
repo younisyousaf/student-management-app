@@ -1,0 +1,25 @@
+<div class="auth-container">
+  <h2>Sign in</h2>
+
+  <form (ngSubmit)="onSubmit()">
+    <label>
+      Username
+      <input type="text" [ngModel]="username()" (ngModelChange)="username.set($event)" name="username" required />
+    </label>
+
+    <label>
+      Password
+      <input type="password" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" required />
+    </label>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="isLoading()">
+      {{ isLoading() ? 'Signing in...' : 'Sign in' }}
+    </button>
+  </form>
+
+  <p>No account? <a routerLink="/register">Register</a></p>
+</div>
