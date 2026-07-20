@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
@@ -56,12 +57,34 @@ namespace StudentManagementApp.WebApi.Controllers
             {
                 return Unauthorized(new { Message = "Invalid username or password." });
             }
+            Response.Cookies.Append("access_token", token, new CookieOptions
+            {
+                HttpOnly = true,
+                Secure = true,           // requires HTTPS
+                SameSite = SameSiteMode.Lax,
+                Expires = DateTimeOffset.UtcNow.AddHours(2)
+            });
 
             return Ok(new
             {
                 Token = token,
                 Message = "Login successful!"
             });
+        }
+
+        [HttpPost("logout")]
+        public IActionResult Logout()
+        {
+            Response.Cookies.Delete("access_token");
+            return Ok(new { Message = "Logged out." });
+        }
+
+        [HttpGet("me")]
+        [Authorize]
+        public IActionResult Me()
+        {
+            // Confirms the cookie is valid — Angular calls this on app init to restore session
+            return Ok(new { Username = User.Identity?.Name });
         }
     }
 
