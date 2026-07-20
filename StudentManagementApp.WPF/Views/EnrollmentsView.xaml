@@ -1,0 +1,123 @@
+﻿<UserControl x:Class="StudentManagementApp.WPF.Views.EnrollmentsView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             Background="#F8FAFC">
+    <Grid Margin="24">
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="320"/>
+            <ColumnDefinition Width="*"/>
+        </Grid.ColumnDefinitions>
+
+        <Border Grid.Column="0" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1" Padding="20" Margin="0,0,24,0" VerticalAlignment="Top">
+            <StackPanel>
+                <TextBlock Text="Academic Allocations" FontSize="18" FontWeight="Bold" Foreground="#0F172A"/>
+                <TextBlock Text="Register a student into an active training track." FontSize="12" Foreground="#64748B" Margin="0,2,0,16" TextWrapping="Wrap"/>
+
+                <Border BorderBrush="#F1F5F9" BorderThickness="0,0,0,1" Margin="0,0,0,16"/>
+
+                <TextBlock Text="Select Active Student *" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6"/>
+                <ComboBox x:Name="CboStudents" DisplayMemberPath="FullName" SelectedValuePath="Id" Margin="0,0,0,16" Padding="8">
+                    <ComboBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </ComboBox.Resources>
+                </ComboBox>
+
+                <TextBlock Text="Select Course Track *" FontSize="12" FontWeight="SemiBold" Foreground="#475569" Margin="0,0,0,6"/>
+                <ComboBox x:Name="CboCourses" DisplayMemberPath="Name" SelectedValuePath="Id" Margin="0,0,0,20" Padding="8">
+                    <ComboBox.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="4"/>
+                        </Style>
+                    </ComboBox.Resources>
+                </ComboBox>
+
+                <Button Content="⚡ Execute Enrollment" Click="BtnEnroll_Click" Padding="12" Background="#2563EB" Foreground="White" FontWeight="Bold" Cursor="Hand" BorderThickness="0">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+
+                <TextBlock x:Name="LblStatus" Margin="0,12,0,0" TextWrapping="Wrap" FontWeight="Medium" Visibility="Collapsed" HorizontalAlignment="Center"/>
+            </StackPanel>
+        </Border>
+
+        <Border Grid.Column="1" Background="White" CornerRadius="8" BorderBrush="#E2E8F0" BorderThickness="1">
+            <Grid>
+                <DataGrid x:Name="DgEnrollments" AutoGenerateColumns="False" IsReadOnly="True" 
+                          Visibility="Visible" Background="Transparent" BorderThickness="0" RowHeight="46" 
+                          GridLinesVisibility="Horizontal" HorizontalGridLinesBrush="#F1F5F9" HeadersVisibility="Column">
+                    <DataGrid.ColumnHeaderStyle>
+                        <Style TargetType="DataGridColumnHeader">
+                            <Setter Property="Background" Value="#F8FAFC"/>
+                            <Setter Property="Foreground" Value="#475569"/>
+                            <Setter Property="FontWeight" Value="SemiBold"/>
+                            <Setter Property="Padding" Value="12,10"/>
+                            <Setter Property="BorderThickness" Value="0,0,0,1"/>
+                            <Setter Property="BorderBrush" Value="#E2E8F0"/>
+                        </Style>
+                    </DataGrid.ColumnHeaderStyle>
+                    <DataGrid.Columns>
+                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="55"/>
+                        <DataGridTextColumn Header="Student Name" Binding="{Binding StudentName}" Width="*"/>
+                        <DataGridTextColumn Header="Course Track" Binding="{Binding CourseName}" Width="*"/>
+                        <DataGridTextColumn Header="Date Allocated" Binding="{Binding EnrollDate, StringFormat={}{0:MM/dd/yyyy}}" Width="110"/>
+                        <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
+
+                        <DataGridTemplateColumn Header="Actions" Width="190">
+                            <DataGridTemplateColumn.CellTemplate>
+                                <DataTemplate>
+                                    <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
+                                        <Button Content="Complete" Click="BtnComplete_Click" Margin="0,0,6,0" Padding="8,4" Background="#10B981" Foreground="White" FontWeight="Medium" BorderThickness="0" Cursor="Hand">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Active">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </Style>
+                                            </Button.Style>
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="4"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+
+                                        <Button Content="Drop" Click="BtnDrop_Click" Padding="8,4" Background="#EF4444" Foreground="White" FontWeight="Medium" BorderThickness="0" Cursor="Hand">
+                                            <Button.Style>
+                                                <Style TargetType="Button">
+                                                    <Style.Triggers>
+                                                        <DataTrigger Binding="{Binding Status}" Value="Active">
+                                                            <Setter Property="Visibility" Value="Visible"/>
+                                                        </DataTrigger>
+                                                    </Style.Triggers>
+                                                    <Setter Property="Visibility" Value="Collapsed"/>
+                                                </Style>
+                                            </Button.Style>
+                                            <Button.Resources>
+                                                <Style TargetType="Border">
+                                                    <Setter Property="CornerRadius" Value="4"/>
+                                                </Style>
+                                            </Button.Resources>
+                                        </Button>
+                                    </StackPanel>
+                                </DataTemplate>
+                            </DataGridTemplateColumn.CellTemplate>
+                        </DataGridTemplateColumn>
+                    </DataGrid.Columns>
+                </DataGrid>
+
+                <StackPanel x:Name="PanelEmptyEnrollments" VerticalAlignment="Center" HorizontalAlignment="Center" Visibility="Collapsed">
+                    <TextBlock Text="No student assignments recorded in the database ledger." FontSize="15" Foreground="#94A3B8" Margin="0,0,0,4"/>
+                    <TextBlock Text="Select parameters on the left card to process an enrollment." FontSize="12" Foreground="#CBD5E1" HorizontalAlignment="Center"/>
+                </StackPanel>
+            </Grid>
+        </Border>
+    </Grid>
+</UserControl>
