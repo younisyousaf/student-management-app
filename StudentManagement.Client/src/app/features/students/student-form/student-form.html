@@ -6,25 +6,46 @@
       <input type="text" [ngModel]="rollNumber()" (ngModelChange)="rollNumber.set($event)" name="rollNumber"
         [disabled]="isEditMode()" required />
     </label>
+    @if (fieldError('rollNumber')) {
+    <p class="field-error">{{ fieldError('rollNumber') }}</p>
+    }
     <label>First Name
       <input type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" required />
     </label>
+    @if (fieldError('firstName')) {
+    <p class="field-error">{{ fieldError('firstName') }}</p>
+    }
     <label>Last Name
       <input type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" required />
     </label>
+    @if (fieldError('lastName')) {
+    <p class="field-error">{{ fieldError('lastName') }}</p>
+    }
     <label>Email
       <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" required />
     </label>
+    @if (fieldError('email')) {
+    <p class="field-error">{{ fieldError('email') }}</p>
+    }
     <label>Date of Birth
       <input type="date" [ngModel]="dateOfBirth()" (ngModelChange)="dateOfBirth.set($event)" name="dateOfBirth"
         required />
     </label>
+    @if (fieldError('dateOfBirth')) {
+    <p class="field-error">{{ fieldError('dateOfBirth') }}</p>
+    }
     <label>Phone
       <input type="text" [ngModel]="phone()" (ngModelChange)="phone.set($event)" name="phone" />
     </label>
+     @if (fieldError('phone')) {
+    <p class="field-error">{{ fieldError('phone') }}</p>
+    }
     <label>Address
       <input type="text" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" />
     </label>
+     @if (fieldError('address')) {
+    <p class="field-error">{{ fieldError('address') }}</p>
+     }
 
     @if (errorMessage()) {
     <p class="error">{{ errorMessage() }}</p>

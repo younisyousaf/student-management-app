@@ -20,6 +20,7 @@ export class CourseForm implements OnInit {
   feeAmount = signal<number>(0);
 
   errorMessage = signal<string | null>(null);
+  fieldErrors = signal<{ [field: string]: string[] }>({});
   isSaving = signal(false);
 
   constructor(
@@ -64,27 +65,34 @@ export class CourseForm implements OnInit {
   if (this.isEditMode()) {
     this.coursesService.update(this.courseId()!, payload).subscribe({
       next: () => this.router.navigate(['/courses']),
-      error: (err: unknown) => {
-        this.errorMessage.set(this.extractErrorMessage(err));
-        this.isSaving.set(false);
-      }
+       error: (err: unknown) => {
+          this.handleError(err);
+          this.isSaving.set(false);
+        }
     });
   } else {
     this.coursesService.create(payload).subscribe({
       next: () => this.router.navigate(['/courses']),
-      error: (err: unknown) => {
-        this.errorMessage.set(this.extractErrorMessage(err));
-        this.isSaving.set(false);
-      }
+       error: (err: unknown) => {
+          this.handleError(err);
+          this.isSaving.set(false);
+        }
     });
   }
 }
 
-  private extractErrorMessage(err: unknown): string {
+ fieldError(name: string): string | null {
+    const errors = this.fieldErrors();
+    const key = Object.keys(errors).find(k => k.toLowerCase() === name.toLowerCase());
+    return key ? errors[key].join(' ') : null;
+  }
+  private handleError(err: unknown): void {
     if (err && typeof err === 'object' && 'error' in err) {
-      const httpError = (err as { error?: { message?: string } }).error;
-      if (httpError?.message) return httpError.message;
+      const httpError = (err as { error?: { message?: string; errors?: { [field: string]: string[] } } }).error;
+      if (httpError?.errors) this.fieldErrors.set(httpError.errors);
+      this.errorMessage.set(httpError?.message ?? 'Save failed.');
+      return;
     }
-    return 'Save failed.';
+    this.errorMessage.set('Save failed.');
   }
 }

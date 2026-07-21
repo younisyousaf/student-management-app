@@ -5,18 +5,30 @@
     <label>Code
       <input type="text" [ngModel]="code()" (ngModelChange)="code.set($event)" name="code" [disabled]="isEditMode()" required />
     </label>
+    @if (fieldError('code')) {
+    <p class="field-error">{{ fieldError('code') }}</p>
+    }
     <label>Name
       <input type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" name="name" required />
     </label>
+    @if (fieldError('name')) {
+    <p class="field-error">{{ fieldError('name') }}</p>
+    }
     <label>Description
       <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description"></textarea>
     </label>
     <label>Duration (months)
       <input type="number" min="1" max="120" [ngModel]="durationMonths()" (ngModelChange)="durationMonths.set($event)" name="durationMonths" required />
     </label>
+    @if (fieldError('durationMonths')) {
+    <p class="field-error">{{ fieldError('durationMonths') }}</p>
+    }
     <label>Fee Amount
       <input type="number" min="0" step="0.01" [ngModel]="feeAmount()" (ngModelChange)="feeAmount.set($event)" name="feeAmount" required />
     </label>
+    @if (fieldError('feeAmount')) {
+    <p class="field-error">{{ fieldError('feeAmount') }}</p>
+    }
 
     @if (errorMessage()) {
       <p class="error">{{ errorMessage() }}</p>
