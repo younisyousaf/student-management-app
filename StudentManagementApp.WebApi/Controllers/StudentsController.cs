@@ -67,7 +67,7 @@ namespace StudentManagementApp.API.Controllers
                     request.FirstName,
                     request.LastName,
                     request.Email,
-                    request.DateOfBirth
+                    request.DateOfBirth!.Value
                 );
 
                 if (!string.IsNullOrEmpty(request.Phone) || !string.IsNullOrEmpty(request.Address))
