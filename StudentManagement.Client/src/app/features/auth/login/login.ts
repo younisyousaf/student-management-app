@@ -1,6 +1,6 @@
 import { Component, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
@@ -15,7 +15,11 @@ export class Login {
   errorMessage = signal<string | null>(null);
   isLoading = signal(false);
 
-  constructor(private authService: AuthService, private router: Router) {}
+  constructor(
+    private authService: AuthService,
+    private router: Router,
+    private route: ActivatedRoute
+  ) { }
 
   onSubmit(): void {
     this.errorMessage.set(null);
@@ -25,7 +29,11 @@ export class Login {
       .subscribe({
         next: () => {
           this.authService.setAuthenticated(true);
-          this.router.navigate(['/students']);
+
+          const returnUrl = this.route.snapshot.queryParams['returnUrl'];
+          const lastRoute = sessionStorage.getItem('lastRoute');
+
+          this.router.navigateByUrl(returnUrl || lastRoute || '/students');
         },
         error: (err) => {
           this.errorMessage.set(err.error?.message ?? 'Invalid username or password.');

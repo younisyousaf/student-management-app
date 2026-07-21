@@ -7,6 +7,7 @@ import { LoginRequest, RegisterRequest, MeResponse } from '../models/auth.model'
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly baseUrl = `${environment.apiUrl}/Auth`;
+  private lastRoute = '/students';
 
   private authenticatedSignal = signal<boolean>(false);
   readonly isAuthenticated = this.authenticatedSignal.asReadonly();
@@ -36,5 +37,13 @@ export class AuthService {
 
   setAuthenticated(value: boolean): void {
     this.authenticatedSignal.set(value);
+  }
+
+  setLastRoute(route: string): void {
+    this.lastRoute = route;
+  }
+
+  getLastRoute(): string {
+    return this.lastRoute;
   }
 }
