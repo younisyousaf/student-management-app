@@ -90,6 +90,10 @@ namespace StudentManagementApp.API.Controllers
             {
                 return Conflict(new ApiResponse { Message = ex.Message });
             }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse { Message = $"An unexpected error occurred: {ex.Message}" });
+            }
         }
 
         [HttpPut("{id}")]
@@ -114,6 +118,14 @@ namespace StudentManagementApp.API.Controllers
             catch (ArgumentException ex)
             {
                 return BadRequest(new ApiResponse { Message = ex.Message });
+            }
+            catch (InvalidOperationException ex)
+            {
+                return Conflict(new ApiResponse { Message = ex.Message });
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, new ApiResponse { Message = $"An unexpected error occurred: {ex.Message}" });
             }
         }
 

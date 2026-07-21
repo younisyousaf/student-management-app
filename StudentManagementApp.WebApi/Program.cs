@@ -1,13 +1,14 @@
-using System.Text;
-using Microsoft.OpenApi;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Cors.Infrastructure;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
-using StudentManagement.Core.Services;
+using Microsoft.OpenApi;
 using StudentManagement.Core.Interfaces;
+using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
-using Microsoft.AspNetCore.Cors.Infrastructure;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -77,7 +78,25 @@ builder.Services.AddAuthentication(options =>
 });
 
 
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(kvp => kvp.Value?.Errors.Count > 0)
+                .ToDictionary(
+                    kvp => kvp.Key,
+                    kvp => kvp.Value!.Errors.Select(e => e.ErrorMessage).ToArray()
+                );
+
+            return new BadRequestObjectResult(new StudentManagementApp.WebApi.DTOs.ApiResponse
+            {
+                Message = "One or more validation errors occurred.",
+                Errors = errors
+            });
+        };
+    });
 
 // ADD THIS: Register Swagger Services 
 builder.Services.AddEndpointsApiExplorer();
