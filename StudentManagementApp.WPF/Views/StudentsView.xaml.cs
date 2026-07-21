@@ -28,8 +28,6 @@ namespace StudentManagementApp.WPF.Views
                 var response = await _apiClient.GetAsync<ApiResponse<List<StudentModel>>>("students");
                 _cachedStudents = response?.Data ?? [];
 
-                System.Diagnostics.Debug.WriteLine($"=== STUDENTS LOADED: {_cachedStudents.Count} records ===");
-
                 if (_cachedStudents.Count == 0)
                 {
                     DgStudents.Visibility = Visibility.Collapsed;

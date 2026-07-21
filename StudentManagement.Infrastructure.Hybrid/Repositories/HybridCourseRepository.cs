@@ -46,7 +46,8 @@ namespace StudentManagement.Infrastructure.Hybrid.Repositories
 		{
 			_context.Entry(entity).State = EntityState.Modified;
 			_context.SaveChanges();
-		}
+            _context.Entry(entity).State = EntityState.Detached;
+        }
 
 		public void Delete(int id)
 		{

@@ -22,6 +22,9 @@ namespace StudentManagement.Core.Services
 
         public void RegisterUser(User user, string plainTextPassword)
         {
+            if (string.IsNullOrWhiteSpace(plainTextPassword))
+                throw new ArgumentException("Password cannot be empty.");
+
             if (_userRepository.GetByUsername(user.Username) != null)
                 throw new InvalidOperationException("Username is already taken.");
 

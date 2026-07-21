@@ -61,6 +61,7 @@ namespace StudentManagementApp.WebApi.Controllers
             {
                 HttpOnly = true,
                 Secure = true,           // requires HTTPS
+                //SameSite = SameSiteMode.None, //Cross-Site Compatibility (https, http)
                 SameSite = SameSiteMode.Lax,
                 Expires = DateTimeOffset.UtcNow.AddHours(2)
             });

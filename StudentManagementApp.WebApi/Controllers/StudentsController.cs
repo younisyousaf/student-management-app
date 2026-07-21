@@ -93,22 +93,17 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPut("{id}")]
-        public ActionResult Update(int id, [FromBody] Student student)
+        public ActionResult Update(int id, [FromBody] UpdateStudentDto request)
         {
-            if (id != student.Id)
-            {
-                return BadRequest(new ApiResponse { Message = "ID mismatch in request path and body." });
-            }
-
             try
             {
                 _studentService.UpdateStudentProfile(
-                    student.Id,
-                    student.FirstName,
-                    student.LastName,
-                    student.Phone,
-                    student.Address,
-                    student.Email
+                    id,
+                    request.FirstName,
+                    request.LastName,
+                    request.Phone,
+                    request.Address,
+                    request.Email
                 );
                 return Ok(new ApiResponse { Message = "Student profile updated successfully." });
             }
