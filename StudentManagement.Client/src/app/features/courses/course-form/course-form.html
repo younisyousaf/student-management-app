@@ -1,0 +1,29 @@
+<div class="form-page">
+  <h2>{{ isEditMode() ? 'Edit Course' : 'Add Course' }}</h2>
+
+  <form (ngSubmit)="onSubmit()">
+    <label>Code
+      <input type="text" [ngModel]="code()" (ngModelChange)="code.set($event)" name="code" [disabled]="isEditMode()" required />
+    </label>
+    <label>Name
+      <input type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" name="name" required />
+    </label>
+    <label>Description
+      <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description"></textarea>
+    </label>
+    <label>Duration (months)
+      <input type="number" min="1" max="120" [ngModel]="durationMonths()" (ngModelChange)="durationMonths.set($event)" name="durationMonths" required />
+    </label>
+    <label>Fee Amount
+      <input type="number" min="0" step="0.01" [ngModel]="feeAmount()" (ngModelChange)="feeAmount.set($event)" name="feeAmount" required />
+    </label>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="isSaving()">
+      {{ isSaving() ? 'Saving...' : 'Save' }}
+    </button>
+  </form>
+</div>

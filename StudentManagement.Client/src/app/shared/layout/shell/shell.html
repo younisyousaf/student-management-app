@@ -1,0 +1,20 @@
+<div class="app-shell">
+  <header class="topbar">
+    <div class="topbar__logo">Student Management</div>
+    <button class="topbar__logout" (click)="logout()">Log out</button>
+  </header>
+
+  <div class="app-shell__body">
+    <nav class="sidebar">
+      @for (link of navLinks; track link.path) {
+        <a [routerLink]="link.path" routerLinkActive="sidebar__link--active" class="sidebar__link">
+          {{ link.label }}
+        </a>
+      }
+    </nav>
+
+    <main class="main-content">
+      <router-outlet />
+    </main>
+  </div>
+</div>

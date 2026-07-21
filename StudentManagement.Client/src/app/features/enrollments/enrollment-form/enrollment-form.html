@@ -1,0 +1,33 @@
+<div class="form-page">
+  <h2>Enroll Student</h2>
+
+  <form (ngSubmit)="onSubmit()">
+    <label>Student
+      <select [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
+        <option [ngValue]="null">-- Select a student --</option>
+        @for (student of studentsResource.value()?.data ?? []; track student.id) {
+          <option [ngValue]="student.id">{{ student.fullName }} ({{ student.rollNumber }})</option>
+        }
+      </select>
+    </label>
+
+    <label>Course
+      <select [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
+        <option [ngValue]="null">-- Select a course --</option>
+        @for (course of coursesResource.value()?.data ?? []; track course.id) {
+          <option [ngValue]="course.id">{{ course.name }} ({{ course.code }})</option>
+        }
+      </select>
+    </label>
+
+    @if (errorMessage()) {
+      <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="isSaving()">
+      {{ isSaving() ? 'Enrolling...' : 'Enroll' }}
+    </button>
+  </form>
+
+  <a routerLink="/enrollments">Cancel</a>
+</div>

@@ -1,0 +1,37 @@
+<div class="form-page">
+  <h2>{{ isEditMode() ? 'Edit Student' : 'Add Student' }}</h2>
+
+  <form (ngSubmit)="onSubmit()">
+    <label>Roll Number
+      <input type="text" [ngModel]="rollNumber()" (ngModelChange)="rollNumber.set($event)" name="rollNumber"
+        [disabled]="isEditMode()" required />
+    </label>
+    <label>First Name
+      <input type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" required />
+    </label>
+    <label>Last Name
+      <input type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" required />
+    </label>
+    <label>Email
+      <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" required />
+    </label>
+    <label>Date of Birth
+      <input type="date" [ngModel]="dateOfBirth()" (ngModelChange)="dateOfBirth.set($event)" name="dateOfBirth"
+        required />
+    </label>
+    <label>Phone
+      <input type="text" [ngModel]="phone()" (ngModelChange)="phone.set($event)" name="phone" />
+    </label>
+    <label>Address
+      <input type="text" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" />
+    </label>
+
+    @if (errorMessage()) {
+    <p class="error">{{ errorMessage() }}</p>
+    }
+
+    <button type="submit" [disabled]="isSaving()">
+      {{ isSaving() ? 'Saving...' : 'Save' }}
+    </button>
+  </form>
+</div>

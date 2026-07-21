@@ -1,0 +1,33 @@
+<div class="form-page">
+  <h2>Record Payment</h2>
+
+  @if (isLoadingStatement()) {
+    <p>Loading fee statement...</p>
+  } @else if (statement(); as fee) {
+    <p>Amount Due: {{ fee.amountDue | currency }}</p>
+    <p>Already Paid: {{ fee.amountPaid | currency }}</p>
+    <p><strong>Remaining Balance: {{ fee.remainingBalance | currency }}</strong></p>
+
+    <form (ngSubmit)="onSubmit()">
+      <label>Amount to Pay
+        <input type="number" min="0.01" [max]="fee.remainingBalance" step="0.01"
+               [ngModel]="amountPaid()" (ngModelChange)="amountPaid.set($event)" name="amountPaid" required />
+      </label>
+      <label>Remarks
+        <input type="text" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" />
+      </label>
+
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+
+      <button type="submit" [disabled]="isSaving()">
+        {{ isSaving() ? 'Processing...' : 'Submit Payment' }}
+      </button>
+    </form>
+  } @else {
+    <p class="error">{{ errorMessage() }}</p>
+  }
+
+  <a routerLink="/fees">Back</a>
+</div>
