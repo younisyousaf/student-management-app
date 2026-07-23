@@ -46,9 +46,7 @@ namespace StudentManagementApp.WPF.Views
 
                 CboCourses.ItemsSource = _cachedCourses;
 
-                // MANUAL IN-MEMORY JOIN:
-                // Attendance (Core model) has no Student/Course navigation properties,
-                // so the API only ever returns StudentId/CourseId — look the names up here.
+              //Show names intead of Id's
                 foreach (var record in records)
                 {
                     var matchedStudent = _cachedStudents.FirstOrDefault(s => s.Id == record.StudentId);
