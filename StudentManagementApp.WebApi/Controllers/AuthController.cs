@@ -18,6 +18,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         // POST: api/auth/register
+        [AllowAnonymous]
         [HttpPost("register")]
         public IActionResult Register([FromBody] RegisterDto request)
         {
@@ -48,6 +49,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         // POST: api/auth/login
+        [AllowAnonymous]
         [HttpPost("login")]
         public IActionResult Login([FromBody] LoginDto request)
         {

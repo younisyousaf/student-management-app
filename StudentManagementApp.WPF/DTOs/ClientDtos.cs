@@ -2,6 +2,14 @@
 
 namespace StudentManagementApp.WPF.DTOs
 {
+    public enum AttendanceStatus
+    {
+        Present = 0,
+        Absent = 1,
+        Late = 2,
+        Excused = 3
+    }
+
     public class StudentModel
     {
         public int Id { get; set; }
@@ -70,6 +78,18 @@ namespace StudentManagementApp.WPF.DTOs
         }
     }
 
+    public class AttendanceVm
+    {
+        public int Id { get; set; }
+        public int StudentId { get; set; }
+        public int CourseId { get; set; }
+        public DateTime Date { get; set; }
+        public AttendanceStatus Status { get; set; }
+        public string Remarks { get; set; }
+        public string StudentName { get; set; } = "";
+        public string CourseName { get; set; } = "";
+    }
+
     public class EnrollStudentDto
     {
         public int StudentId { get; set; }
@@ -102,5 +122,24 @@ namespace StudentManagementApp.WPF.DTOs
         public int CourseId { get; set; }
         public decimal AmountPaid { get; set; }
         public string Remarks { get; set; } = string.Empty;
+    }
+
+
+    public class MarkAttendanceDto
+    {
+        public int StudentId { get; set; }
+        public int CourseId { get; set; }
+        public DateTime Date { get; set; }
+        public AttendanceStatus Status { get; set; }
+        public string? Remarks { get; set; }
+    }
+
+    public class UpdateAttendanceDto
+    {
+        public AttendanceStatus Status { get; set; }
+        public string? Remarks
+        {
+            get; set;
+        }
     }
 }

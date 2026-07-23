@@ -25,6 +25,7 @@
                     <Button x:Name="BtnShowCourses" Content="📚 Manage Courses" Height="42" Margin="0,4" Click="BtnShowCourses_Click" Background="Transparent" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,0,0,0" FontSize="14"/>
                     <Button x:Name="BtnShowEnrollments" Content="🔗 Course Enrollments" Height="42" Margin="0,4" Click="BtnShowEnrollments_Click" Background="Transparent" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,0,0,0" FontSize="14"/>
                     <Button x:Name="BtnShowFees" Content="💰 Tuition &amp; Fees" Height="42" Margin="0,4" Click="BtnShowFees_Click" Background="Transparent" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,0,0,0" FontSize="14"/>
+                    <Button x:Name="BtnShowAttendance" Content="📋 Attendance" Height="42" Margin="0,4" Click="BtnShowAttendance_Click" Background="Transparent" Foreground="White" BorderThickness="0" HorizontalContentAlignment="Left" Padding="15,0,0,0" FontSize="14"/>
                 </StackPanel>
 
                 <!-- Dedicated Bottom Area for Sign Out Button -->

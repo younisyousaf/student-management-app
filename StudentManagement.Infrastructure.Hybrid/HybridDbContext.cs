@@ -73,6 +73,15 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(u => u.PasswordHash).IsRequired();
                 entity.Property(u => u.Role).IsRequired().HasMaxLength(20);
             });
+
+            //Attendances
+            modelBuilder.Entity<Attendance>(entity =>
+            {
+                entity.ToTable("Attendances");
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Status).HasConversion<byte>();
+                entity.Property(a => a.Remarks).HasMaxLength(255);
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -80,5 +89,6 @@ namespace StudentManagement.Infrastructure.Hybrid
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
         public DbSet<Fee> Fees => Set<Fee>();
         public DbSet<User> Users => Set<User>();
+        public DbSet<Attendance> Attendances => Set<Attendance>();
     }
 }

@@ -28,6 +28,7 @@ builder.Services.AddScoped<ICourseRepository, HybridCourseRepository>();
 builder.Services.AddScoped<IEnrollmentRepository, HybridEnrollmentRepository>();
 builder.Services.AddScoped<IFeeRepository, HybridFeeRepository>();
 builder.Services.AddScoped<IUserRepository, HybridUserRepository>();
+builder.Services.AddScoped<IAttendanceRepository, HybridAttendanceRepository>();
 
 // 4. Register All Core Business Services
 builder.Services.AddScoped<IStudentService, StudentService>();
@@ -35,6 +36,7 @@ builder.Services.AddScoped<ICourseService, CourseService>();
 builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IUserService, UserService>();
+builder.Services.AddScoped<IAttendanceService, AttendanceService>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]

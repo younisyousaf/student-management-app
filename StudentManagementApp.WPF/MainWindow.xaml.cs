@@ -47,6 +47,15 @@ namespace StudentManagementApp.WPF
             );
         }
 
+        private void BtnShowAttendance_Click(object sender, RoutedEventArgs e)
+        {
+            NavigateToModuleView(
+                header: "Attendance Records",
+                subHeader: "Mark and review student attendance by course and date.",
+                view: new AttendanceView()
+            );
+        }
+
         private void BtnLogout_Click(object sender, RoutedEventArgs e)
         {
             // Clear global memory login states safely

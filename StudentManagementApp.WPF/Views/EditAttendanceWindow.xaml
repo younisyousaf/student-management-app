@@ -1,0 +1,94 @@
+﻿<Window x:Class="StudentManagementApp.WPF.Views.EditAttendanceWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Update Attendance Record" Height="610" Width="400"
+        WindowStartupLocation="CenterOwner" Background="#FFFFFF" ResizeMode="NoResize">
+    <Grid Margin="24">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto"/>
+            <RowDefinition Height="*"/>
+            <RowDefinition Height="Auto"/>
+        </Grid.RowDefinitions>
+
+        <StackPanel Grid.Row="0" Margin="0,0,0,20">
+            <TextBlock Text="Update Attendance Record" FontSize="20" FontWeight="Bold" Foreground="#0F172A"/>
+            <TextBlock Text="Only the status and remarks for this record can be changed." FontSize="12" Foreground="#64748B" Margin="0,2,0,0"/>
+            <Border BorderBrush="#F1F5F9" BorderThickness="0,0,0,1" Margin="0,15,0,0"/>
+        </StackPanel>
+
+        <StackPanel Grid.Row="1">
+            <TextBlock Text="Student" FontSize="12" FontWeight="SemiBold" Foreground="#475569"/>
+            <TextBox x:Name="TxtStudentName" Margin="0,6,0,16" Padding="8" IsEnabled="False" Background="#F1F5F9" BorderBrush="#CBD5E1">
+                <TextBox.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </TextBox.Resources>
+            </TextBox>
+
+            <TextBlock Text="Course" FontSize="12" FontWeight="SemiBold" Foreground="#475569"/>
+            <TextBox x:Name="TxtCourseName" Margin="0,6,0,16" Padding="8" IsEnabled="False" Background="#F1F5F9" BorderBrush="#CBD5E1">
+                <TextBox.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </TextBox.Resources>
+            </TextBox>
+
+            <TextBlock Text="Date" FontSize="12" FontWeight="SemiBold" Foreground="#475569"/>
+            <TextBox x:Name="TxtDate" Margin="0,6,0,16" Padding="8" IsEnabled="False" Background="#F1F5F9" BorderBrush="#CBD5E1">
+                <TextBox.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </TextBox.Resources>
+            </TextBox>
+
+            <TextBlock Text="Status *" FontSize="12" FontWeight="SemiBold" Foreground="#475569"/>
+            <ComboBox x:Name="CboStatus" Margin="0,6,0,16" Padding="8">
+                <ComboBox.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </ComboBox.Resources>
+                <ComboBoxItem Content="Present"/>
+                <ComboBoxItem Content="Absent"/>
+                <ComboBoxItem Content="Late"/>
+                <ComboBoxItem Content="Excused"/>
+            </ComboBox>
+
+            <TextBlock Text="Remarks" FontSize="12" FontWeight="SemiBold" Foreground="#475569"/>
+            <TextBox x:Name="TxtRemarks" Margin="0,6,0,0" Padding="8" Height="65" TextWrapping="Wrap" AcceptsReturn="True" VerticalScrollBarVisibility="Auto" BorderBrush="#CBD5E1">
+                <TextBox.Resources>
+                    <Style TargetType="Border">
+                        <Setter Property="CornerRadius" Value="4"/>
+                    </Style>
+                </TextBox.Resources>
+            </TextBox>
+        </StackPanel>
+
+        <StackPanel Grid.Row="2" Margin="0,10,0,0">
+            <TextBlock x:Name="LblStatus" Margin="0,0,0,12" TextWrapping="Wrap" FontWeight="Medium" Visibility="Collapsed"/>
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="*"/>
+                </Grid.ColumnDefinitions>
+                <Button Content="Cancel" x:Name="BtnCancel" Click="BtnCancel_Click" Grid.Column="0" Margin="0,0,8,0" Padding="12" Background="#E2E8F0" Foreground="#475569" FontWeight="SemiBold" BorderThickness="0" Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+                <Button Content="Save Changes" x:Name="BtnSave" Click="BtnSave_Click" Grid.Column="1" Margin="8,0,0,0" Padding="12" Background="#2563EB" Foreground="White" FontWeight="Bold" BorderThickness="0" Cursor="Hand">
+                    <Button.Resources>
+                        <Style TargetType="Border">
+                            <Setter Property="CornerRadius" Value="6"/>
+                        </Style>
+                    </Button.Resources>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Grid>
+</Window>
