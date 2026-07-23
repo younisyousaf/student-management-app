@@ -1,0 +1,57 @@
+﻿@using Microsoft.AspNetCore.Mvc.Rendering
+@model StudentManagementApp.MVC.ViewModels.MarkAttendanceViewModel
+@{
+    ViewData["Title"] = "Mark Attendance";
+}
+
+<div class="container mt-5">
+    <div class="card shadow-sm border-0">
+        <div class="card-header bg-primary text-white py-3">
+            <h4 class="mb-0"><i class="fas fa-calendar-plus me-2"></i>Mark Attendance</h4>
+        </div>
+        <div class="card-body">
+            <form asp-action="Mark" method="post">
+                <div asp-validation-summary="ModelOnly" class="text-danger mb-3"></div>
+
+                <div class="mb-3">
+                    <label asp-for="RollNumber" class="form-label"></label>
+                    <input asp-for="RollNumber" class="form-control" />
+                    <span asp-validation-for="RollNumber" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="CourseId" class="form-label"></label>
+                    <select asp-for="CourseId" class="form-select" asp-items="@(new SelectList(Model.AvailableCourses, "Id", "Name"))">
+                        <option value="">-- Select a course --</option>
+                    </select>
+                    <span asp-validation-for="CourseId" class="text-danger"></span>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Date" class="form-label"></label>
+                    <input asp-for="Date" class="form-control" />
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Status" class="form-label"></label>
+                    <select asp-for="Status" class="form-select" asp-items="Html.GetEnumSelectList<StudentManagement.Core.Enums.AttendanceStatus>()"></select>
+                </div>
+
+                <div class="mb-3">
+                    <label asp-for="Remarks" class="form-label"></label>
+                    <input asp-for="Remarks" class="form-control" />
+                </div>
+
+                <button type="submit" class="btn btn-primary">Save Attendance</button>
+                <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+            </form>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+
+}

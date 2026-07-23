@@ -52,11 +52,21 @@ namespace StudentManagement.Infrastructure.EntityFramework
                 entity.Property(f => f.AmountDue).HasColumnType("decimal(18,2)");
                 entity.Property(f => f.AmountPaid).HasColumnType("decimal(18,2)");
             });
+
+            // 5. Attendance Mapping
+            modelBuilder.Entity<Attendance>(entity =>
+            {
+                entity.ToTable("Attendances");
+                entity.HasKey(a => a.Id);
+                entity.Property(a => a.Status).HasConversion<byte>();
+                entity.Property(a => a.Remarks).HasMaxLength(255);
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Course> Courses => Set<Course>();
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
         public DbSet<Fee> Fees => Set<Fee>();
+        public DbSet<Attendance> Attendances => Set<Attendance>();
     }
 }

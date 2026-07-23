@@ -26,6 +26,7 @@ internal class Program
             ICourseRepository courseRepository = new CourseRepository(sqlHelper);
             IEnrollmentRepository enrollmentRepository = new EnrollmentRepository(sqlHelper);
             IFeeRepository feeRepository = new FeeRepository(sqlHelper);
+            IAttendanceRepository attendanceRepository = new AttendanceRepository(sqlHelper);
 
             // 5. Services Assembly (Business Logic Layer)
             IStudentService studentService = new StudentService(studentRepository);
@@ -37,14 +38,16 @@ internal class Program
                 courseRepository,
                 feeRepository
             );
+            IAttendanceService attendanceService = new AttendanceService(attendanceRepository, enrollmentRepository);
 
             // 6. Controllers Assembly (Presentation Orchestration Layer)
             var studentController = new StudentController(studentService);
             var courseController = new CourseController(courseService);
             var enrollmentController = new EnrollmentController(enrollmentService, studentService, courseService, feeService);
+            var attendanceController = new AttendanceController(attendanceService, studentService, courseService);
 
             // 7. Launch Root Application Loop
-            RunRootApplicationLoop(studentController, courseController, enrollmentController);
+            RunRootApplicationLoop(studentController, courseController, enrollmentController, attendanceController);
         }
         catch (Exception ex)
         {
@@ -57,12 +60,15 @@ internal class Program
     private static void RunRootApplicationLoop(
         StudentController studentCtrl,
         CourseController courseCtrl,
-        EnrollmentController enrollmentCtrl)
+        EnrollmentController enrollmentCtrl,
+        AttendanceController attendanceCtrl
+        )
     {
         string[] mainMenuOptions = {
             "Student Core Directory Management",
             "Academic Course Curriculum Catalog",
-            "Registrations & Tuition Financial Billings"
+            "Registrations & Tuition Financial Billings",
+            "Daily Attendance Management"
         };
 
         while (true)
@@ -84,6 +90,7 @@ internal class Program
                 case 1: studentCtrl.ManageStudents(); break;
                 case 2: courseCtrl.ManageCourses(); break;
                 case 3: enrollmentCtrl.ManageEnrollmentsAndFees(); break;
+                case 4: attendanceCtrl.ManageAttendance(); break;
             }
         }
     }
