@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Windows;
 
 namespace StudentManagementApp.WPF.DTOs
 {
@@ -61,12 +62,18 @@ namespace StudentManagementApp.WPF.DTOs
         public decimal RemainingBalance { get; set; }
         public bool IsFullySettled { get; set; }
         public int Status { get; set; }
+        public Visibility PayButtonVisibility => IsFullySettled ? Visibility.Collapsed : Visibility.Visible;
+        public string StatusLabel => Status switch
+        {
+            0 => "Unpaid",
+            1 => "Partial",
+            2 => "Paid",
+            _ => "Unknown"
+        };
 
-        // Matches the nested objects in your JSON payload
         public StudentModel? Student { get; set; }
         public CourseModel? Course { get; set; }
 
-        // FIXED: Clean read-only properties mapping directly to the nested objects for your XAML bindings
         public string StudentName
         {
             get => Student != null ? $"{Student.FirstName} {Student.LastName}".Trim() : string.Empty;

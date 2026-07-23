@@ -83,9 +83,8 @@
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="45"/>
-                        <DataGridTextColumn Header="Student Name" Binding="{Binding StudentName}" Width="*"/>
-                        <DataGridTextColumn Header="Course" Binding="{Binding CourseName}" Width="*"/>
+                        <DataGridTextColumn Header="Student Name" Binding="{Binding StudentName}" Width="120"/>
+                        <DataGridTextColumn Header="Course" Binding="{Binding CourseName}" Width="120"/>
                         <DataGridTextColumn Header="Date" Binding="{Binding Date, StringFormat=\{0:MM/dd/yyyy\}}" Width="100"/>
                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="90"/>
                         <DataGridTextColumn Header="Remarks" Binding="{Binding Remarks}" Width="140"/>

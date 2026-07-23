@@ -1,0 +1,55 @@
+<div class="form-page">
+  <h2>{{ isEditMode() ? 'Edit Attendance' : 'Mark Attendance' }}</h2>
+
+  @if (isLoading()) {
+    <p>Loading...</p>
+  } @else {
+    <form (ngSubmit)="onSubmit()">
+      @if (!isEditMode()) {
+        <label>Student
+          <select [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
+            <option [ngValue]="null">-- Select a student --</option>
+            @for (student of studentsResource.value()?.data ?? []; track student.id) {
+              <option [ngValue]="student.id">{{ student.fullName }} ({{ student.rollNumber }})</option>
+            }
+          </select>
+        </label>
+
+        <label>Course
+          <select [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
+            <option [ngValue]="null">-- Select a course --</option>
+            @for (course of coursesResource.value()?.data ?? []; track course.id) {
+              <option [ngValue]="course.id">{{ course.name }} ({{ course.code }})</option>
+            }
+          </select>
+        </label>
+
+        <label>Date
+          <input type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" name="date" required />
+        </label>
+      }
+
+      <label>Status
+        <select [ngModel]="status()" (ngModelChange)="status.set($event)" name="status" required>
+          @for (option of statusOptions; track option.value) {
+            <option [ngValue]="option.value">{{ option.label }}</option>
+          }
+        </select>
+      </label>
+
+      <label>Remarks
+        <input type="text" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" />
+      </label>
+
+      @if (errorMessage()) {
+        <p class="error">{{ errorMessage() }}</p>
+      }
+
+      <button type="submit" [disabled]="isSaving()">
+        {{ isSaving() ? 'Saving...' : 'Save' }}
+      </button>
+    </form>
+  }
+
+  <a routerLink="/attendance">Cancel</a>
+</div>

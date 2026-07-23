@@ -129,6 +129,20 @@ namespace StudentManagementApp.WPF.Views
             }
         }
 
+        private async void BtnRecordPayment_Click(object sender, RoutedEventArgs e)
+        {
+            if (sender is Button btn && btn.DataContext is FeeVm fee)
+            {
+                var paymentWindow = new RecordPaymentWindow(fee) { Owner = Window.GetWindow(this) };
+                paymentWindow.ShowDialog();
+
+                if (paymentWindow.IsDataSaved)
+                {
+                    await LoadFeeLedgersAsync();
+                }
+            }
+        }
+
         private void ShowFeedback(string text, Brush color)
         {
             LblStatus.Text = text;

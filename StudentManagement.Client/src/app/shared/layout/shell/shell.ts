@@ -17,7 +17,8 @@ export class Shell {
     { path: '/students', label: 'Students' },
     { path: '/courses', label: 'Courses' },
     { path: '/enrollments', label: 'Enrollments' },
-    { path: '/fees', label: 'Fees' }
+    { path: '/fees', label: 'Fees' },
+    { path: '/attendance', label: 'Attendance' }
   ];
 
   logout(): void {
