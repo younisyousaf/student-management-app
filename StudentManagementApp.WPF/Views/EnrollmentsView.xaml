@@ -61,13 +61,12 @@
                         </Style>
                     </DataGrid.ColumnHeaderStyle>
                     <DataGrid.Columns>
-                        <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="55"/>
-                        <DataGridTextColumn Header="Student Name" Binding="{Binding StudentName}" Width="*"/>
-                        <DataGridTextColumn Header="Course Track" Binding="{Binding CourseName}" Width="*"/>
+                        <DataGridTextColumn Header="Student Name" Binding="{Binding StudentName}" Width="110"/>
+                        <DataGridTextColumn Header="Course Track" Binding="{Binding CourseName}" Width="100"/>
                         <DataGridTextColumn Header="Date Allocated" Binding="{Binding EnrollDate, StringFormat={}{0:MM/dd/yyyy}}" Width="110"/>
                         <DataGridTextColumn Header="Status" Binding="{Binding Status}" Width="100"/>
 
-                        <DataGridTemplateColumn Header="Actions" Width="190">
+                        <DataGridTemplateColumn Header="Actions" Width="150">
                             <DataGridTemplateColumn.CellTemplate>
                                 <DataTemplate>
                                     <StackPanel Orientation="Horizontal" HorizontalAlignment="Center" VerticalAlignment="Center">
