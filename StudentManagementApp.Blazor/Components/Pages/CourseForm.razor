@@ -2,6 +2,7 @@
 @page "/courses/{Id:int}/edit"
 @inject ICourseService CourseService
 @inject NavigationManager Navigation
+@rendermode InteractiveServer
 
 <h3>@(Id.HasValue ? "Edit Course" : "Add Course")</h3>
 
