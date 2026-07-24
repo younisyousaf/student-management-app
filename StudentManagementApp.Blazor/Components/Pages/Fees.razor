@@ -1,0 +1,61 @@
+﻿@page "/fees"
+@inject IFeeService FeeService
+@inject IStudentService StudentService
+@inject ICourseService CourseService
+
+<h3>Fee Ledger</h3>
+
+@if (rows == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Student</th><th>Course</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.StudentName</td>
+                    <td>@row.CourseName</td>
+                    <td>@row.Fee.AmountDue.ToString("C")</td>
+                    <td>@row.Fee.AmountPaid.ToString("C")</td>
+                    <td>@row.Fee.RemainingBalance.ToString("C")</td>
+                    <td>@row.Fee.Status</td>
+                    <td>
+                        @if (!row.Fee.IsFullySettled)
+                        {
+                            <a href="@($"fees/pay/{row.Fee.StudentId}/{row.Fee.CourseId}")" class="btn btn-sm btn-warning">Record Payment</a>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<FeeRow>? rows;
+
+    protected override void OnInitialized()
+    {
+        var fees = FeeService.GetAllFeeLedgers().ToList();
+        var students = StudentService.GetAllStudents().ToDictionary(s => s.Id);
+        var courses = CourseService.GetAllCourses().ToDictionary(c => c.Id);
+
+        rows = fees.Select(f => new FeeRow
+        {
+            Fee = f,
+            StudentName = students.TryGetValue(f.StudentId, out var s) ? s.FullName : $"Student #{f.StudentId}",
+            CourseName = courses.TryGetValue(f.CourseId, out var c) ? c.Name : $"Course #{f.CourseId}"
+        }).ToList();
+    }
+
+    public class FeeRow
+    {
+        public Fee Fee { get; set; } = null!;
+        public string StudentName { get; set; } = string.Empty;
+        public string CourseName { get; set; } = string.Empty;
+    }
+}

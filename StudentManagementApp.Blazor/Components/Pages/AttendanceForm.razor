@@ -1,0 +1,120 @@
+﻿@page "/attendance/mark"
+@page "/attendance/{Id:int}/edit"
+@inject IAttendanceService AttendanceService
+@inject IStudentService StudentService
+@inject ICourseService CourseService
+@inject NavigationManager Navigation
+
+<h3>@(Id.HasValue ? "Edit Attendance" : "Mark Attendance")</h3>
+
+<EditForm Model="@formModel" FormName="AttendanceForm" OnValidSubmit="HandleSubmit">
+    @if (!Id.HasValue)
+    {
+        <div class="mb-3">
+            <label>Student</label>
+            <InputSelect class="form-select" @bind-Value="formModel.StudentId">
+                <option value="0">-- Select a student --</option>
+                @foreach (var s in students)
+                {
+                    <option value="@s.Id">@s.FullName (@s.RollNumber)</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label>Course</label>
+            <InputSelect class="form-select" @bind-Value="formModel.CourseId">
+                <option value="0">-- Select a course --</option>
+                @foreach (var c in courses)
+                {
+                    <option value="@c.Id">@c.Name (@c.Code)</option>
+                }
+            </InputSelect>
+        </div>
+        <div class="mb-3">
+            <label>Date</label>
+            <InputDate class="form-control" @bind-Value="formModel.Date" />
+        </div>
+    }
+
+    <div class="mb-3">
+        <label>Status</label>
+        <InputSelect class="form-select" @bind-Value="formModel.Status">
+            <option value="@AttendanceStatus.Present">Present</option>
+            <option value="@AttendanceStatus.Absent">Absent</option>
+            <option value="@AttendanceStatus.Late">Late</option>
+            <option value="@AttendanceStatus.Excused">Excused</option>
+        </InputSelect>
+    </div>
+    <div class="mb-3">
+        <label>Remarks</label>
+        <InputText class="form-control" @bind-Value="formModel.Remarks" />
+    </div>
+
+    @if (errorMessage != null)
+    {
+        <p class="text-danger">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private List<Student> students = new();
+    private List<Course> courses = new();
+    private AttendanceFormModel formModel = new();
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (Id.HasValue)
+        {
+            var record = AttendanceService.GetAttendanceById(Id.Value);
+            if (record != null)
+            {
+                formModel = new AttendanceFormModel { Status = record.Status, Remarks = record.Remarks };
+            }
+        }
+        else
+        {
+            students = StudentService.GetAllStudents().ToList();
+            courses = CourseService.GetAllCourses().ToList();
+        }
+    }
+
+    private void HandleSubmit()
+    {
+        errorMessage = null;
+        try
+        {
+            if (Id.HasValue)
+            {
+                AttendanceService.UpdateAttendance(Id.Value, formModel.Status, formModel.Remarks);
+            }
+            else
+            {
+                if (formModel.StudentId == 0 || formModel.CourseId == 0)
+                {
+                    errorMessage = "Select a student and a course.";
+                    return;
+                }
+                AttendanceService.MarkAttendance(formModel.StudentId, formModel.CourseId, formModel.Date, formModel.Status, formModel.Remarks);
+            }
+            Navigation.NavigateTo("/attendance");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class AttendanceFormModel
+    {
+        public int StudentId { get; set; }
+        public int CourseId { get; set; }
+        public DateTime Date { get; set; } = DateTime.Today;
+        public AttendanceStatus Status { get; set; } = AttendanceStatus.Present;
+        public string? Remarks { get; set; }
+    }
+}

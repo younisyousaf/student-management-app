@@ -1,0 +1,55 @@
+﻿@page "/"
+@page "/students"
+@inject IStudentService StudentService
+@inject NavigationManager Navigation
+
+<h3>Students</h3>
+
+<a href="students/new" class="btn btn-primary mb-3">+ Add Student</a>
+
+@if (students == null)
+{
+    <p>Loading...</p>
+}
+else if (!students.Any())
+{
+    <p>No students yet.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead>
+            <tr><th>Roll #</th><th>Name</th><th>Email</th><th>Phone</th><th></th></tr>
+        </thead>
+        <tbody>
+            @foreach (var student in students)
+            {
+                <tr>
+                    <td>@student.RollNumber</td>
+                    <td>@student.FullName</td>
+                    <td>@student.Email</td>
+                    <td>@student.Phone</td>
+                    <td>
+                        <a href="@($"students/{student.Id}/edit")">Edit</a>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => DeleteAsync(student.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Student>? students;
+
+    protected override void OnInitialized()
+    {
+        students = StudentService.GetAllStudents().ToList();
+    }
+
+    private void DeleteAsync(int id)
+    {
+        StudentService.RemoveStudent(id);
+        students = StudentService.GetAllStudents().ToList();
+    }
+}

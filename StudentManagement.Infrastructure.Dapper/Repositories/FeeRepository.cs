@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using Dapper;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
@@ -14,49 +13,48 @@ namespace StudentManagement.Infrastructure.Dapper.Repositories
         public Fee? GetById(int id)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Fees WHERE Id = @Id";
-            return db.QuerySingleOrDefault<Fee>(sql, new { Id = id });
+            return db.QuerySingleOrDefault<Fee>("usp_Fee_GetById", new { Id = id }, commandType: CommandType.StoredProcedure);
         }
 
         public IEnumerable<Fee> GetAll()
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Fees";
-            return db.Query<Fee>(sql);
+            return db.Query<Fee>("usp_Fee_GetAll", commandType: CommandType.StoredProcedure);
         }
 
         public Fee? GetByStudentAndCourse(int studentId, int courseId)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Fees WHERE StudentId = @StudentId AND CourseId = @CourseId";
-            return db.QuerySingleOrDefault<Fee>(sql, new { StudentId = studentId, CourseId = courseId });
+            return db.QuerySingleOrDefault<Fee>("usp_Fee_GetByStudentAndCourse",
+                new { StudentId = studentId, CourseId = courseId }, commandType: CommandType.StoredProcedure);
         }
 
         public void Add(Fee entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                INSERT INTO Fees (StudentId, CourseId, AmountDue, AmountPaid, PaymentDate, Remarks) 
-                VALUES (@StudentId, @CourseId, @AmountDue, @AmountPaid, @PaymentDate, @Remarks);";
-            db.Execute(sql, entity);
+            db.Execute("usp_Fee_Insert", new { entity.StudentId, entity.CourseId, entity.AmountDue }, commandType: CommandType.StoredProcedure);
         }
 
         public void Update(Fee entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                UPDATE Fees 
-                SET StudentId = @StudentId, CourseId = @CourseId, AmountDue = @AmountDue, 
-                    AmountPaid = @AmountPaid, PaymentDate = @PaymentDate, Remarks = @Remarks 
-                WHERE Id = @Id;";
-            db.Execute(sql, entity);
+            db.Execute("usp_Fee_Update", new
+            {
+                entity.Id,
+                entity.AmountPaid,
+                entity.PaymentDate,
+                entity.Remarks
+            }, commandType: CommandType.StoredProcedure);
         }
 
         public void Delete(int id)
         {
             using var db = CreateConnection();
-            string sql = "DELETE FROM Fees WHERE Id = @Id";
-            db.Execute(sql, new { Id = id });
+            // Intentionally left unimplemented — every other app in this system blocks deleting
+            // financial records at the controller/service level, never at the repository.
+            // A stored procedure exists here on purpose: usp_Fee_Delete was NOT created above,
+            // matching that same "this action should not be possible" decision at the data layer too.
+            throw new System.NotSupportedException("Fee records cannot be deleted.");
         }
     }
 }

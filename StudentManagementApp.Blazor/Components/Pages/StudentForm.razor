@@ -1,0 +1,112 @@
+﻿@page "/students/new"
+@page "/students/{Id:int}/edit"
+@inject IStudentService StudentService
+@inject NavigationManager Navigation
+@rendermode InteractiveServer
+
+<h3>@(Id.HasValue ? "Edit Student" : "Add Student")</h3>
+
+<EditForm Model="@formModel" OnValidSubmit="HandleSubmit" FormName="StudentForm">
+    <DataAnnotationsValidator />
+    <ValidationSummary />
+
+    <div class="mb-3">
+        <label>Roll Number</label>
+        <InputText class="form-control" @bind-Value="formModel.RollNumber" disabled="@Id.HasValue" />
+    </div>
+    <div class="mb-3">
+        <label>First Name</label>
+        <InputText class="form-control" @bind-Value="formModel.FirstName" />
+    </div>
+    <div class="mb-3">
+        <label>Last Name</label>
+        <InputText class="form-control" @bind-Value="formModel.LastName" />
+    </div>
+    <div class="mb-3">
+        <label>Email</label>
+        <InputText class="form-control" @bind-Value="formModel.Email" />
+    </div>
+    <div class="mb-3">
+        <label>Date of Birth</label>
+        <InputDate class="form-control" @bind-Value="formModel.DateOfBirth" />
+    </div>
+    <div class="mb-3">
+        <label>Phone</label>
+        <InputText class="form-control" @bind-Value="formModel.Phone" />
+    </div>
+    <div class="mb-3">
+        <label>Address</label>
+        <InputText class="form-control" @bind-Value="formModel.Address" />
+    </div>
+
+    @if (errorMessage != null)
+    {
+        <p class="text-danger">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Save</button>
+</EditForm>
+
+@code {
+    [Parameter] public int? Id { get; set; }
+
+    private StudentFormModel formModel = new();
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        if (Id.HasValue)
+        {
+            var student = StudentService.GetStudentById(Id.Value);
+            if (student != null)
+            {
+                formModel = new StudentFormModel
+                {
+                    RollNumber = student.RollNumber,
+                    FirstName = student.FirstName,
+                    LastName = student.LastName,
+                    Email = student.Email,
+                    DateOfBirth = student.DateOfBirth,
+                    Phone = student.Phone,
+                    Address = student.Address
+                };
+            }
+        }
+    }
+
+    private void HandleSubmit()
+    {
+        errorMessage = null;
+        try
+        {
+            if (Id.HasValue)
+            {
+                StudentService.UpdateStudentProfile(Id.Value, formModel.FirstName, formModel.LastName,
+                    formModel.Phone, formModel.Address, formModel.Email);
+            }
+            else
+            {
+                var student = new Student(formModel.RollNumber, formModel.FirstName, formModel.LastName,
+                    formModel.Email, formModel.DateOfBirth);
+                student.UpdateProfile(formModel.FirstName, formModel.LastName, formModel.Phone, formModel.Address);
+                StudentService.RegisterStudent(student);
+            }
+            Navigation.NavigateTo("/students");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class StudentFormModel
+    {
+        public string RollNumber { get; set; } = string.Empty;
+        public string FirstName { get; set; } = string.Empty;
+        public string LastName { get; set; } = string.Empty;
+        public string Email { get; set; } = string.Empty;
+        public DateTime DateOfBirth { get; set; } = DateTime.Today;
+        public string? Phone { get; set; }
+        public string? Address { get; set; }
+    }
+}

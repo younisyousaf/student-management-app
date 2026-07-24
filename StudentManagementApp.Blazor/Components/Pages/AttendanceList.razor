@@ -1,0 +1,56 @@
+﻿@page "/attendance"
+@inject IAttendanceService AttendanceService
+@inject IStudentService StudentService
+@inject ICourseService CourseService
+
+<h3>Attendance</h3>
+<a href="attendance/mark" class="btn btn-primary mb-3">+ Mark Attendance</a>
+
+@if (rows == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Student</th><th>Course</th><th>Date</th><th>Status</th><th>Remarks</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.StudentName</td>
+                    <td>@row.CourseName</td>
+                    <td>@row.Record.Date.ToString("yyyy-MM-dd")</td>
+                    <td>@row.Record.Status</td>
+                    <td>@row.Record.Remarks</td>
+                    <td><a href="@($"attendance/{row.Record.Id}/edit")">Edit</a></td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<AttendanceRow>? rows;
+
+    protected override void OnInitialized()
+    {
+        var records = AttendanceService.GetAllAttendance().ToList();
+        var students = StudentService.GetAllStudents().ToDictionary(s => s.Id);
+        var courses = CourseService.GetAllCourses().ToDictionary(c => c.Id);
+
+        rows = records.OrderByDescending(r => r.Date).Select(r => new AttendanceRow
+        {
+            Record = r,
+            StudentName = students.TryGetValue(r.StudentId, out var s) ? s.FullName : $"Student #{r.StudentId}",
+            CourseName = courses.TryGetValue(r.CourseId, out var c) ? c.Name : $"Course #{r.CourseId}"
+        }).ToList();
+    }
+
+    public class AttendanceRow
+    {
+        public Attendance Record { get; set; } = null!;
+        public string StudentName { get; set; } = string.Empty;
+        public string CourseName { get; set; } = string.Empty;
+    }
+}

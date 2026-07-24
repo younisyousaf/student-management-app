@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using Dapper;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
@@ -14,55 +13,50 @@ namespace StudentManagement.Infrastructure.Dapper.Repositories
         public Enrollment? GetById(int id)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Enrollments WHERE Id = @Id";
-            return db.QuerySingleOrDefault<Enrollment>(sql, new { Id = id });
+            return db.QuerySingleOrDefault<Enrollment>("usp_Enrollment_GetById", new { Id = id }, commandType: CommandType.StoredProcedure);
         }
 
         public IEnumerable<Enrollment> GetAll()
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Enrollments";
-            return db.Query<Enrollment>(sql);
-        }
-
-        public bool IsAlreadyEnrolled(int studentId, int courseId)
-        {
-            using var db = CreateConnection();
-            string sql = "SELECT COUNT(1) FROM Enrollments WHERE StudentId = @StudentId AND CourseId = @CourseId AND Status <> 'Dropped'";
-            return db.ExecuteScalar<int>(sql, new { StudentId = studentId, CourseId = courseId }) > 0;
+            return db.Query<Enrollment>("usp_Enrollment_GetAll", commandType: CommandType.StoredProcedure);
         }
 
         public IEnumerable<Enrollment> GetByStudentId(int studentId)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Enrollments WHERE StudentId = @StudentId";
-            return db.Query<Enrollment>(sql, new { StudentId = studentId });
+            return db.Query<Enrollment>("usp_Enrollment_GetByStudentId", new { StudentId = studentId }, commandType: CommandType.StoredProcedure);
+        }
+
+        public bool IsAlreadyEnrolled(int studentId, int courseId)
+        {
+            using var db = CreateConnection();
+            return db.QuerySingle<bool>("usp_Enrollment_IsAlreadyEnrolled",
+                new { StudentId = studentId, CourseId = courseId }, commandType: CommandType.StoredProcedure);
         }
 
         public void Add(Enrollment entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                INSERT INTO Enrollments (StudentId, CourseId, EnrollDate, Status) 
-                VALUES (@StudentId, @CourseId, @EnrollDate, @Status);";
-            db.Execute(sql, entity);
+            db.Execute("usp_Enrollment_Insert", new
+            {
+                entity.StudentId,
+                entity.CourseId,
+                entity.EnrollDate,
+                entity.Status
+            }, commandType: CommandType.StoredProcedure);
         }
 
         public void Update(Enrollment entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                UPDATE Enrollments 
-                SET StudentId = @StudentId, CourseId = @CourseId, EnrollDate = @EnrollDate, Status = @Status 
-                WHERE Id = @Id;";
-            db.Execute(sql, entity);
+            db.Execute("usp_Enrollment_UpdateStatus", new { entity.Id, entity.Status }, commandType: CommandType.StoredProcedure);
         }
 
         public void Delete(int id)
         {
             using var db = CreateConnection();
-            string sql = "DELETE FROM Enrollments WHERE Id = @Id";
-            db.Execute(sql, new { Id = id });
+            db.Execute("usp_Enrollment_Delete", new { Id = id }, commandType: CommandType.StoredProcedure);
         }
     }
 }

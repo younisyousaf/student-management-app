@@ -1,0 +1,76 @@
+﻿@page "/enrollments/new"
+@inject IEnrollmentService EnrollmentService
+@inject IStudentService StudentService
+@inject ICourseService CourseService
+@inject NavigationManager Navigation
+
+<h3>Enroll Student</h3>
+
+<EditForm Model="@formModel" FormName="EnrollmentForm" OnValidSubmit="HandleSubmit">
+    <div class="mb-3">
+        <label>Student</label>
+        <InputSelect class="form-select" @bind-Value="formModel.StudentId">
+            <option value="0">-- Select a student --</option>
+            @foreach (var s in students)
+            {
+                <option value="@s.Id">@s.FullName (@s.RollNumber)</option>
+            }
+        </InputSelect>
+    </div>
+    <div class="mb-3">
+        <label>Course</label>
+        <InputSelect class="form-select" @bind-Value="formModel.CourseId">
+            <option value="0">-- Select a course --</option>
+            @foreach (var c in courses)
+            {
+                <option value="@c.Id">@c.Name (@c.Code)</option>
+            }
+        </InputSelect>
+    </div>
+
+    @if (errorMessage != null)
+    {
+        <p class="text-danger">@errorMessage</p>
+    }
+
+    <button type="submit" class="btn btn-primary">Enroll</button>
+</EditForm>
+
+@code {
+    private List<Student> students = new();
+    private List<Course> courses = new();
+    private EnrollFormModel formModel = new();
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        students = StudentService.GetAllStudents().ToList();
+        courses = CourseService.GetAllCourses().ToList();
+    }
+
+    private void HandleSubmit()
+    {
+        errorMessage = null;
+        if (formModel.StudentId == 0 || formModel.CourseId == 0)
+        {
+            errorMessage = "Select a student and a course.";
+            return;
+        }
+
+        try
+        {
+            EnrollmentService.EnrollStudent(formModel.StudentId, formModel.CourseId);
+            Navigation.NavigateTo("/enrollments");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class EnrollFormModel
+    {
+        public int StudentId { get; set; }
+        public int CourseId { get; set; }
+    }
+}

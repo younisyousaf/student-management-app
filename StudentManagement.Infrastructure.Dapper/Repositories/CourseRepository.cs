@@ -1,6 +1,5 @@
 ﻿using System.Collections.Generic;
 using System.Data;
-using System.Linq;
 using Dapper;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
@@ -14,48 +13,51 @@ namespace StudentManagement.Infrastructure.Dapper.Repositories
         public Course? GetById(int id)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Courses WHERE Id = @Id";
-            return db.QuerySingleOrDefault<Course>(sql, new { Id = id });
+            return db.QuerySingleOrDefault<Course>("usp_Course_GetById", new { Id = id }, commandType: CommandType.StoredProcedure);
         }
 
         public IEnumerable<Course> GetAll()
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Courses";
-            return db.Query<Course>(sql);
+            return db.Query<Course>("usp_Course_GetAll", commandType: CommandType.StoredProcedure);
         }
 
         public Course? GetByCode(string code)
         {
             using var db = CreateConnection();
-            string sql = "SELECT * FROM Courses WHERE Code = @Code";
-            return db.QuerySingleOrDefault<Course>(sql, new { Code = code });
+            return db.QuerySingleOrDefault<Course>("usp_Course_GetByCode", new { Code = code }, commandType: CommandType.StoredProcedure);
         }
 
         public void Add(Course entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                INSERT INTO Courses (Code, Name, FeeAmount) 
-                VALUES (@Code, @Name, @FeeAmount);";
-            db.Execute(sql, entity);
+            db.Execute("usp_Course_Insert", new
+            {
+                entity.Code,
+                entity.Name,
+                entity.Description,
+                entity.DurationMonths,
+                entity.FeeAmount
+            }, commandType: CommandType.StoredProcedure);
         }
 
         public void Update(Course entity)
         {
             using var db = CreateConnection();
-            string sql = @"
-                UPDATE Courses 
-                SET Code = @Code, Name = @Name, FeeAmount = @FeeAmount 
-                WHERE Id = @Id;";
-            db.Execute(sql, entity);
+            db.Execute("usp_Course_Update", new
+            {
+                entity.Id,
+                entity.Name,
+                entity.Description,
+                entity.DurationMonths,
+                entity.FeeAmount
+            }, commandType: CommandType.StoredProcedure);
         }
 
         public void Delete(int id)
         {
             using var db = CreateConnection();
-            string sql = "DELETE FROM Courses WHERE Id = @Id";
-            db.Execute(sql, new { Id = id });
+            db.Execute("usp_Course_Delete", new { Id = id }, commandType: CommandType.StoredProcedure);
         }
     }
 }

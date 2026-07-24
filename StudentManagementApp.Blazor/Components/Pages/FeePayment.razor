@@ -1,0 +1,75 @@
+﻿@page "/fees/pay/{StudentId:int}/{CourseId:int}"
+@inject IFeeService FeeService
+@inject NavigationManager Navigation
+
+<h3>Record Payment</h3>
+
+@if (fee == null)
+{
+    <p class="text-danger">No fee record found for this student/course.</p>
+}
+else
+{
+    <p>Amount Due: @fee.AmountDue.ToString("C")</p>
+    <p>Already Paid: @fee.AmountPaid.ToString("C")</p>
+    <p><strong>Remaining Balance: @fee.RemainingBalance.ToString("C")</strong></p>
+
+    <EditForm Model="@formModel" FormName="FeePaymentForm" OnValidSubmit="HandleSubmit">
+        <div class="mb-3">
+            <label>Amount to Pay</label>
+            <InputNumber class="form-control" @bind-Value="formModel.Amount" />
+        </div>
+        <div class="mb-3">
+            <label>Remarks</label>
+            <InputText class="form-control" @bind-Value="formModel.Remarks" />
+        </div>
+
+        @if (errorMessage != null)
+        {
+            <p class="text-danger">@errorMessage</p>
+        }
+
+        <button type="submit" class="btn btn-primary">Submit Payment</button>
+    </EditForm>
+}
+
+@code {
+    [Parameter] public int StudentId { get; set; }
+    [Parameter] public int CourseId { get; set; }
+
+    private Fee? fee;
+    private PaymentFormModel formModel = new();
+    private string? errorMessage;
+
+    protected override void OnInitialized()
+    {
+        fee = FeeService.GetFeeStatement(StudentId, CourseId);
+    }
+
+    private void HandleSubmit()
+    {
+        errorMessage = null;
+
+        if (fee == null || formModel.Amount <= 0 || formModel.Amount > fee.RemainingBalance)
+        {
+            errorMessage = $"Enter an amount between 0.01 and {fee?.RemainingBalance:C}.";
+            return;
+        }
+
+        try
+        {
+            FeeService.ProcessStudentPayment(StudentId, CourseId, formModel.Amount, formModel.Remarks);
+            Navigation.NavigateTo("/fees");
+        }
+        catch (Exception ex)
+        {
+            errorMessage = ex.Message;
+        }
+    }
+
+    public class PaymentFormModel
+    {
+        public decimal Amount { get; set; }
+        public string? Remarks { get; set; }
+    }
+}

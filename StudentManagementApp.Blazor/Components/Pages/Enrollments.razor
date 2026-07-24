@@ -1,0 +1,66 @@
+﻿@page "/enrollments"
+@inject IEnrollmentService EnrollmentService
+@inject IStudentService StudentService
+@inject ICourseService CourseService
+
+<h3>Enrollments</h3>
+<a href="enrollments/new" class="btn btn-primary mb-3">+ Enroll Student</a>
+
+@if (rows == null)
+{
+    <p>Loading...</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Student</th><th>Course</th><th>Enrolled</th><th>Status</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var row in rows)
+            {
+                <tr>
+                    <td>@row.StudentName</td>
+                    <td>@row.CourseName</td>
+                    <td>@row.Enrollment.EnrollDate.ToString("yyyy-MM-dd")</td>
+                    <td>@row.Enrollment.Status</td>
+                    <td>
+                        @if (row.Enrollment.Status == "Active")
+                        {
+                            <button class="btn btn-sm btn-outline-success" @onclick="() => Complete(row.Enrollment.Id)">Complete</button>
+                            <button class="btn btn-sm btn-outline-danger" @onclick="() => Drop(row.Enrollment.Id)">Drop</button>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<EnrollmentRow>? rows;
+
+    protected override void OnInitialized() => LoadData();
+
+    private void LoadData()
+    {
+        var enrollments = EnrollmentService.GetAllEnrollments().ToList();
+        var students = StudentService.GetAllStudents().ToDictionary(s => s.Id);
+        var courses = CourseService.GetAllCourses().ToDictionary(c => c.Id);
+
+        rows = enrollments.Select(e => new EnrollmentRow
+        {
+            Enrollment = e,
+            StudentName = students.TryGetValue(e.StudentId, out var s) ? s.FullName : $"Student #{e.StudentId}",
+            CourseName = courses.TryGetValue(e.CourseId, out var c) ? c.Name : $"Course #{e.CourseId}"
+        }).ToList();
+    }
+
+    private void Complete(int id) { EnrollmentService.CompleteCourse(id); LoadData(); }
+    private void Drop(int id) { EnrollmentService.DropCourse(id); LoadData(); }
+
+    public class EnrollmentRow
+    {
+        public Enrollment Enrollment { get; set; } = null!;
+        public string StudentName { get; set; } = string.Empty;
+        public string CourseName { get; set; } = string.Empty;
+    }
+}

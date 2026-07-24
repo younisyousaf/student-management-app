@@ -1,0 +1,50 @@
+﻿@page "/courses"
+@inject ICourseService CourseService
+
+<h3>Courses</h3>
+<a href="courses/new" class="btn btn-primary mb-3">+ Add Course</a>
+
+@if (courses == null)
+{
+    <p>Loading...</p>
+}
+else if (!courses.Any())
+{
+    <p>No courses yet.</p>
+}
+else
+{
+    <table class="table table-striped">
+        <thead><tr><th>Code</th><th>Name</th><th>Duration</th><th>Fee</th><th></th></tr></thead>
+        <tbody>
+            @foreach (var course in courses)
+            {
+                <tr>
+                    <td>@course.Code</td>
+                    <td>@course.Name</td>
+                    <td>@course.DurationMonths months</td>
+                    <td>@course.FeeAmount.ToString("C")</td>
+                    <td>
+                        <a href="@($"courses/{course.Id}/edit")">Edit</a>
+                        <button class="btn btn-sm btn-outline-danger" @onclick="() => Delete(course.Id)">Delete</button>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+@code {
+    private List<Course>? courses;
+
+    protected override void OnInitialized()
+    {
+        courses = CourseService.GetAllCourses().ToList();
+    }
+
+    private void Delete(int id)
+    {
+        CourseService.RemoveCourse(id);
+        courses = CourseService.GetAllCourses().ToList();
+    }
+}

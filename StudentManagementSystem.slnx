@@ -1,4 +1,12 @@
 <Solution>
+  <Folder Name="/Database/" />
+  <Folder Name="/Database/StoredProcedures/">
+    <File Path="01_Students.sql" />
+    <File Path="02_Courses.sql" />
+    <File Path="03_Enrollments.sql" />
+    <File Path="04_Fees.sql" />
+    <File Path="05_Attendance.sql" />
+  </Folder>
   <Folder Name="/README/">
     <File Path="README.txt" />
   </Folder>
@@ -7,6 +15,7 @@
   <Project Path="StudentManagement.Infrastructure.EntityFramework/StudentManagement.Infrastructure.EntityFramework.csproj" Id="ea4dd602-a18d-42c2-8362-c6a20b332b68" />
   <Project Path="StudentManagement.Infrastructure.Hybrid/StudentManagement.Infrastructure.Hybrid.csproj" Id="8f051a17-996f-46f2-91fe-fd8462fbbde6" />
   <Project Path="StudentManagement.Infrastructure/StudentManagement.Infrastructure.csproj" />
+  <Project Path="StudentManagementApp.Blazor/StudentManagementApp.Blazor.csproj" Id="92d07f42-0073-4278-b370-b4746e25be86" />
   <Project Path="StudentManagementApp.Console/StudentManagementSystem.Console.csproj" />
   <Project Path="StudentManagementApp.MVC/StudentManagementApp.MVC.csproj" />
   <Project Path="StudentManagementApp.WebApi/StudentManagementApp.WebApi.csproj" />
