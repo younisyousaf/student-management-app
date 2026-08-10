@@ -152,10 +152,27 @@ app.MapGet("/", () => Results.Redirect("/swagger"));
 
 app.MapGet("/api/copilot/_test", async (AIAgent agent) =>
 {
-    var result = await agent.RunAsync("Look up the student with roll number 56954 and tell me their information.");
+    var result = await agent.RunAsync("Look up the student with roll number 5644444 and tell me their information.");
     return Results.Ok(new { response = result.Text });
 });
 
+app.MapGet("/api/copilot/_test2", async (AIAgent agent) =>
+{
+    var result = await agent.RunAsync("What courses are currently offered, and what does CS-401 cost?");
+    return Results.Ok(new { response = result.Text });
+});
+
+app.MapGet("/api/copilot/_test3", async (AIAgent agent) =>
+{
+    var result = await agent.RunAsync("What courses is the student named Ali enrolled in? Give me the course names, not just codes.");
+    return Results.Ok(new { response = result.Text });
+});
+
+app.MapGet("/api/copilot/_test4", async (AIAgent agent) =>
+{
+    var result = await agent.RunAsync("Show me the fee statement for student ID 1 in course ID 5, and also list their attendance records.");
+    return Results.Ok(new { response = result.Text });
+});
 //Instead of Redirecting you can show message in JSON Format.
 //{
 //    return Results.Ok(new

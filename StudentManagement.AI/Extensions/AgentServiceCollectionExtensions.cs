@@ -39,16 +39,33 @@ public static class AgentServiceCollectionExtensions
         });
 
         services.AddScoped<StudentTools>();
+        services.AddScoped<CourseTools>();
+        services.AddScoped<EnrollmentTools>();
+        services.AddScoped<AttendanceTools>();
+        services.AddScoped<FeeTools>();
 
         services.AddScoped<AIAgent>(sp =>
         {
             var chatClient = sp.GetRequiredService<IChatClient>();
             var studentTools = sp.GetRequiredService<StudentTools>();
+            var courseTools = sp.GetRequiredService<CourseTools>();
+            var enrollmentTools = sp.GetRequiredService<EnrollmentTools>();
+            var attendanceTools = sp.GetRequiredService<AttendanceTools>();
+            var feeTools = sp.GetRequiredService<FeeTools>();
 
             IList<AITool> tools =
             [
                 AIFunctionFactory.Create(studentTools.GetStudentByRollNumber),
-            AIFunctionFactory.Create(studentTools.SearchStudentsByName)
+                AIFunctionFactory.Create(studentTools.SearchStudentsByName),
+                AIFunctionFactory.Create(courseTools.GetCourseByCode),
+                AIFunctionFactory.Create(courseTools.GetAllCourses),
+                AIFunctionFactory.Create(enrollmentTools.GetEnrollmentsByStudent),
+                AIFunctionFactory.Create(enrollmentTools.GetEnrollmentById),
+                AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
+                AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),
+                AIFunctionFactory.Create(attendanceTools.GetAttendanceById),
+                AIFunctionFactory.Create(feeTools.GetFeeById),
+                AIFunctionFactory.Create(feeTools.GetFeeStatement)
             ];
 
             return StudentManagementAgent.Create(chatClient, tools);
