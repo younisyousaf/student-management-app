@@ -1,9 +1,12 @@
+using Microsoft.Agents.AI;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.AI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
+using StudentManagement.AI.Extensions;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
@@ -37,6 +40,9 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+
+//AI Service
+builder.Services.AddStudentManagementAI(builder.Configuration);
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
@@ -143,6 +149,12 @@ builder.Services.AddCors(options =>
 var app = builder.Build();
 //Redirect if someone visit "/" it will redirect to /swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
+
+app.MapGet("/api/copilot/_test", async (AIAgent agent) =>
+{
+    var result = await agent.RunAsync("Look up the student with roll number 56954 and tell me their information.");
+    return Results.Ok(new { response = result.Text });
+});
 
 //Instead of Redirecting you can show message in JSON Format.
 //{
