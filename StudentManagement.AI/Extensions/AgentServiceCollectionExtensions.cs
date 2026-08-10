@@ -5,6 +5,8 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenAI;
 using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
+using StudentManagement.AI.Services;
+using StudentManagement.AI.Sessions;
 using StudentManagement.AI.Tools;
 using System.ClientModel;
 
@@ -21,9 +23,17 @@ public static class AgentServiceCollectionExtensions
             var options = configuration.GetSection(OpenRouterOptions.SectionName).Get<OpenRouterOptions>()
                 ?? new OpenRouterOptions();
 
-            var apiKey = !string.IsNullOrWhiteSpace(options.ApiKey)
-                ? options.ApiKey
-                : Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+            //var apiKey = !string.IsNullOrWhiteSpace(options.ApiKey)
+            //    ? options.ApiKey
+            //    : Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
+
+            var apiKey = new[] { 
+                //options.ApiKey,
+                //options.ApiKeyTwo, 
+                options.ApiKeyThree
+            }
+                .FirstOrDefault(k => !string.IsNullOrWhiteSpace(k))
+                ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
 
             if (string.IsNullOrWhiteSpace(apiKey))
             {
@@ -37,7 +47,8 @@ public static class AgentServiceCollectionExtensions
 
             return openAiClient.GetChatClient(options.Model).AsIChatClient();
         });
-
+        services.AddScoped<ICopilotService, CopilotService>();
+        services.AddSingleton<ISessionStore, InMemorySessionStore>();
         services.AddScoped<StudentTools>();
         services.AddScoped<CourseTools>();
         services.AddScoped<EnrollmentTools>();
@@ -64,6 +75,7 @@ public static class AgentServiceCollectionExtensions
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceById),
+                AIFunctionFactory.Create(attendanceTools.GetAttendanceSummaryForStudent),
                 AIFunctionFactory.Create(feeTools.GetFeeById),
                 AIFunctionFactory.Create(feeTools.GetFeeStatement)
             ];
