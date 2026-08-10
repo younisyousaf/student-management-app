@@ -11,4 +11,5 @@ public interface IAttendanceService
     IEnumerable<Attendance> GetAttendanceForCourseOnDate(int courseId, DateTime date);
     IEnumerable<Attendance> GetAllAttendance();
     Attendance? GetAttendanceById(int attendanceId);
+    AttendanceSummary GetAttendanceSummary(int studentId, int? courseId = null);
 }

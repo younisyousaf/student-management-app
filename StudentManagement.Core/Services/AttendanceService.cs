@@ -35,6 +35,29 @@ public class AttendanceService : IAttendanceService
         _attendanceRepository.Update(attendance);
     }
 
+    public AttendanceSummary GetAttendanceSummary(int studentId, int? courseId = null)
+    {
+        var records = _attendanceRepository.GetByStudentId(studentId);
+
+        if (courseId.HasValue)
+            records = records.Where(a => a.CourseId == courseId.Value);
+
+        var recordsList = records.ToList();
+        var total = recordsList.Count;
+
+        var present = recordsList.Count(a => a.Status == AttendanceStatus.Present);
+        var absent = recordsList.Count(a => a.Status == AttendanceStatus.Absent);
+        var late = recordsList.Count(a => a.Status == AttendanceStatus.Late);
+        var excused = recordsList.Count(a => a.Status == AttendanceStatus.Excused);
+
+        // Present and Late = 1
+        // Absent and Excused = 0
+        var countedPresent = present + late;
+        var percentage = total == 0 ? 0.0 : Math.Round((double)countedPresent / total * 100, 2);
+
+        return new AttendanceSummary(studentId, courseId, total, present, absent, late, excused, percentage);
+    }
+
     public IEnumerable<Attendance> GetAllAttendance() => _attendanceRepository.GetAll();
 
     public IEnumerable<Attendance> GetAttendanceForStudent(int studentId) =>
