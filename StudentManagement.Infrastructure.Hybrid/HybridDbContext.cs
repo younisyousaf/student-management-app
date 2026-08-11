@@ -101,6 +101,18 @@ namespace StudentManagement.Infrastructure.Hybrid
                       .IsRequired()
                       .HasColumnType("nvarchar(max)");
 
+                entity.Property(x => x.PendingApprovalRequestId)
+                    .HasMaxLength(200);
+
+                entity.Property(x => x.PendingApprovalCallId)
+                    .HasMaxLength(200);
+
+                entity.Property(x => x.PendingApprovalFunctionName)
+                    .HasMaxLength(200);
+
+                entity.Property(x => x.PendingApprovalArgumentsJson)
+                    .HasColumnType("nvarchar(max)");
+
                 entity.Property(x => x.CreatedAt)
                       .IsRequired();
 

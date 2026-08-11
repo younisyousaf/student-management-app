@@ -87,4 +87,92 @@ public sealed class SqlServerSessionStore : ISessionStore
 
         await _dbContext.SaveChangesAsync(cancellationToken);
     }
+
+    public async Task SavePendingApprovalAsync(
+    string sessionId,
+    PendingToolApproval approval,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = _currentUserContext.UserId
+            ?? throw new UnauthorizedAccessException();
+
+        var entity = await _dbContext.AgentSessions
+            .SingleAsync(
+                x => x.SessionId == sessionId &&
+                     x.UserId == userId,
+                cancellationToken);
+
+        entity.PendingApprovalRequestId = approval.RequestId;
+        entity.PendingApprovalCallId = approval.CallId;
+        entity.PendingApprovalFunctionName = approval.FunctionName;
+        entity.PendingApprovalArgumentsJson =
+            JsonSerializer.Serialize(approval.Arguments);
+
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
+
+    public async Task<PendingToolApproval?> GetPendingApprovalAsync(
+    string sessionId,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = _currentUserContext.UserId
+            ?? throw new UnauthorizedAccessException();
+
+        var entity = await _dbContext.AgentSessions
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                x => x.SessionId == sessionId &&
+                     x.UserId == userId,
+                cancellationToken);
+
+        if (entity is null ||
+            string.IsNullOrWhiteSpace(entity.PendingApprovalRequestId) ||
+            string.IsNullOrWhiteSpace(entity.PendingApprovalCallId) ||
+            string.IsNullOrWhiteSpace(entity.PendingApprovalFunctionName))
+        {
+            return null;
+        }
+
+        var arguments =
+            string.IsNullOrWhiteSpace(entity.PendingApprovalArgumentsJson)
+                ? new Dictionary<string, object?>()
+                : JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                      entity.PendingApprovalArgumentsJson)
+                  ?? new Dictionary<string, object?>();
+
+        return new PendingToolApproval(
+            entity.PendingApprovalRequestId,
+            entity.PendingApprovalCallId,
+            entity.PendingApprovalFunctionName,
+            arguments);
+    }
+
+    public async Task ClearPendingApprovalAsync(
+    string sessionId,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = _currentUserContext.UserId
+            ?? throw new UnauthorizedAccessException();
+
+        var entity = await _dbContext.AgentSessions
+            .SingleOrDefaultAsync(
+                x => x.SessionId == sessionId &&
+                     x.UserId == userId,
+                cancellationToken);
+
+        if (entity is null)
+        {
+            return;
+        }
+
+        entity.PendingApprovalRequestId = null;
+        entity.PendingApprovalCallId = null;
+        entity.PendingApprovalFunctionName = null;
+        entity.PendingApprovalArgumentsJson = null;
+        entity.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+    }
 }

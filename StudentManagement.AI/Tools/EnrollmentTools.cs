@@ -38,6 +38,19 @@ public class EnrollmentTools
             : new EnrollmentLookupResult(true, ToSummary(enrollment), null);
     }
 
+    [Description(
+    "Enroll a student in a course. " +
+    "This changes application data and requires human approval before execution.")]
+    public string EnrollStudent(
+    [Description("The exact internal student ID.")] int studentId,
+    [Description("The exact internal course ID.")] int courseId)
+    {
+        _enrollmentService.EnrollStudent(studentId, courseId);
+
+        return $"Student {studentId} was successfully enrolled in course {courseId}.";
+    }
+
+
     private static EnrollmentSummary ToSummary(Enrollment enrollment) =>
         new(enrollment.Id, enrollment.StudentId, enrollment.CourseId, enrollment.EnrollDate, enrollment.Status);
 }

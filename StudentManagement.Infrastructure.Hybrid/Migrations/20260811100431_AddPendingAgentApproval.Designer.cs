@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentManagement.Infrastructure.Hybrid;
 
@@ -11,9 +12,11 @@ using StudentManagement.Infrastructure.Hybrid;
 namespace StudentManagement.Infrastructure.Hybrid.Migrations
 {
     [DbContext(typeof(HybridDbContext))]
-    partial class HybridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260811100431_AddPendingAgentApproval")]
+    partial class AddPendingAgentApproval
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder

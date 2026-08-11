@@ -69,18 +69,35 @@ public static class AgentServiceCollectionExtensions
             var feeTools = sp.GetRequiredService<FeeTools>();
             var authenticatedUserContext = sp.GetRequiredService<AuthenticatedUserContextProvider>();
 
+            //Write Tools
+            AIFunction enrollStudentFunction = AIFunctionFactory.Create(
+                enrollmentTools.EnrollStudent,
+                name: "enroll_student",
+                description:
+                    "Enroll a student in a course. " +
+                    "This operation modifies student enrollment data.");
+            AIFunction approvalRequiredEnrollStudent = new ApprovalRequiredAIFunction(enrollStudentFunction);
+
             IList<AITool> tools =
             [
                 AIFunctionFactory.Create(studentTools.GetStudentByRollNumber),
                 AIFunctionFactory.Create(studentTools.SearchStudentsByName),
+                AIFunctionFactory.Create(studentTools.GetStudentById),
+
+                AIFunctionFactory.Create(courseTools.GetCourseById),
                 AIFunctionFactory.Create(courseTools.GetCourseByCode),
                 AIFunctionFactory.Create(courseTools.GetAllCourses),
+
                 AIFunctionFactory.Create(enrollmentTools.GetEnrollmentsByStudent),
                 AIFunctionFactory.Create(enrollmentTools.GetEnrollmentById),
+                //approval required tools
+                approvalRequiredEnrollStudent,
+
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceById),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceSummaryForStudent),
+
                 AIFunctionFactory.Create(feeTools.GetFeeById),
                 AIFunctionFactory.Create(feeTools.GetFeeStatement)
             ];

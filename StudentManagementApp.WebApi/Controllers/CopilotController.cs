@@ -5,7 +5,17 @@ using StudentManagement.AI.Services;
 namespace StudentManagementApp.WebApi.Controllers;
 
 public record CopilotChatRequest(string Message, string? SessionId);
-public record CopilotChatResponse(string Response, string SessionId);
+public record CopilotChatResponse(
+    string? Response,
+    string SessionId,
+    bool RequiresApproval,
+    CopilotApprovalRequest? Approval);
+
+public record CopilotApprovalDecisionRequest(
+    string SessionId,
+    string RequestId,
+    bool Approved,
+    string? Reason);
 
 [ApiController]
 [Route("api/[controller]")]
@@ -27,7 +37,48 @@ public class CopilotController : ControllerBase
             return BadRequest(new { Message = "Message cannot be empty." });
         }
 
-        var result = await _copilotService.SendMessageAsync(request.Message, request.SessionId, cancellationToken);
-        return Ok(new CopilotChatResponse(result.Response, result.SessionId));
+        var result = await _copilotService.SendMessageAsync(
+      request.Message,
+      request.SessionId,
+      cancellationToken);
+
+        return Ok(
+            new CopilotChatResponse(
+                result.Response,
+                result.SessionId,
+                result.RequiresApproval,
+                result.Approval));
+    }
+
+    [HttpPost("approval")]
+    public async Task<IActionResult> RespondToApproval(
+    [FromBody] CopilotApprovalDecisionRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(request.SessionId))
+        {
+            return BadRequest(new
+            {
+                Message = "SessionId is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.RequestId))
+        {
+            return BadRequest(new
+            {
+                Message = "RequestId is required."
+            });
+        }
+
+        var result =
+            await _copilotService.RespondToApprovalAsync(
+                request.SessionId,
+                request.RequestId,
+                request.Approved,
+                request.Reason,
+                cancellationToken);
+
+        return Ok(result);
     }
 }

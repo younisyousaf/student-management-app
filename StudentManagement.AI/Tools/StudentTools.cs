@@ -40,6 +40,26 @@ public class StudentTools
             .Select(ToSummary);
     }
 
+    [Description(
+    "Find a student by their exact internal student ID. " +
+    "Always check Found first. If Found is false, do not substitute another student.")]
+    public StudentLookupResult GetStudentById(
+    [Description("The exact internal student ID.")]
+    int studentId)
+    {
+        var student = _studentService.GetStudentById(studentId);
+
+        return student == null
+            ? new StudentLookupResult(
+                false,
+                null,
+                $"No student exists with ID '{studentId}'.")
+            : new StudentLookupResult(
+                true,
+                ToSummary(student),
+                null);
+    }
+
     private static StudentSummary ToSummary(Student student) =>
         new(student.Id, student.RollNumber, student.FullName, student.Email, student.Phone);
 }

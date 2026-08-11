@@ -35,6 +35,26 @@ public class CourseTools
         return _courseService.GetAllCourses().Select(ToSummary);
     }
 
+    [Description(
+    "Find a course by its exact internal course ID. " +
+    "Always check Found first. If Found is false, do not substitute another course.")]
+    public CourseLookupResult GetCourseById(
+    [Description("The exact internal course ID.")]
+    int courseId)
+    {
+        var course = _courseService.GetCourseById(courseId);
+
+        return course == null
+            ? new CourseLookupResult(
+                false,
+                null,
+                $"No course exists with ID '{courseId}'.")
+            : new CourseLookupResult(
+                true,
+                ToSummary(course),
+                null);
+    }
+
     private static CourseSummary ToSummary(Course course) =>
         new(course.Id, course.Code, course.Name, course.Description, course.DurationMonths, course.FeeAmount);
 }
