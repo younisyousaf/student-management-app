@@ -16,12 +16,27 @@ public static class StudentManagementAgent
         or inventing student data.
         """;
 
-    public static AIAgent Create(IChatClient chatClient, IList<AITool> tools)
+    public static AIAgent Create(
+       IChatClient chatClient,
+       IList<AITool> tools,
+       AIContextProvider authenticatedUserContext)
     {
+        var options = new ChatClientAgentOptions
+        {
+            ChatOptions = new ChatOptions
+            {
+                Instructions = Instructions,
+                Tools = tools
+            },
+
+            AIContextProviders =
+            [
+                authenticatedUserContext
+            ]
+        };
+
         return new ChatClientAgent(
             chatClient,
-            instructions: Instructions,
-            name: "StudentManagementCopilot",
-            tools: tools);
+            options);
     }
 }

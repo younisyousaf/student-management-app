@@ -7,6 +7,7 @@ using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
+using StudentManagement.AI.Context;
 using StudentManagement.AI.Tools;
 using System.ClientModel;
 
@@ -55,7 +56,9 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<EnrollmentTools>();
         services.AddScoped<AttendanceTools>();
         services.AddScoped<FeeTools>();
+        services.AddScoped<AuthenticatedUserContextProvider>();
 
+       
         services.AddScoped<AIAgent>(sp =>
         {
             var chatClient = sp.GetRequiredService<IChatClient>();
@@ -64,6 +67,7 @@ public static class AgentServiceCollectionExtensions
             var enrollmentTools = sp.GetRequiredService<EnrollmentTools>();
             var attendanceTools = sp.GetRequiredService<AttendanceTools>();
             var feeTools = sp.GetRequiredService<FeeTools>();
+            var authenticatedUserContext = sp.GetRequiredService<AuthenticatedUserContextProvider>();
 
             IList<AITool> tools =
             [
@@ -81,7 +85,7 @@ public static class AgentServiceCollectionExtensions
                 AIFunctionFactory.Create(feeTools.GetFeeStatement)
             ];
 
-            return StudentManagementAgent.Create(chatClient, tools);
+            return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext);
         });
 
         return services;

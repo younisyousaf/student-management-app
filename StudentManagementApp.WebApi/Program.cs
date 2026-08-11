@@ -13,6 +13,7 @@ using StudentManagement.Infrastructure.Hybrid;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
 using StudentManagement.AI.Sessions;
 using StudentManagementApp.WebApi.Sessions;
+using StudentManagementApp.WebApi.Services;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -30,7 +31,6 @@ builder.Services.AddDbContext<HybridDbContext>(options =>
 //SQL Server Session
 builder.Services.AddScoped<ISessionStore, SqlServerSessionStore>();
 
-
 // 3. Register All Hybrid Repositories (Scoped to request lifetime)
 builder.Services.AddScoped<IStudentRepository, HybridStudentRepository>();
 builder.Services.AddScoped<ICourseRepository, HybridCourseRepository>();
@@ -46,6 +46,12 @@ builder.Services.AddScoped<IEnrollmentService, EnrollmentService>();
 builder.Services.AddScoped<IFeeService, FeeService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IAttendanceService, AttendanceService>();
+
+//User Context
+builder.Services.AddHttpContextAccessor();
+builder.Services.AddScoped<
+    ICurrentUserContext,
+    CurrentUserContext>();
 
 //AI Service
 builder.Services.AddStudentManagementAI(builder.Configuration);
@@ -156,7 +162,23 @@ var app = builder.Build();
 //Redirect if someone visit "/" it will redirect to /swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
 
-//Test Endpoints
+//Test Endpoint for current user context
+app.MapGet(
+    "/api/_test/current-user",
+    (ICurrentUserContext currentUser) =>
+    {
+        return Results.Ok(new
+        {
+            currentUser.IsAuthenticated,
+            currentUser.UserId,
+            currentUser.Username,
+            currentUser.Email,
+            currentUser.Role
+        });
+    })
+    .RequireAuthorization();
+
+//Test Endpoints for ai agent
 //app.MapGet("/api/copilot/_test", async (AIAgent agent) =>
 //{
 //    var result = await agent.RunAsync("Look up the student with roll number 5644444 and tell me their information.");
