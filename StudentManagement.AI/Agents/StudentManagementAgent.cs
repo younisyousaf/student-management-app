@@ -19,6 +19,7 @@ public static class StudentManagementAgent
         and never infer a course code from a course ID.
         Use the lookup tool that matches the identifier supplied by the user.
 
+
         For operations that modify application data:
         - Resolve and validate the exact target records before calling the write tool.
         - Never infer identifiers or substitute a different record.
@@ -29,7 +30,27 @@ public static class StudentManagementAgent
           will obtain the required confirmation.
         - Never claim that a write operation succeeded until the write tool has actually executed.
         - If validation fails, do not call the write tool.
+        - When the user asks to mark attendance for "today", use mark_attendance_today. Do not calculate or invent today's date yourself. Use mark_attendance only when the user explicitly supplies a date.
 
+
+        Before processing a payment:
+        - Verify the exact student.
+        - Verify the exact course.
+        - Retrieve the fee statement before requesting payment.
+        - Never invent or change the requested payment amount.
+        - Never claim a payment succeeded until the payment tool actually executes.
+
+        When updating a student profile:
+        - First retrieve the existing student using GetStudentById.
+        - Change only the fields explicitly requested by the user.
+        - Preserve all other existing profile values.
+        - Never invent replacement values for fields the user did not ask to modify.
+
+        For student deletion:
+        - Always verify the exact student using GetStudentById before requesting deletion.
+        - Never infer or substitute another student ID.
+        - Clearly identify the student before requesting approval.
+        - Never claim the student was removed until the remove_student tool actually executes after approval.
         """;
 
     public static AIAgent Create(

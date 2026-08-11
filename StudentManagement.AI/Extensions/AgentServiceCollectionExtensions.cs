@@ -30,8 +30,8 @@ public static class AgentServiceCollectionExtensions
 
             var apiKey = new[] { 
                 //options.ApiKey,
-                //options.ApiKeyTwo, 
-                options.ApiKeyThree
+                options.ApiKeyTwo
+                //options.ApiKeyThree
             }
                 .FirstOrDefault(k => !string.IsNullOrWhiteSpace(k))
                 ?? Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
@@ -57,8 +57,9 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<AttendanceTools>();
         services.AddScoped<FeeTools>();
         services.AddScoped<AuthenticatedUserContextProvider>();
+        services.AddScoped<IApplicationDateTime, ApplicationDateTime>();
 
-       
+
         services.AddScoped<AIAgent>(sp =>
         {
             var chatClient = sp.GetRequiredService<IChatClient>();
@@ -70,13 +71,54 @@ public static class AgentServiceCollectionExtensions
             var authenticatedUserContext = sp.GetRequiredService<AuthenticatedUserContextProvider>();
 
             //Write Tools
-            AIFunction enrollStudentFunction = AIFunctionFactory.Create(
-                enrollmentTools.EnrollStudent,
-                name: "enroll_student",
+            AIFunction enrollStudentFunction = AIFunctionFactory.Create( enrollmentTools.EnrollStudent, name: "enroll_student",
                 description:
                     "Enroll a student in a course. " +
                     "This operation modifies student enrollment data.");
             AIFunction approvalRequiredEnrollStudent = new ApprovalRequiredAIFunction(enrollStudentFunction);
+
+            //var markAttendanceFunction = AIFunctionFactory.Create(attendanceTools.MarkAttendance, name: "mark_attendance");
+            //var markAttendanceWithApproval = new ApprovalRequiredAIFunction(markAttendanceFunction);
+            var markAttendanceTodayFunction = AIFunctionFactory.Create(attendanceTools.MarkAttendanceToday,name: "mark_attendance_today",
+               description:
+                "Mark today's attendance for a student in a course. " +
+                "The application determines today's date from the configured timezone.");
+            var markAttendanceTodayWithApproval = new ApprovalRequiredAIFunction(markAttendanceTodayFunction);
+            var updateAttendanceFunction = AIFunctionFactory.Create(attendanceTools.UpdateAttendance, name: "update_attendance",
+                description:
+                    "Update the status or remarks of an existing attendance record. " +
+                    "First verify the exact attendance record using GetAttendanceById. " +
+                    "This operation modifies application data.");
+            var updateAttendanceWithApproval = new ApprovalRequiredAIFunction(updateAttendanceFunction);
+            var processStudentPaymentFunction = AIFunctionFactory.Create(feeTools.ProcessStudentPayment, name: "process_student_payment",
+                description:
+                    "Record a payment against a student's course fee. " +
+                    "This modifies financial data and requires human approval.");
+            var processStudentPaymentWithApproval = new ApprovalRequiredAIFunction(processStudentPaymentFunction);
+            var dropCourseFunction =
+            AIFunctionFactory.Create(enrollmentTools.DropCourse, name: "drop_course",
+                description:
+                    "Drop an existing enrollment. " +
+                    "This operation modifies enrollment data.");
+            var dropCourseWithApproval = new ApprovalRequiredAIFunction(dropCourseFunction);
+            var completeCourseFunction =
+                AIFunctionFactory.Create(enrollmentTools.CompleteCourse, name: "complete_course", 
+                    description: "Mark an existing enrollment as completed. This operation modifies enrollment data.");
+            var completeCourseWithApproval = new ApprovalRequiredAIFunction(completeCourseFunction);
+
+            var updateStudentProfileFunction = AIFunctionFactory.Create(studentTools.UpdateStudentProfile, name: "update_student_profile",
+            description:
+                "Update an existing student's profile. " +
+                "The exact student must be verified first. " +
+                "This operation modifies student data.");
+            var updateStudentProfileWithApproval = new ApprovalRequiredAIFunction(updateStudentProfileFunction);
+            var removeStudentFunction =
+                AIFunctionFactory.Create(studentTools.RemoveStudent, name: "remove_student",
+                    description:
+                        "Permanently remove a student from the system. " +
+                        "The exact student must be verified first. " +
+                        "This is a destructive operation.");
+            var removeStudentWithApproval = new ApprovalRequiredAIFunction(removeStudentFunction);
 
             IList<AITool> tools =
             [
@@ -92,6 +134,14 @@ public static class AgentServiceCollectionExtensions
                 AIFunctionFactory.Create(enrollmentTools.GetEnrollmentById),
                 //approval required tools
                 approvalRequiredEnrollStudent,
+                //markAttendanceWithApproval,
+                markAttendanceTodayWithApproval,
+                updateAttendanceWithApproval,
+                processStudentPaymentWithApproval,
+                dropCourseWithApproval,
+                completeCourseWithApproval,
+                updateStudentProfileWithApproval,
+                removeStudentWithApproval,
 
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),

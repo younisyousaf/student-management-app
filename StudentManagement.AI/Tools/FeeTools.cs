@@ -40,6 +40,33 @@ public class FeeTools
             : new FeeLookupResult(true, ToSummary(fee), null);
     }
 
+    [Description(
+    "Process a payment for a student's course fee. " +
+    "This modifies financial data and must only execute after human approval. " +
+    "Before using this tool, verify the exact student and course, and retrieve the fee statement.")]
+    public string ProcessStudentPayment(
+    [Description("The exact internal student ID.")]
+    int studentId,
+
+    [Description("The exact internal course ID.")]
+    int courseId,
+
+    [Description("The payment amount.")]
+    decimal amount,
+
+    [Description("Optional payment remarks.")]
+    string? remarks = null)
+    {
+        _feeService.ProcessStudentPayment(
+            studentId,
+            courseId,
+            amount,
+            remarks);
+
+        return $"Payment of {amount:C} was successfully recorded " +
+               $"for student ID {studentId} in course ID {courseId}.";
+    }
+
     private static FeeSummary ToSummary(Fee fee) =>
         new(fee.Id, fee.StudentId, fee.CourseId, fee.AmountDue, fee.AmountPaid, fee.RemainingBalance, fee.Status.ToString(), fee.PaymentDate);
 }

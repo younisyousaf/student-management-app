@@ -1,6 +1,8 @@
-﻿using System.ComponentModel;
+﻿using StudentManagement.AI.Services;
+using StudentManagement.Core.Enums;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
+using System.ComponentModel;
 
 namespace StudentManagement.AI.Tools;
 
@@ -12,11 +14,13 @@ public class AttendanceTools
 {
     private readonly IAttendanceService _attendanceService;
     private readonly IStudentService _studentService;
+    private readonly IApplicationDateTime _applicationDateTime;
 
-    public AttendanceTools(IAttendanceService attendanceService, IStudentService studentService)
+    public AttendanceTools(IAttendanceService attendanceService, IStudentService studentService, IApplicationDateTime applicationDateTime)
     {
         _attendanceService = attendanceService;
         _studentService = studentService;
+        _applicationDateTime = applicationDateTime;
     }
 
     [Description("Get every attendance record for a specific student, by internal student ID, across all courses. " +
@@ -67,6 +71,78 @@ public class AttendanceTools
 
         var summary = _attendanceService.GetAttendanceSummary(studentId, courseId);
         return new AttendanceSummaryResult(true, summary, null);
+    }
+
+    [Description(
+    "Marks attendance for a specific student in a specific course. " +
+    "This modifies application data and must only be executed after human approval.")]
+    public string MarkAttendance(
+    [Description("The internal student ID.")] int studentId,
+    [Description("The internal course ID.")] int courseId,
+    [Description("The attendance date.")] DateTime date,
+    [Description("The attendance status.")] AttendanceStatus status,
+    [Description("Optional remarks for the attendance record.")] string? remarks = null)
+    {
+        _attendanceService.MarkAttendance(
+            studentId,
+            courseId,
+            date,
+            status,
+            remarks);
+
+        return $"Attendance successfully marked for student ID {studentId} in course ID {courseId}.";
+    }
+
+    [Description(
+    "Mark today's attendance for a student in a course. " +
+    "Use this tool when the user says today/current attendance. " +
+    "This operation requires human approval.")]
+    public string MarkAttendanceToday(
+    [Description("The exact internal student ID.")]
+    int studentId,
+
+    [Description("The exact internal course ID.")]
+    int courseId,
+
+    [Description("Attendance status.")]
+    AttendanceStatus status,
+
+    [Description("Optional remarks.")]
+    string? remarks = null)
+    {
+        DateTime date = _applicationDateTime.Today;
+
+        _attendanceService.MarkAttendance(
+            studentId,
+            courseId,
+            date,
+            status,
+            remarks);
+
+        return $"Attendance marked as {status} for student ID {studentId} " +
+               $"in course ID {courseId} for {date:yyyy-MM-dd}.";
+    }
+
+    [Description(
+    "Update an existing attendance record's status and optional remarks. " +
+    "This modifies application data and must only be executed after human approval. " +
+    "Before using this tool, first use GetAttendanceById to verify that the exact attendance record exists.")]
+    public string UpdateAttendance(
+    [Description("The exact attendance record ID that was previously verified using GetAttendanceById.")]
+    int attendanceId,
+
+    [Description("The new attendance status.")]
+    AttendanceStatus status,
+
+    [Description("Optional updated remarks.")]
+    string? remarks = null)
+    {
+        _attendanceService.UpdateAttendance(
+            attendanceId,
+            status,
+            remarks);
+
+        return $"Attendance record ID {attendanceId} was successfully updated to {status}.";
     }
 
     private static AttendanceRecord ToRecord(Attendance attendance) =>

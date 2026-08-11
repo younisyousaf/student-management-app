@@ -60,6 +60,69 @@ public class StudentTools
                 null);
     }
 
+    [Description(
+    "Update one or more fields of an existing student's profile. " +
+    "Before using this tool, verify the exact student using GetStudentById. " +
+    "Only explicitly supplied fields are changed. " +
+    "This modifies student data and requires human approval.")]
+    public string UpdateStudentProfile(
+    [Description("The exact internal student ID.")]
+    int studentId,
+
+    [Description("New first name, or null to keep the current value.")]
+    string? firstName = null,
+
+    [Description("New last name, or null to keep the current value.")]
+    string? lastName = null,
+
+    [Description("New phone number, or null to keep the current value.")]
+    string? phone = null,
+
+    [Description("New address, or null to keep the current value.")]
+    string? address = null,
+
+    [Description("New email address, or null to keep the current value.")]
+    string? email = null)
+    {
+        var student = _studentService.GetStudentById(studentId);
+
+        if (student is null)
+        {
+            return $"Student with ID {studentId} was not found.";
+        }
+
+        _studentService.UpdateStudentProfile(
+            studentId,
+            firstName ?? student.FirstName,
+            lastName ?? student.LastName,
+            phone ?? student.Phone,
+            address ?? student.Address,
+            email ?? student.Email);
+
+        return $"Student ID {studentId} was successfully updated.";
+    }
+
+    [Description(
+    "Permanently remove an existing student from the system. " +
+    "Before using this tool, verify the exact student using GetStudentById. " +
+    "Never substitute another student if the requested student does not exist. " +
+    "This is a destructive operation and requires human approval.")]
+    public string RemoveStudent(
+    [Description("The exact internal student ID.")]
+    int studentId)
+    {
+        var student = _studentService.GetStudentById(studentId);
+
+        if (student is null)
+        {
+            return $"Student with ID {studentId} was not found. No student was removed.";
+        }
+
+        _studentService.RemoveStudent(studentId);
+
+        return $"Student ID {studentId} was successfully removed.";
+    }
+
     private static StudentSummary ToSummary(Student student) =>
         new(student.Id, student.RollNumber, student.FullName, student.Email, student.Phone);
 }

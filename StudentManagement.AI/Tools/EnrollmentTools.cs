@@ -50,6 +50,31 @@ public class EnrollmentTools
         return $"Student {studentId} was successfully enrolled in course {courseId}.";
     }
 
+    [Description(
+    "Drop an existing enrollment. " +
+    "Before using this tool, verify the exact enrollment using GetEnrollmentById. " +
+    "This modifies application data and requires human approval.")]
+    public string DropCourse(
+    [Description("The exact enrollment record ID.")]
+    int enrollmentId)
+    {
+        _enrollmentService.DropCourse(enrollmentId);
+
+        return $"Enrollment ID {enrollmentId} was successfully dropped.";
+    }
+
+    [Description(
+        "Mark an existing enrollment as completed. " +
+        "Before using this tool, verify the exact enrollment using GetEnrollmentById. " +
+        "This modifies application data and requires human approval.")]
+    public string CompleteCourse(
+        [Description("The exact enrollment record ID.")]
+    int enrollmentId)
+    {
+        _enrollmentService.CompleteCourse(enrollmentId);
+
+        return $"Enrollment ID {enrollmentId} was successfully marked as completed.";
+    }
 
     private static EnrollmentSummary ToSummary(Enrollment enrollment) =>
         new(enrollment.Id, enrollment.StudentId, enrollment.CourseId, enrollment.EnrollDate, enrollment.Status);
