@@ -1,5 +1,6 @@
 ﻿using Microsoft.Agents.AI;
 using StudentManagement.AI.Sessions;
+using System.Text.Json;
 
 namespace StudentManagement.AI.Services;
 
@@ -8,33 +9,64 @@ public class CopilotService : ICopilotService
     private readonly AIAgent _agent;
     private readonly ISessionStore _sessionStore;
 
-    public CopilotService(AIAgent agent, ISessionStore sessionStore)
+    public CopilotService(
+        AIAgent agent,
+        ISessionStore sessionStore)
     {
         _agent = agent;
         _sessionStore = sessionStore;
     }
 
-    public async Task<CopilotChatResult> SendMessageAsync(string message, string? sessionId, CancellationToken cancellationToken = default)
+    public async Task<CopilotChatResult> SendMessageAsync(
+        string message,
+        string? sessionId,
+        CancellationToken cancellationToken = default)
     {
         AgentSession session;
         string resolvedSessionId;
 
-        if (!string.IsNullOrWhiteSpace(sessionId) && _sessionStore.Get(sessionId) is { } existing)
+        JsonElement? existingSession = null;
+
+        if (!string.IsNullOrWhiteSpace(sessionId))
         {
-            session = await _agent.DeserializeSessionAsync(existing, cancellationToken: cancellationToken);
-            resolvedSessionId = sessionId;
+            existingSession = await _sessionStore.GetAsync(
+                sessionId,
+                cancellationToken);
+        }
+
+        if (existingSession is { } existing)
+        {
+            session = await _agent.DeserializeSessionAsync(
+                existing,
+                cancellationToken: cancellationToken);
+
+            resolvedSessionId = sessionId!;
         }
         else
         {
-            session = await _agent.CreateSessionAsync(cancellationToken);
+            session = await _agent.CreateSessionAsync(
+                cancellationToken);
+
             resolvedSessionId = Guid.NewGuid().ToString();
         }
 
-        var result = await _agent.RunAsync(message, session, cancellationToken: cancellationToken);
+        AgentResponse result = await _agent.RunAsync(
+            message,
+            session,
+            cancellationToken: cancellationToken);
 
-        var serialized = await _agent.SerializeSessionAsync(session, cancellationToken: cancellationToken);
-        _sessionStore.Save(resolvedSessionId, serialized);
+        JsonElement serialized =
+            await _agent.SerializeSessionAsync(
+                session,
+                cancellationToken: cancellationToken);
 
-        return new CopilotChatResult(result.Text, resolvedSessionId);
+        await _sessionStore.SaveAsync(
+            resolvedSessionId,
+            serialized,
+            cancellationToken);
+
+        return new CopilotChatResult(
+            result.Text,
+            resolvedSessionId);
     }
 }

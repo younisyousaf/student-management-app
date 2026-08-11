@@ -4,6 +4,12 @@ namespace StudentManagement.AI.Sessions;
 
 public interface ISessionStore
 {
-    JsonElement? Get(string sessionId);
-    void Save(string sessionId, JsonElement serializedSession);
+    Task<JsonElement?> GetAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
+
+    Task SaveAsync(
+        string sessionId,
+        JsonElement serializedSession,
+        CancellationToken cancellationToken = default);
 }

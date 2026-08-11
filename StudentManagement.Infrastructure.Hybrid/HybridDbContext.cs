@@ -82,6 +82,34 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(a => a.Status).HasConversion<byte>();
                 entity.Property(a => a.Remarks).HasMaxLength(255);
             });
+
+            // Agent Session Mapping
+            modelBuilder.Entity<AgentSessionRecord>(entity =>
+            {
+                entity.ToTable("AgentSessions");
+
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.SessionId)
+                      .IsRequired()
+                      .HasMaxLength(100);
+
+                entity.HasIndex(x => x.SessionId)
+                      .IsUnique();
+
+                entity.Property(x => x.SerializedSession)
+                      .IsRequired()
+                      .HasColumnType("nvarchar(max)");
+
+                entity.Property(x => x.CreatedAt)
+                      .IsRequired();
+
+                entity.Property(x => x.UpdatedAt)
+                      .IsRequired();
+
+                entity.Property(x => x.ExpiresAt)
+                      .IsRequired(false);
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -90,5 +118,7 @@ namespace StudentManagement.Infrastructure.Hybrid
         public DbSet<Fee> Fees => Set<Fee>();
         public DbSet<User> Users => Set<User>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
+        public DbSet<AgentSessionRecord> AgentSessions
+            => Set<AgentSessionRecord>();
     }
 }

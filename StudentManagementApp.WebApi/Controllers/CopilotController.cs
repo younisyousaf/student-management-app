@@ -4,8 +4,8 @@ using StudentManagement.AI.Services;
 
 namespace StudentManagementApp.WebApi.Controllers;
 
-public record CopilotChatRequest(string Message);
-public record CopilotChatResponse(string Response);
+public record CopilotChatRequest(string Message, string? SessionId);
+public record CopilotChatResponse(string Response, string SessionId);
 
 [ApiController]
 [Route("api/[controller]")]
@@ -18,9 +18,6 @@ public class CopilotController : ControllerBase
     {
         _copilotService = copilotService;
     }
-
-    public record CopilotChatRequest(string Message, string? SessionId);
-    public record CopilotChatResponse(string Response, string SessionId);
 
     [HttpPost("chat")]
     public async Task<IActionResult> Chat([FromBody] CopilotChatRequest request, CancellationToken cancellationToken)

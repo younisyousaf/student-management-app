@@ -61,6 +61,8 @@ namespace StudentManagement.Infrastructure.EntityFramework
                 entity.Property(a => a.Status).HasConversion<byte>();
                 entity.Property(a => a.Remarks).HasMaxLength(255);
             });
+
+            
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -68,5 +70,6 @@ namespace StudentManagement.Infrastructure.EntityFramework
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
         public DbSet<Fee> Fees => Set<Fee>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
+        
     }
 }

@@ -11,6 +11,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
+using StudentManagement.AI.Sessions;
+using StudentManagementApp.WebApi.Sessions;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -24,6 +26,10 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
 // 2. Register HybridDbContext
 builder.Services.AddDbContext<HybridDbContext>(options =>
     options.UseSqlServer(connectionString));
+
+//SQL Server Session
+builder.Services.AddScoped<ISessionStore, SqlServerSessionStore>();
+
 
 // 3. Register All Hybrid Repositories (Scoped to request lifetime)
 builder.Services.AddScoped<IStudentRepository, HybridStudentRepository>();

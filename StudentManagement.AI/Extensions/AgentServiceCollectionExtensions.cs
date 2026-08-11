@@ -48,7 +48,8 @@ public static class AgentServiceCollectionExtensions
             return openAiClient.GetChatClient(options.Model).AsIChatClient();
         });
         services.AddScoped<ICopilotService, CopilotService>();
-        services.AddSingleton<ISessionStore, InMemorySessionStore>();
+        //services.AddSingleton<ISessionStore, InMemorySessionStore>();
+
         services.AddScoped<StudentTools>();
         services.AddScoped<CourseTools>();
         services.AddScoped<EnrollmentTools>();
