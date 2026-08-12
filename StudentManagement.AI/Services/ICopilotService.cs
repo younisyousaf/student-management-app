@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using StudentManagement.AI.Models;
+using System.Collections.Generic;
 
 namespace StudentManagement.AI.Services;
 
@@ -25,10 +26,19 @@ public interface ICopilotService
        string? sessionId,
        CancellationToken cancellationToken = default);
 
+    Task<StudentAttendanceAssessment> GetAttendanceAssessmentAsync(
+    int studentId,
+    CancellationToken cancellationToken = default);
+
     Task<CopilotApprovalResult> RespondToApprovalAsync(
         string sessionId,
         string requestId,
         bool approved,
         string? reason = null,
         CancellationToken cancellationToken = default);
+
+    Task<StudentFeeAssessment> GetFeeAssessmentAsync(
+    int studentId,
+    int courseId,
+    CancellationToken cancellationToken = default);
 }

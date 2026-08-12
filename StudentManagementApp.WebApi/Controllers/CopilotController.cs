@@ -81,4 +81,32 @@ public class CopilotController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("students/{studentId:int}/attendance-assessment")]
+    public async Task<IActionResult> GetAttendanceAssessment(
+    int studentId,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _copilotService.GetAttendanceAssessmentAsync(
+                studentId,
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpGet("students/{studentId:int}/courses/{courseId:int}/fee-assessment")]
+    public async Task<IActionResult> GetFeeAssessment(
+    int studentId,
+    int courseId,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _copilotService.GetFeeAssessmentAsync(
+                studentId,
+                courseId,
+                cancellationToken);
+
+        return Ok(result);
+    }
 }

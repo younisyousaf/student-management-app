@@ -1,6 +1,9 @@
 ﻿using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using StudentManagement.AI.Models;
 using StudentManagement.AI.Sessions;
+using StudentManagement.Core.Interfaces;
+using Microsoft.Extensions.Logging;
 using System.Text.Json;
 
 namespace StudentManagement.AI.Services;
@@ -9,13 +12,25 @@ public class CopilotService : ICopilotService
 {
     private readonly AIAgent _agent;
     private readonly ISessionStore _sessionStore;
+    private readonly IStudentService _studentService;
+    private readonly IAttendanceService _attendanceService;
+    private readonly IFeeService _feeService;
+    private readonly ILogger<CopilotService> _logger;
 
     public CopilotService(
-        AIAgent agent,
-        ISessionStore sessionStore)
+    AIAgent agent,
+    ISessionStore sessionStore,
+    IStudentService studentService,
+    IAttendanceService attendanceService,
+    IFeeService feeService,
+    ILogger<CopilotService> logger)
     {
         _agent = agent;
         _sessionStore = sessionStore;
+        _studentService = studentService;
+        _attendanceService = attendanceService;
+        _feeService = feeService;
+        _logger = logger;
     }
 
     public async Task<CopilotChatResult> SendMessageAsync(
@@ -220,5 +235,181 @@ public class CopilotService : ICopilotService
             Response: result.Text,
             SessionId: sessionId,
             Approved: approved);
+    }
+
+    public async Task<StudentAttendanceAssessment> GetAttendanceAssessmentAsync(
+    int studentId,
+    CancellationToken cancellationToken = default)
+    {
+        // Authoritative application data
+        var student = _studentService.GetStudentById(studentId);
+
+        if (student is null)
+        {
+            throw new KeyNotFoundException(
+                $"Student with ID {studentId} was not found.");
+        }
+
+        var attendance =
+            _attendanceService.GetAttendanceSummary(studentId);
+
+        string studentName =
+            $"{student.FirstName} {student.LastName}";
+
+        string dataStatus =
+            attendance.TotalRecords == 0
+                ? "No Attendance Data"
+                : "Available";
+
+        // AI is responsible only for the natural-language summary.
+        string summary;
+        string observation;
+
+        try
+        {
+            AgentResponse<AttendanceSummaryOutput> aiResult =
+                await _agent.RunAsync<AttendanceSummaryOutput>(
+                    $"""
+            Analyze the verified attendance data below.
+
+            Student Name: {studentName}
+            Total Records: {attendance.TotalRecords}
+            Present Count: {attendance.PresentCount}
+            Absent Count: {attendance.AbsentCount}
+            Late Count: {attendance.LateCount}
+            Excused Count: {attendance.ExcusedCount}
+            Attendance Percentage: {attendance.AttendancePercentage}
+            Data Status: {dataStatus}
+
+            Return:
+            - Summary: A short factual summary of the attendance data.
+            - Observation: A short neutral observation about the attendance pattern.
+
+            Rules:
+            - Use only the supplied verified data.
+            - Do not change or recalculate any values.
+            - Do not invent institutional attendance policies.
+            - Do not classify the student as At Risk, Good, Critical,
+              Failing, or similar unless such a rule is explicitly provided.
+            """,
+                    cancellationToken: cancellationToken);
+
+            summary = aiResult.Result.Summary;
+            observation = aiResult.Result.Observation;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+            ex,
+            "Structured attendance assessment generation failed for StudentId {StudentId}.",
+            studentId);
+
+            summary =
+                $"{studentName} has {attendance.TotalRecords} attendance records.";
+
+            observation =
+                "AI-generated attendance analysis is currently unavailable.";
+        }
+
+        // Final API object is controlled by C#.
+        return new StudentAttendanceAssessment(
+            StudentId: student.Id,
+            StudentName: studentName,
+            TotalRecords: attendance.TotalRecords,
+            PresentCount: attendance.PresentCount,
+            AbsentCount: attendance.AbsentCount,
+            LateCount: attendance.LateCount,
+            ExcusedCount: attendance.ExcusedCount,
+            AttendancePercentage: attendance.AttendancePercentage,
+            DataStatus: dataStatus,
+            Summary: summary,
+            Observation: observation);
+    }
+
+    public async Task<StudentFeeAssessment> GetFeeAssessmentAsync(
+    int studentId,
+    int courseId,
+    CancellationToken cancellationToken = default)
+    {
+        // Authoritative student data
+        var student = _studentService.GetStudentById(studentId);
+
+        if (student is null)
+        {
+            throw new KeyNotFoundException(
+                $"Student with ID {studentId} was not found.");
+        }
+
+        // Authoritative fee data
+        var fee = _feeService.GetFeeStatement(studentId, courseId);
+
+        if (fee is null)
+        {
+            throw new KeyNotFoundException(
+                $"No fee statement exists for student ID {studentId} " +
+                $"and course ID {courseId}.");
+        }
+
+        string studentName =
+            $"{student.FirstName} {student.LastName}";
+
+        // AI owns only explanatory fields.
+        string summary;
+        string observation;
+
+        try
+        {
+            AgentResponse<FeeSummaryOutput> aiResult =
+                await _agent.RunAsync<FeeSummaryOutput>(
+                        $"""
+            Analyze the verified fee data below.
+
+            Student Name: {studentName}
+            Student ID: {student.Id}
+            Course ID: {courseId}
+            Amount Due: {fee.AmountDue}
+            Amount Paid: {fee.AmountPaid}
+            Payment Status: {fee.Status}
+
+            Return:
+            - Summary: A short factual summary of the student's fee statement.
+            - Observation: A short neutral observation about the payment state.
+
+            Rules:
+            - Use only the supplied verified data.
+            - Do not change or recalculate any monetary values.
+            - Do not change the payment status.
+            - Do not invent payment deadlines, penalties, discounts,
+              scholarships, or institutional policies.
+            - Do not recommend making a payment.
+            """,
+                cancellationToken: cancellationToken);
+            summary = aiResult.Result.Summary;
+            observation = aiResult.Result.Observation;
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(
+            ex,
+            "Structured fee assessment generation failed for StudentId {StudentId}, CourseId {CourseId}.",
+            studentId,
+            courseId);
+
+            summary =
+                $"{studentName} has a {fee.Status} fee status " +
+                $"for course ID {courseId}.";
+
+            observation =
+                "AI-generated fee analysis is currently unavailable.";
+        }
+
+        return new StudentFeeAssessment(
+            StudentId: student.Id,
+            CourseId: courseId,
+            AmountDue: fee.AmountDue,
+            AmountPaid: fee.AmountPaid,
+            PaymentStatus: fee.Status,
+            Summary : summary,
+            Observation : observation);
     }
 }
