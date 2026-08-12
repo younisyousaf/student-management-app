@@ -55,6 +55,86 @@ public class CourseTools
                 null);
     }
 
+    [Description(
+    "Update one or more details of an existing course. " +
+    "Before using this tool, verify the exact course using GetCourseById. " +
+    "Only explicitly supplied fields are changed. " +
+    "This modifies course data and requires human approval.")]
+    public string UpdateCourseDetails(
+    [Description("The exact internal course ID.")]
+    int courseId,
+
+    [Description("New course name, or null to keep the current value.")]
+    string? name = null,
+
+    [Description("New course description, or null to keep the current value.")]
+    string? description = null,
+
+    [Description("New duration in months, or null to keep the current value.")]
+    int? durationMonths = null)
+    {
+        var course = _courseService.GetCourseById(courseId);
+
+        if (course is null)
+        {
+            return $"Course with ID {courseId} was not found. No changes were made.";
+        }
+
+        _courseService.UpdateCourseDetails(
+            courseId,
+            name ?? course.Name,
+            description ?? course.Description,
+            durationMonths ?? course.DurationMonths);
+
+        return $"Course ID {courseId} was successfully updated.";
+    }
+
+    [Description(
+    "Update the fee amount of an existing course. " +
+    "Before using this tool, verify the exact course using GetCourseById. " +
+    "This modifies course pricing and requires human approval.")]
+    public string UpdateCoursePricing(
+    [Description("The exact internal course ID.")]
+    int courseId,
+
+    [Description("The new course fee amount.")]
+    decimal newFeeAmount)
+    {
+        var course = _courseService.GetCourseById(courseId);
+
+        if (course is null)
+        {
+            return $"Course with ID {courseId} was not found. No pricing changes were made.";
+        }
+
+        _courseService.UpdateCoursePricing(
+            courseId,
+            newFeeAmount);
+
+        return $"Course ID {courseId} fee was successfully updated to {newFeeAmount:C}.";
+    }
+
+    [Description(
+    "Permanently remove an existing course from the system. " +
+    "Before using this tool, verify the exact course using GetCourseById. " +
+    "Never substitute another course if the requested course does not exist. " +
+    "This is a destructive operation and requires human approval.")]
+    public string RemoveCourse(
+    [Description("The exact internal course ID.")]
+    int courseId)
+    {
+        var course = _courseService.GetCourseById(courseId);
+
+        if (course is null)
+        {
+            return $"Course with ID {courseId} was not found. No course was removed.";
+        }
+
+        _courseService.RemoveCourse(courseId);
+
+        return $"Course ID {courseId} was successfully removed.";
+    }
+
     private static CourseSummary ToSummary(Course course) =>
         new(course.Id, course.Code, course.Name, course.Description, course.DurationMonths, course.FeeAmount);
 }

@@ -51,6 +51,19 @@ public static class StudentManagementAgent
         - Never infer or substitute another student ID.
         - Clearly identify the student before requesting approval.
         - Never claim the student was removed until the remove_student tool actually executes after approval.
+
+        For course updates:
+        - Always verify the exact course using GetCourseById before requesting an update.
+        - Change only the fields explicitly requested by the user.
+        - Preserve existing values for fields the user did not request to modify.
+        - Never invent replacement course information.
+        - Never claim an update succeeded until the corresponding write tool executes after approval.
+
+        For course deletion:
+        - Always verify the exact course using GetCourseById before requesting deletion.
+        - Never infer or substitute another course ID.
+        - Clearly identify the course before requesting approval.
+        - Never claim the course was removed until the remove_course tool actually executes after approval.
         """;
 
     public static AIAgent Create(

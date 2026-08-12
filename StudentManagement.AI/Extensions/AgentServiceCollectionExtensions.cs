@@ -79,18 +79,21 @@ public static class AgentServiceCollectionExtensions
 
             //var markAttendanceFunction = AIFunctionFactory.Create(attendanceTools.MarkAttendance, name: "mark_attendance");
             //var markAttendanceWithApproval = new ApprovalRequiredAIFunction(markAttendanceFunction);
-            var markAttendanceTodayFunction = AIFunctionFactory.Create(attendanceTools.MarkAttendanceToday,name: "mark_attendance_today",
+            var markAttendanceTodayFunction = 
+            AIFunctionFactory.Create(attendanceTools.MarkAttendanceToday,name: "mark_attendance_today",
                description:
                 "Mark today's attendance for a student in a course. " +
                 "The application determines today's date from the configured timezone.");
             var markAttendanceTodayWithApproval = new ApprovalRequiredAIFunction(markAttendanceTodayFunction);
-            var updateAttendanceFunction = AIFunctionFactory.Create(attendanceTools.UpdateAttendance, name: "update_attendance",
+            var updateAttendanceFunction = 
+            AIFunctionFactory.Create(attendanceTools.UpdateAttendance, name: "update_attendance",
                 description:
                     "Update the status or remarks of an existing attendance record. " +
                     "First verify the exact attendance record using GetAttendanceById. " +
                     "This operation modifies application data.");
             var updateAttendanceWithApproval = new ApprovalRequiredAIFunction(updateAttendanceFunction);
-            var processStudentPaymentFunction = AIFunctionFactory.Create(feeTools.ProcessStudentPayment, name: "process_student_payment",
+            var processStudentPaymentFunction = 
+            AIFunctionFactory.Create(feeTools.ProcessStudentPayment, name: "process_student_payment",
                 description:
                     "Record a payment against a student's course fee. " +
                     "This modifies financial data and requires human approval.");
@@ -102,23 +105,55 @@ public static class AgentServiceCollectionExtensions
                     "This operation modifies enrollment data.");
             var dropCourseWithApproval = new ApprovalRequiredAIFunction(dropCourseFunction);
             var completeCourseFunction =
-                AIFunctionFactory.Create(enrollmentTools.CompleteCourse, name: "complete_course", 
-                    description: "Mark an existing enrollment as completed. This operation modifies enrollment data.");
+            AIFunctionFactory.Create(enrollmentTools.CompleteCourse, name: "complete_course", 
+                description: "Mark an existing enrollment as completed. " +
+                "This operation modifies enrollment data.");
             var completeCourseWithApproval = new ApprovalRequiredAIFunction(completeCourseFunction);
 
-            var updateStudentProfileFunction = AIFunctionFactory.Create(studentTools.UpdateStudentProfile, name: "update_student_profile",
-            description:
-                "Update an existing student's profile. " +
-                "The exact student must be verified first. " +
-                "This operation modifies student data.");
+            var updateStudentProfileFunction = 
+            AIFunctionFactory.Create(studentTools.UpdateStudentProfile, name: "update_student_profile",
+                description:
+                    "Update an existing student's profile. " +
+                    "The exact student must be verified first. " +
+                    "This operation modifies student data.");
             var updateStudentProfileWithApproval = new ApprovalRequiredAIFunction(updateStudentProfileFunction);
             var removeStudentFunction =
-                AIFunctionFactory.Create(studentTools.RemoveStudent, name: "remove_student",
-                    description:
-                        "Permanently remove a student from the system. " +
-                        "The exact student must be verified first. " +
-                        "This is a destructive operation.");
+            AIFunctionFactory.Create(studentTools.RemoveStudent, name: "remove_student",
+                description:
+                    "Permanently remove a student from the system. " +
+                    "The exact student must be verified first. " +
+                    "This is a destructive operation.");
             var removeStudentWithApproval = new ApprovalRequiredAIFunction(removeStudentFunction);
+            var updateCourseDetailsFunction =
+            AIFunctionFactory.Create(courseTools.UpdateCourseDetails, name: "update_course_details",
+                description:
+                    "Update one or more details of an existing course. " +
+                    "The exact course must be verified first. " +
+                    "This operation modifies course data.");
+            var updateCourseDetailsWithApproval = new ApprovalRequiredAIFunction(updateCourseDetailsFunction);
+            var updateCoursePricingFunction =
+            AIFunctionFactory.Create(
+                courseTools.UpdateCoursePricing,
+                name: "update_course_pricing",
+                description:
+                    "Update the fee amount of an existing course. " +
+                    "The exact course must be verified first. " +
+                    "This operation modifies course pricing.");
+            var updateCoursePricingWithApproval =
+                new ApprovalRequiredAIFunction(
+                    updateCoursePricingFunction);
+
+            var removeCourseFunction =
+            AIFunctionFactory.Create(
+                courseTools.RemoveCourse,
+                name: "remove_course",
+                description:
+                    "Permanently remove an existing course. " +
+                    "The exact course must be verified first. " +
+                    "This is a destructive operation.");
+            var removeCourseWithApproval =
+                new ApprovalRequiredAIFunction(
+                    removeCourseFunction);
 
             IList<AITool> tools =
             [
@@ -142,6 +177,9 @@ public static class AgentServiceCollectionExtensions
                 completeCourseWithApproval,
                 updateStudentProfileWithApproval,
                 removeStudentWithApproval,
+                updateCourseDetailsWithApproval,
+                updateCoursePricingWithApproval,
+                removeCourseWithApproval,
 
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),
