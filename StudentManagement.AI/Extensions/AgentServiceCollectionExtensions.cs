@@ -5,9 +5,10 @@ using Microsoft.Extensions.DependencyInjection;
 using OpenAI;
 using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
+using StudentManagement.AI.Context;
+using StudentManagement.AI.RAG;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
-using StudentManagement.AI.Context;
 using StudentManagement.AI.Tools;
 using System.ClientModel;
 
@@ -58,6 +59,8 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<FeeTools>();
         services.AddScoped<AuthenticatedUserContextProvider>();
         services.AddScoped<IApplicationDateTime, ApplicationDateTime>();
+        services.AddSingleton<QdrantKnowledgeStore>();
+        services.AddScoped<KnowledgeTools>();
 
 
         services.AddScoped<AIAgent>(sp =>
@@ -69,6 +72,7 @@ public static class AgentServiceCollectionExtensions
             var attendanceTools = sp.GetRequiredService<AttendanceTools>();
             var feeTools = sp.GetRequiredService<FeeTools>();
             var authenticatedUserContext = sp.GetRequiredService<AuthenticatedUserContextProvider>();
+            var knowledgeTools = sp.GetRequiredService<KnowledgeTools>();
 
             //Write Tools
             AIFunction enrollStudentFunction = AIFunctionFactory.Create( enrollmentTools.EnrollStudent, name: "enroll_student",
@@ -187,7 +191,8 @@ public static class AgentServiceCollectionExtensions
                 AIFunctionFactory.Create(attendanceTools.GetAttendanceSummaryForStudent),
 
                 AIFunctionFactory.Create(feeTools.GetFeeById),
-                AIFunctionFactory.Create(feeTools.GetFeeStatement)
+                AIFunctionFactory.Create(feeTools.GetFeeStatement),
+                AIFunctionFactory.Create(knowledgeTools.SearchInstitutionalKnowledge),
             ];
 
             return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext);

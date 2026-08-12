@@ -5,11 +5,14 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="ElBruno.LocalEmbeddings" Version="1.5.0" />
     <PackageReference Include="Microsoft.Agents.AI" Version="1.17.0" />
     <PackageReference Include="Microsoft.Extensions.AI" Version="10.8.3" />
     <PackageReference Include="Microsoft.Extensions.AI.OpenAI" Version="10.8.3" />
     <PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.10" />
+    <PackageReference Include="Microsoft.ML.OnnxRuntime" Version="1.29.0" />
     <PackageReference Include="OpenAI" Version="2.12.0" />
+    <PackageReference Include="Qdrant.Client" Version="1.19.0" />
   </ItemGroup>
 
   <PropertyGroup>

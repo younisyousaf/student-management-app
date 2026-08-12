@@ -5,7 +5,7 @@ namespace StudentManagement.AI.Agents;
 
 public static class StudentManagementAgent
 {
-    private const string Instructions = 
+    private const string Instructions =
         """
         You are the Student Management Copilot for an educational institution.
 
@@ -89,6 +89,13 @@ public static class StudentManagementAgent
         - Do not ask the user for an additional conversational confirmation.
         - Never claim the course was removed until remove_course actually executes
           after Human-in-the-Loop approval.
+
+        For institutional policy or handbook questions:
+        - Use SearchInstitutionalKnowledge.
+        - Use retrieved institutional knowledge as the source for policy claims.
+        - Do not invent institutional policies.
+        - If no sufficiently relevant knowledge is returned, say that the available knowledge does not contain the answer.
+        - Do not use institutional knowledge retrieval as a replacement for live SQL-backed student, course, enrollment, attendance, or fee data.
     """;
 
     public static AIAgent Create(
