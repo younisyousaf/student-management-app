@@ -3,6 +3,7 @@
 public sealed class KnowledgeChunk
 {
     public Guid Id { get; set; }
+    public required string DocumentId { get; init; }
 
     public string Text { get; set; } = string.Empty;
 
@@ -13,4 +14,5 @@ public sealed class KnowledgeChunk
     public int ChunkIndex { get; set; }
 
     public ReadOnlyMemory<float> Vector { get; set; }
+
 }

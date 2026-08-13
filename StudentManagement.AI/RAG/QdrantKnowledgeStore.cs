@@ -138,19 +138,23 @@ public sealed class QdrantKnowledgeStore
     }
 
     public async Task IngestDocumentAsync(
+    string documentId,
     string documentName,
-    string text,
+    IReadOnlyList<string> chunks,
     string? section = null,
-    int maxCharacters = 300,
     CancellationToken cancellationToken = default)
     {
-        var chunker = new TextChunker();
+        await EnsureCollectionExistsAsync(cancellationToken);
 
-        IReadOnlyList<string> chunks =
-            //chunker.ChunkByParagraphs(
-            //    text,
-            //    maxCharacters);
-            chunker.ChunkMarkdownSections(text);
+        if (chunks.Count == 0)
+        {
+            throw new InvalidOperationException(
+                "The document did not produce any knowledge chunks.");
+        }
+
+        await DeleteDocumentAsync(
+            documentId,
+            cancellationToken);
 
         await using var generator =
             await LocalEmbeddingGenerator.CreateAsync();
@@ -170,12 +174,15 @@ public sealed class QdrantKnowledgeStore
             {
                 Id = new PointId
                 {
-                    Uuid = Guid.NewGuid().ToString()
+                    Uuid = CreateChunkId(
+                        documentId,
+                        i).ToString()
                 },
 
                 Vectors = embedding.Vector.ToArray()
             };
 
+            point.Payload["documentId"] = documentId;
             point.Payload["text"] = chunkText;
             point.Payload["documentName"] = documentName;
             point.Payload["section"] = section ?? string.Empty;
@@ -184,12 +191,53 @@ public sealed class QdrantKnowledgeStore
             points.Add(point);
         }
 
-        if (points.Count == 0)
-            return;
-
         await _client.UpsertAsync(
             CollectionName,
             points,
             cancellationToken: cancellationToken);
+    }
+
+    public async Task DeleteDocumentAsync(
+    string documentId,
+    CancellationToken cancellationToken = default)
+    {
+        var filter = new Filter();
+
+        filter.Must.Add(
+            new Condition
+            {
+                Field = new FieldCondition
+                {
+                    Key = "documentId",
+                    Match = new Match
+                    {
+                        Keyword = documentId
+                    }
+                }
+            });
+
+        await _client.DeleteAsync(
+            collectionName: CollectionName,
+            filter: filter,
+            cancellationToken: cancellationToken);
+    }
+
+
+    private static Guid CreateChunkId(
+    string documentId,
+    int chunkIndex)
+    {
+        string value =
+            $"{documentId}:{chunkIndex}";
+
+        byte[] hash =
+            System.Security.Cryptography.SHA256.HashData(
+                System.Text.Encoding.UTF8.GetBytes(value));
+
+        Span<byte> guidBytes = stackalloc byte[16];
+
+        hash.AsSpan(0, 16).CopyTo(guidBytes);
+
+        return new Guid(guidBytes);
     }
 }

@@ -7,13 +7,14 @@ using Microsoft.Extensions.AI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StudentManagement.AI.Extensions;
+using StudentManagement.AI.RAG;
+using StudentManagement.AI.Sessions;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
-using StudentManagement.AI.Sessions;
-using StudentManagementApp.WebApi.Sessions;
 using StudentManagementApp.WebApi.Services;
+using StudentManagementApp.WebApi.Sessions;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);

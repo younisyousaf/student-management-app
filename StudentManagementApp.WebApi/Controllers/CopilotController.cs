@@ -19,7 +19,7 @@ public record CopilotApprovalDecisionRequest(
 
 [ApiController]
 [Route("api/[controller]")]
-[Authorize]
+[Authorize(Roles ="Admin, User")]
 public class CopilotController : ControllerBase
 {
     private readonly ICopilotService _copilotService;

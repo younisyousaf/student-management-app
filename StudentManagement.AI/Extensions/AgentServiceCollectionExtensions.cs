@@ -7,6 +7,7 @@ using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
 using StudentManagement.AI.Context;
 using StudentManagement.AI.RAG;
+using StudentManagement.AI.RAG.Readers;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
 using StudentManagement.AI.Tools;
@@ -61,6 +62,9 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<IApplicationDateTime, ApplicationDateTime>();
         services.AddSingleton<QdrantKnowledgeStore>();
         services.AddScoped<KnowledgeTools>();
+        services.AddScoped<KnowledgeIngestionService>();
+        services.AddScoped<IKnowledgeDocumentReader, TextKnowledgeDocumentReader>();
+        services.AddScoped<IKnowledgeDocumentReader, PdfKnowledgeDocumentReader>();
 
 
         services.AddScoped<AIAgent>(sp =>

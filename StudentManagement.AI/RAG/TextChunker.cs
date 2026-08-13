@@ -86,4 +86,92 @@ public sealed class TextChunker
 
         return chunks;
     }
+
+    public IReadOnlyList<string> ChunkBySize(
+     string text,
+     int maxCharacters = 300,
+     int overlapCharacters = 50)
+    {
+        if (string.IsNullOrWhiteSpace(text))
+        {
+            return [];
+        }
+
+        if (maxCharacters <= 0)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(maxCharacters));
+        }
+
+        if (overlapCharacters < 0 ||
+            overlapCharacters >= maxCharacters)
+        {
+            throw new ArgumentOutOfRangeException(
+                nameof(overlapCharacters),
+                "Overlap must be smaller than the chunk size.");
+        }
+
+        string normalized =
+            string.Join(
+                " ",
+                text.Split(
+                    ['\r', '\n', '\t'],
+                    StringSplitOptions.RemoveEmptyEntries |
+                    StringSplitOptions.TrimEntries));
+
+        var chunks = new List<string>();
+
+        int start = 0;
+
+        while (start < normalized.Length)
+        {
+            int length =
+                Math.Min(
+                    maxCharacters,
+                    normalized.Length - start);
+
+            int end = start + length;
+
+            if (end < normalized.Length)
+            {
+                int lastSpace =
+                    normalized.LastIndexOf(
+                        ' ',
+                        end - 1,
+                        length);
+
+                if (lastSpace > start)
+                {
+                    end = lastSpace;
+                }
+            }
+
+            string chunk =
+                normalized[start..end].Trim();
+
+            if (!string.IsNullOrWhiteSpace(chunk))
+            {
+                chunks.Add(chunk);
+            }
+
+            if (end >= normalized.Length)
+            {
+                break;
+            }
+
+            start =
+                Math.Max(
+                    end - overlapCharacters,
+                    start + 1);
+
+            while (
+                start < normalized.Length &&
+                normalized[start] == ' ')
+            {
+                start++;
+            }
+        }
+
+        return chunks;
+    }
 }

@@ -96,6 +96,14 @@ public static class StudentManagementAgent
         - Do not invent institutional policies.
         - If no sufficiently relevant knowledge is returned, say that the available knowledge does not contain the answer.
         - Do not use institutional knowledge retrieval as a replacement for live SQL-backed student, course, enrollment, attendance, or fee data.
+
+        For questions that require both live application data and institutional policy:
+        - Retrieve the required live student, course, enrollment, attendance, or fee data using the appropriate SQL-backed tools.
+        - Retrieve the relevant institutional policy using SearchInstitutionalKnowledge.
+        - Keep live application data and institutional policy conceptually separate.
+        - Base conclusions only on facts returned by those tools.
+        - Do not infer missing live data or missing policy rules.
+        - If either required source is unavailable, explain what information is missing instead of making the conclusion.
     """;
 
     public static AIAgent Create(
