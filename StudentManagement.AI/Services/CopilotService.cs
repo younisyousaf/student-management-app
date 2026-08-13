@@ -37,7 +37,7 @@ public class CopilotService : ICopilotService
         string message,
         string? sessionId,
         CancellationToken cancellationToken = default)
-    {
+        {
         AgentSession session;
         string resolvedSessionId;
 

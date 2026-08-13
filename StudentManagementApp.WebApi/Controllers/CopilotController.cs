@@ -38,9 +38,9 @@ public class CopilotController : ControllerBase
         }
 
         var result = await _copilotService.SendMessageAsync(
-      request.Message,
-      request.SessionId,
-      cancellationToken);
+            request.Message,
+            request.SessionId,
+            cancellationToken);
 
         return Ok(
             new CopilotChatResponse(
