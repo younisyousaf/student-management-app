@@ -66,10 +66,8 @@ public class CopilotService : ICopilotService
             resolvedSessionId = Guid.NewGuid().ToString();
         }
 
-        AgentResponse result = await _agent.RunAsync(
-            message,
-            session,
-            cancellationToken: cancellationToken);
+        AgentResponse result = await _agent.RunAsync(message, session,cancellationToken: cancellationToken);
+        LogAgentExecution(result);
 
         // Look for a pending approval request.
         ToolApprovalRequestContent? approvalRequest =
@@ -411,5 +409,37 @@ public class CopilotService : ICopilotService
             PaymentStatus: fee.Status,
             Summary : summary,
             Observation : observation);
+    }
+
+    private void LogAgentExecution(AgentResponse result)
+    {
+        foreach (var message in result.Messages)
+        {
+            foreach (var content in message.Contents)
+            {
+                switch (content)
+                {
+                    case FunctionCallContent functionCall:
+                        _logger.LogDebug(
+                             "Agent requested tool {ToolName} with arguments {@Arguments}",
+                             functionCall.Name,
+                             functionCall.Arguments);
+                        break;
+
+                    case FunctionResultContent functionResult:
+                        _logger.LogDebug(
+                            "Tool {CallId} returned result: {@Result}",
+                            functionResult.CallId,
+                            functionResult.Result);
+                        break;
+
+                    case ToolApprovalRequestContent approvalRequest:
+                        _logger.LogDebug(
+                            "Agent requested human approval. RequestId: {RequestId}",
+                            approvalRequest.RequestId);
+                        break;
+                }
+            }
+        }
     }
 }

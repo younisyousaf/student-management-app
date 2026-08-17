@@ -8,7 +8,7 @@
     <File Path="05_Attendance.sql" />
   </Folder>
   <Folder Name="/README/">
-    <File Path="README.txt" />
+    <File Path="README.md" />
   </Folder>
   <Project Path="StudentManagement.AI/StudentManagement.AI.csproj" />
   <Project Path="StudentManagement.Core/StudentManagement.Core.csproj" />
