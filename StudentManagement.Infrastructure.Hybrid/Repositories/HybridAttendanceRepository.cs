@@ -4,6 +4,7 @@ using Dapper;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
+using StudentManagement.Infrastructure.Hybrid.Reliability;
 
 namespace StudentManagement.Infrastructure.Hybrid.Repositories
 {
@@ -31,8 +32,17 @@ namespace StudentManagement.Infrastructure.Hybrid.Repositories
 
         public IEnumerable<Attendance> GetByStudentId(int studentId)
         {
-            string sql = "SELECT * FROM Attendances WHERE StudentId = @StudentId ORDER BY Date DESC";
-            return _context.Connection.Query<Attendance>(sql, new { StudentId = studentId });
+            return DatabaseExecution.Execute(() =>
+            {
+                string sql =
+                    "SELECT * FROM Attendances " +
+                    "WHERE StudentId = @StudentId " +
+                    "ORDER BY Date DESC";
+
+                return _context.Connection.Query<Attendance>(
+                    sql,
+                    new { StudentId = studentId });
+            });
         }
 
         public IEnumerable<Attendance> GetByCourseAndDate(int courseId, DateTime date)

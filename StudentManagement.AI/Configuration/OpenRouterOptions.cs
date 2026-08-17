@@ -9,4 +9,5 @@ public class OpenRouterOptions
     public string ApiKeyThree { get; set; } = string.Empty;
     public string BaseUrl { get; set; } = "https://openrouter.ai/api/v1";
     public string Model { get; set; } = "openrouter/free";
+    public int TimeoutSeconds { get; set; } = 30;
 }

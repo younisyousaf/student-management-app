@@ -5,6 +5,7 @@ using Dapper;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
+using StudentManagement.Infrastructure.Hybrid.Reliability;
 
 namespace StudentManagement.Infrastructure.Hybrid.Repositories
 {
@@ -17,11 +18,18 @@ namespace StudentManagement.Infrastructure.Hybrid.Repositories
             _context = context;
         }
 
-        // READ OPERATIONS: Dapper
         public Student? GetById(int id)
         {
-            string sql = "SELECT * FROM Students WHERE Id = @Id";
-            return _context.Connection.QuerySingleOrDefault<Student>(sql, new { Id = id });
+            return DatabaseExecution.Execute(() =>
+            {
+                string sql =
+                    "SELECT * FROM Students WHERE Id = @Id";
+
+                return _context.Connection
+                    .QuerySingleOrDefault<Student>(
+                        sql,
+                        new { Id = id });
+            });
         }
 
         public IEnumerable<Student> GetAll()

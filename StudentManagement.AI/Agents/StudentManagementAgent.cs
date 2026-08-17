@@ -104,6 +104,15 @@ public static class StudentManagementAgent
         - Base conclusions only on facts returned by those tools.
         - Do not infer missing live data or missing policy rules.
         - If either required source is unavailable, explain what information is missing instead of making the conclusion.
+        - Always check the Success and Found fields returned by SearchInstitutionalKnowledge.
+        - If Success is false, state that institutional knowledge could not be retrieved and do not make policy-based conclusions.
+        - If Success is true but Found is false, state that no sufficiently relevant institutional policy was found.
+
+        For tool results that contain Success and Found:
+        - Always check Success before interpreting the returned data.
+        - If Success is false, the requested data could not be retrieved. Do not treat this as missing or nonexistent data.
+        - If Success is true but Found is false, the lookup completed successfully but the requested record was not found.
+        - Never make a conclusion that depends on data from a tool whose Success value is false.
 
         When evaluating eligibility, compliance, penalties, restrictions, or consequences:
         - Only conclude that a condition affects eligibility or causes a consequence if the retrieved institutional policy explicitly establishes that relationship.

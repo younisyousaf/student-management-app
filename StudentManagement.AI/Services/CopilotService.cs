@@ -3,7 +3,11 @@ using Microsoft.Extensions.AI;
 using StudentManagement.AI.Models;
 using StudentManagement.AI.Sessions;
 using StudentManagement.Core.Interfaces;
+using StudentManagement.AI.Reliability;
 using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
+using StudentManagement.AI.Configuration;
+using System.ClientModel;
 using System.Text.Json;
 
 namespace StudentManagement.AI.Services;
@@ -16,6 +20,7 @@ public class CopilotService : ICopilotService
     private readonly IAttendanceService _attendanceService;
     private readonly IFeeService _feeService;
     private readonly ILogger<CopilotService> _logger;
+    private readonly OpenRouterOptions _openRouterOptions;
 
     public CopilotService(
     AIAgent agent,
@@ -23,7 +28,8 @@ public class CopilotService : ICopilotService
     IStudentService studentService,
     IAttendanceService attendanceService,
     IFeeService feeService,
-    ILogger<CopilotService> logger)
+    ILogger<CopilotService> logger,
+    IOptions<OpenRouterOptions> openRouterOptions)
     {
         _agent = agent;
         _sessionStore = sessionStore;
@@ -31,6 +37,7 @@ public class CopilotService : ICopilotService
         _attendanceService = attendanceService;
         _feeService = feeService;
         _logger = logger;
+        _openRouterOptions = openRouterOptions.Value;
     }
 
     public async Task<CopilotChatResult> SendMessageAsync(
@@ -66,7 +73,44 @@ public class CopilotService : ICopilotService
             resolvedSessionId = Guid.NewGuid().ToString();
         }
 
-        AgentResponse result = await _agent.RunAsync(message, session,cancellationToken: cancellationToken);
+        AgentResponse result;
+
+        using var timeoutCts =
+            new CancellationTokenSource(
+                TimeSpan.FromSeconds(
+                    _openRouterOptions.TimeoutSeconds));
+
+        using var linkedCts =
+            CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationToken,
+                timeoutCts.Token);
+
+        try
+        {
+            result = await _agent.RunAsync(
+                message,
+                session,
+                cancellationToken: linkedCts.Token);
+        }
+        catch (ClientResultException ex)
+            when (AIProviderFailureClassifier.IsTemporaryFailure(ex))
+        {
+            throw new AIProviderUnavailableException(
+                "The AI provider is temporarily unavailable.",
+                ex);
+        }
+        catch (OperationCanceledException ex)
+            when (
+                timeoutCts.IsCancellationRequested &&
+                !cancellationToken.IsCancellationRequested)
+        {
+            throw new AIProviderUnavailableException(
+                "The AI provider request timed out.",
+                new TimeoutException(
+                    "The AI provider did not respond within the configured timeout.",
+                    ex));
+        }
+
         LogAgentExecution(result);
 
         // Look for a pending approval request.

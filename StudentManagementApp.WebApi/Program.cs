@@ -8,6 +8,7 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StudentManagement.AI.Extensions;
 using StudentManagement.AI.RAG;
+using StudentManagement.AI.Reliability;
 using StudentManagement.AI.Sessions;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
@@ -119,6 +120,8 @@ builder.Services.AddControllers()
         };
     });
 
+builder.Services.AddProblemDetails();
+
 // ADD THIS: Register Swagger Services 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen(options =>
@@ -160,6 +163,58 @@ builder.Services.AddCors(options =>
 
 
 var app = builder.Build();
+
+//app.UseExceptionHandler();
+
+app.UseExceptionHandler(exceptionHandlerApp =>
+{
+    exceptionHandlerApp.Run(async context =>
+    {
+        var exceptionFeature =
+            context.Features.Get<
+                Microsoft.AspNetCore.Diagnostics.IExceptionHandlerFeature>();
+
+        var exception = exceptionFeature?.Error;
+
+        if (exception is SessionStoreUnavailableException)
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status503ServiceUnavailable;
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message =
+                    "The Copilot session service is temporarily unavailable. Please try again later."
+            });
+
+            return;
+        }
+
+        if (exception is AIProviderUnavailableException)
+        {
+            context.Response.StatusCode =
+                StatusCodes.Status503ServiceUnavailable;
+
+            await context.Response.WriteAsJsonAsync(new
+            {
+                message =
+                    "The AI service is temporarily unavailable. Please try again later."
+            });
+
+            return;
+        }
+
+        context.Response.StatusCode =
+            StatusCodes.Status500InternalServerError;
+
+        await context.Response.WriteAsJsonAsync(new
+        {
+            message =
+                "An unexpected error occurred while processing the request."
+        });
+    });
+});
+
 //Redirect if someone visit "/" it will redirect to /swagger
 app.MapGet("/", () => Results.Redirect("/swagger"));
 

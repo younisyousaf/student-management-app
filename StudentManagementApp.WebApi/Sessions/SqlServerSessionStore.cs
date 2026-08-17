@@ -21,71 +21,80 @@ public sealed class SqlServerSessionStore : ISessionStore
     }
 
     public async Task<JsonElement?> GetAsync(
-        string sessionId,
-        CancellationToken cancellationToken = default)
+    string sessionId,
+    CancellationToken cancellationToken = default)
     {
         int userId = _currentUserContext.UserId
-             ?? throw new UnauthorizedAccessException(
-        "An authenticated user is required to access Copilot sessions.");
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
 
-        AgentSessionRecord? entity =
-            await _dbContext.AgentSessions
-                .AsNoTracking()
-                .SingleOrDefaultAsync(
-                    x => x.SessionId == sessionId &&
-                         x.UserId == userId,
-                    cancellationToken);
+        return await SessionStoreExecution.ExecuteAsync(
+            async () =>
+            {
+                AgentSessionRecord? entity =
+                    await _dbContext.AgentSessions
+                        .AsNoTracking()
+                        .SingleOrDefaultAsync(
+                            x => x.SessionId == sessionId &&
+                                 x.UserId == userId,
+                            cancellationToken);
 
-        if (entity is null)
-        {
-            return null;
-        }
+                if (entity is null)
+                {
+                    return null;
+                }
 
-        using JsonDocument document =
-            JsonDocument.Parse(entity.SerializedSession);
+                using JsonDocument document =
+                    JsonDocument.Parse(entity.SerializedSession);
 
-        return document.RootElement.Clone();
+                return (JsonElement?)document.RootElement.Clone();
+            });
     }
 
     public async Task SaveAsync(
-        string sessionId,
-        JsonElement serializedSession,
-        CancellationToken cancellationToken = default)
+    string sessionId,
+    JsonElement serializedSession,
+    CancellationToken cancellationToken = default)
     {
         int userId = _currentUserContext.UserId
-             ?? throw new UnauthorizedAccessException(
-        "An authenticated user is required to access Copilot sessions.");
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
 
-        AgentSessionRecord? entity =
-            await _dbContext.AgentSessions
-                .SingleOrDefaultAsync(
-                    x => x.SessionId == sessionId &&
-                         x.UserId == userId,
-                    cancellationToken);
-
-        string json = serializedSession.GetRawText();
-
-        if (entity is null)
-        {
-            entity = new AgentSessionRecord
+        await SessionStoreExecution.ExecuteAsync(
+            async () =>
             {
-                SessionId = sessionId,
-                SerializedSession = json,
-                CreatedAt = DateTime.UtcNow,
-                UpdatedAt = DateTime.UtcNow,
-                UserId = userId,
-                ExpiresAt = null
-            };
+                AgentSessionRecord? entity =
+                    await _dbContext.AgentSessions
+                        .SingleOrDefaultAsync(
+                            x => x.SessionId == sessionId &&
+                                 x.UserId == userId,
+                            cancellationToken);
 
-            _dbContext.AgentSessions.Add(entity);
-        }
-        else
-        {
-            entity.SerializedSession = json;
-            entity.UpdatedAt = DateTime.UtcNow;
-        }
+                string json = serializedSession.GetRawText();
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+                if (entity is null)
+                {
+                    entity = new AgentSessionRecord
+                    {
+                        SessionId = sessionId,
+                        SerializedSession = json,
+                        CreatedAt = DateTime.UtcNow,
+                        UpdatedAt = DateTime.UtcNow,
+                        UserId = userId,
+                        ExpiresAt = null
+                    };
+
+                    _dbContext.AgentSessions.Add(entity);
+                }
+                else
+                {
+                    entity.SerializedSession = json;
+                    entity.UpdatedAt = DateTime.UtcNow;
+                }
+
+                await _dbContext.SaveChangesAsync(
+                    cancellationToken);
+            });
     }
 
     public async Task SavePendingApprovalAsync(
@@ -94,23 +103,28 @@ public sealed class SqlServerSessionStore : ISessionStore
     CancellationToken cancellationToken = default)
     {
         int userId = _currentUserContext.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
 
-        var entity = await _dbContext.AgentSessions
-            .SingleAsync(
-                x => x.SessionId == sessionId &&
-                     x.UserId == userId,
-                cancellationToken);
+        await SessionStoreExecution.ExecuteAsync(
+            async () =>
+            {
+                var entity = await _dbContext.AgentSessions
+                    .SingleAsync(
+                        x => x.SessionId == sessionId &&
+                             x.UserId == userId,
+                        cancellationToken);
 
-        entity.PendingApprovalRequestId = approval.RequestId;
-        entity.PendingApprovalCallId = approval.CallId;
-        entity.PendingApprovalFunctionName = approval.FunctionName;
-        entity.PendingApprovalArgumentsJson =
-            JsonSerializer.Serialize(approval.Arguments);
+                entity.PendingApprovalRequestId = approval.RequestId;
+                entity.PendingApprovalCallId = approval.CallId;
+                entity.PendingApprovalFunctionName = approval.FunctionName;
+                entity.PendingApprovalArgumentsJson =
+                    JsonSerializer.Serialize(approval.Arguments);
 
-        entity.UpdatedAt = DateTime.UtcNow;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            });
     }
 
     public async Task<PendingToolApproval?> GetPendingApprovalAsync(
@@ -118,35 +132,40 @@ public sealed class SqlServerSessionStore : ISessionStore
     CancellationToken cancellationToken = default)
     {
         int userId = _currentUserContext.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
 
-        var entity = await _dbContext.AgentSessions
-            .AsNoTracking()
-            .SingleOrDefaultAsync(
-                x => x.SessionId == sessionId &&
-                     x.UserId == userId,
-                cancellationToken);
+        return await SessionStoreExecution.ExecuteAsync(
+            async () =>
+            {
+                var entity = await _dbContext.AgentSessions
+                    .AsNoTracking()
+                    .SingleOrDefaultAsync(
+                        x => x.SessionId == sessionId &&
+                             x.UserId == userId,
+                        cancellationToken);
 
-        if (entity is null ||
-            string.IsNullOrWhiteSpace(entity.PendingApprovalRequestId) ||
-            string.IsNullOrWhiteSpace(entity.PendingApprovalCallId) ||
-            string.IsNullOrWhiteSpace(entity.PendingApprovalFunctionName))
-        {
-            return null;
-        }
+                if (entity is null ||
+                    string.IsNullOrWhiteSpace(entity.PendingApprovalRequestId) ||
+                    string.IsNullOrWhiteSpace(entity.PendingApprovalCallId) ||
+                    string.IsNullOrWhiteSpace(entity.PendingApprovalFunctionName))
+                {
+                    return null;
+                }
 
-        var arguments =
-            string.IsNullOrWhiteSpace(entity.PendingApprovalArgumentsJson)
-                ? new Dictionary<string, object?>()
-                : JsonSerializer.Deserialize<Dictionary<string, object?>>(
-                      entity.PendingApprovalArgumentsJson)
-                  ?? new Dictionary<string, object?>();
+                var arguments =
+                    string.IsNullOrWhiteSpace(entity.PendingApprovalArgumentsJson)
+                        ? new Dictionary<string, object?>()
+                        : JsonSerializer.Deserialize<Dictionary<string, object?>>(
+                            entity.PendingApprovalArgumentsJson)
+                          ?? new Dictionary<string, object?>();
 
-        return new PendingToolApproval(
-            entity.PendingApprovalRequestId,
-            entity.PendingApprovalCallId,
-            entity.PendingApprovalFunctionName,
-            arguments);
+                return new PendingToolApproval(
+                    entity.PendingApprovalRequestId,
+                    entity.PendingApprovalCallId,
+                    entity.PendingApprovalFunctionName,
+                    arguments);
+            });
     }
 
     public async Task ClearPendingApprovalAsync(
@@ -154,25 +173,30 @@ public sealed class SqlServerSessionStore : ISessionStore
     CancellationToken cancellationToken = default)
     {
         int userId = _currentUserContext.UserId
-            ?? throw new UnauthorizedAccessException();
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
 
-        var entity = await _dbContext.AgentSessions
-            .SingleOrDefaultAsync(
-                x => x.SessionId == sessionId &&
-                     x.UserId == userId,
-                cancellationToken);
+        await SessionStoreExecution.ExecuteAsync(
+            async () =>
+            {
+                var entity = await _dbContext.AgentSessions
+                    .SingleOrDefaultAsync(
+                        x => x.SessionId == sessionId &&
+                             x.UserId == userId,
+                        cancellationToken);
 
-        if (entity is null)
-        {
-            return;
-        }
+                if (entity is null)
+                {
+                    return;
+                }
 
-        entity.PendingApprovalRequestId = null;
-        entity.PendingApprovalCallId = null;
-        entity.PendingApprovalFunctionName = null;
-        entity.PendingApprovalArgumentsJson = null;
-        entity.UpdatedAt = DateTime.UtcNow;
+                entity.PendingApprovalRequestId = null;
+                entity.PendingApprovalCallId = null;
+                entity.PendingApprovalFunctionName = null;
+                entity.PendingApprovalArgumentsJson = null;
+                entity.UpdatedAt = DateTime.UtcNow;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+                await _dbContext.SaveChangesAsync(cancellationToken);
+            });
     }
 }

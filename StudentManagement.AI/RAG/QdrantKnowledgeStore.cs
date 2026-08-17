@@ -2,6 +2,7 @@
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using StudentManagement.AI.RAG.Models;
+using Grpc.Core;
 
 namespace StudentManagement.AI.RAG;
 
@@ -97,44 +98,59 @@ public sealed class QdrantKnowledgeStore
                 query,
                 cancellationToken: cancellationToken);
 
-        var results =
-        await _client.QueryAsync(
-            collectionName: CollectionName,
-            query: new Query(queryEmbedding.Vector.ToArray()),
-            limit: (ulong)limit,
-            payloadSelector: true,
-            cancellationToken: cancellationToken);
+        try
+        {
+            var results =
+                await _client.QueryAsync(
+                    collectionName: CollectionName,
+                    query: new Query(queryEmbedding.Vector.ToArray()),
+                    limit: (ulong)limit,
+                    payloadSelector: true,
+                    cancellationToken: cancellationToken);
 
-        Console.WriteLine($"Qdrant returned {results.Count} results.");
+            Console.WriteLine(
+                $"Qdrant returned {results.Count} results.");
 
-        return results
-    .Where(result => result.Score >= minimumScore)
-    .Select(result =>
-        new KnowledgeSearchResult(
-            Text: result.Payload.TryGetValue("text", out var text)
-                ? text.StringValue
-                : string.Empty,
+            return results
+                .Where(result => result.Score >= minimumScore)
+                .Select(result =>
+                    new KnowledgeSearchResult(
+                        Text: result.Payload.TryGetValue(
+                            "text",
+                            out var text)
+                                ? text.StringValue
+                                : string.Empty,
 
-            DocumentName: result.Payload.TryGetValue(
-                "documentName",
-                out var documentName)
-                ? documentName.StringValue
-                : string.Empty,
+                        DocumentName: result.Payload.TryGetValue(
+                            "documentName",
+                            out var documentName)
+                                ? documentName.StringValue
+                                : string.Empty,
 
-            Section: result.Payload.TryGetValue(
-                "section",
-                out var section)
-                ? section.StringValue
-                : null,
+                        Section: result.Payload.TryGetValue(
+                            "section",
+                            out var section)
+                                ? section.StringValue
+                                : null,
 
-            ChunkIndex: result.Payload.TryGetValue(
-                "chunkIndex",
-                out var chunkIndex)
-                ? (int)chunkIndex.IntegerValue
-                : 0,
+                        ChunkIndex: result.Payload.TryGetValue(
+                            "chunkIndex",
+                            out var chunkIndex)
+                                ? (int)chunkIndex.IntegerValue
+                                : 0,
 
-            Score: result.Score))
-    .ToList();
+                        Score: result.Score))
+                .ToList();
+        }
+        catch (RpcException ex)
+            when (ex.StatusCode is
+                StatusCode.Unavailable or
+                StatusCode.DeadlineExceeded)
+        {
+            throw new KnowledgeStoreUnavailableException(
+                "The institutional knowledge store is temporarily unavailable.",
+                ex);
+        }
     }
 
     public async Task IngestDocumentAsync(
