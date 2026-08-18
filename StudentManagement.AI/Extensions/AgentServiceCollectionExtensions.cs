@@ -33,8 +33,8 @@ public static class AgentServiceCollectionExtensions
             //    : Environment.GetEnvironmentVariable("OPENROUTER_API_KEY");
 
             var apiKey = new[] { 
-                //options.ApiKey,
-                options.ApiKeyTwo
+                options.ApiKey,
+                //options.ApiKeyTwo
                 //options.ApiKeyThree
             }
                 .FirstOrDefault(k => !string.IsNullOrWhiteSpace(k))
@@ -186,6 +186,19 @@ public static class AgentServiceCollectionExtensions
                 new ApprovalRequiredAIFunction(
                     removeCourseFunction);
 
+            var skillsPath =
+            Path.Combine(
+                AppContext.BaseDirectory,
+                "Skills");
+
+            var skillsProvider =
+            new AgentSkillsProvider(
+                skillPath: skillsPath,
+                options: new AgentSkillsProviderOptions
+                {
+                    DisableLoadSkillApproval = true
+                });
+
             IList<AITool> tools =
             [
                 AIFunctionFactory.Create(
@@ -250,7 +263,7 @@ public static class AgentServiceCollectionExtensions
                         knowledgeTools.SearchInstitutionalKnowledge))
             ];
 
-            return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext);
+            return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext, skillsProvider);
         });
 
         return services;

@@ -477,6 +477,16 @@ public class CopilotService : ICopilotService
                         _logger.LogDebug(
                             "Agent requested tool {ToolName}.",
                             functionCall.Name);
+
+                        if (string.Equals(
+                            functionCall.Name,
+                            "load_skill",
+                            StringComparison.OrdinalIgnoreCase))
+                        {
+                            _logger.LogInformation(
+                                "Agent requested skill loading. Arguments: {@Arguments}",
+                                functionCall.Arguments);
+                        }
                         break;
 
                     case FunctionResultContent functionResult:

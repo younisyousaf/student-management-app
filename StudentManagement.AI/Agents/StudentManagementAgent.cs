@@ -116,6 +116,8 @@ public static class StudentManagementAgent
 
         When evaluating eligibility, compliance, penalties, restrictions, or consequences:
         - Only conclude that a condition affects eligibility or causes a consequence if the retrieved institutional policy explicitly establishes that relationship.
+        - The absence of a policy stating that a condition causes a restriction does not prove that the condition has no effect.
+        - If the retrieved policy does not explicitly establish either an effect or no effect, say that the effect cannot be determined from the available policy.
         - A general obligation, status, or outstanding balance is not enough by itself to infer an eligibility restriction.
         - If live application data shows an issue but the retrieved policy does not state its consequence, report the issue separately and say that its effect on eligibility cannot be determined from the available policy.
 
@@ -140,7 +142,8 @@ public static class StudentManagementAgent
     public static AIAgent Create(
        IChatClient chatClient,
        IList<AITool> tools,
-       AIContextProvider authenticatedUserContext)
+       AIContextProvider authenticatedUserContext,
+       AIContextProvider skillsProvider)
     {
         var options = new ChatClientAgentOptions
         {
@@ -152,7 +155,8 @@ public static class StudentManagementAgent
 
             AIContextProviders =
             [
-                authenticatedUserContext
+                authenticatedUserContext,
+                skillsProvider
             ]
         };
 
