@@ -9,6 +9,7 @@ using Microsoft.Extensions.Options;
 using StudentManagement.AI.Configuration;
 using System.ClientModel;
 using System.Text.Json;
+using System.Diagnostics;
 
 namespace StudentManagement.AI.Services;
 
@@ -74,6 +75,7 @@ public class CopilotService : ICopilotService
         }
 
         AgentResponse result;
+        var agentStopwatch = Stopwatch.StartNew();
 
         using var timeoutCts =
             new CancellationTokenSource(
@@ -109,6 +111,14 @@ public class CopilotService : ICopilotService
                 new TimeoutException(
                     "The AI provider did not respond within the configured timeout.",
                     ex));
+        }
+        finally
+        {
+            agentStopwatch.Stop();
+
+            _logger.LogInformation(
+                "Agent execution finished after {ElapsedMilliseconds} ms.",
+                agentStopwatch.ElapsedMilliseconds);
         }
 
         LogAgentExecution(result);
@@ -465,16 +475,14 @@ public class CopilotService : ICopilotService
                 {
                     case FunctionCallContent functionCall:
                         _logger.LogDebug(
-                             "Agent requested tool {ToolName} with arguments {@Arguments}",
-                             functionCall.Name,
-                             functionCall.Arguments);
+                            "Agent requested tool {ToolName}.",
+                            functionCall.Name);
                         break;
 
                     case FunctionResultContent functionResult:
                         _logger.LogDebug(
-                            "Tool {CallId} returned result: {@Result}",
-                            functionResult.CallId,
-                            functionResult.Result);
+                            "Agent received a result for tool call {CallId}.",
+                            functionResult.CallId);
                         break;
 
                     case ToolApprovalRequestContent approvalRequest:

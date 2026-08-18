@@ -1,6 +1,7 @@
 ﻿using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.AI.Services;
+using System.Diagnostics;
 
 namespace StudentManagementApp.WebApi.Controllers;
 
@@ -23,31 +24,69 @@ public record CopilotApprovalDecisionRequest(
 public class CopilotController : ControllerBase
 {
     private readonly ICopilotService _copilotService;
+    private readonly ILogger<CopilotController> _logger;
 
-    public CopilotController(ICopilotService copilotService)
+    public CopilotController(
+    ICopilotService copilotService,
+    ILogger<CopilotController> logger)
     {
         _copilotService = copilotService;
+        _logger = logger;
     }
 
     [HttpPost("chat")]
-    public async Task<IActionResult> Chat([FromBody] CopilotChatRequest request, CancellationToken cancellationToken)
+    public async Task<IActionResult> Chat(
+    [FromBody] CopilotChatRequest request,
+    CancellationToken cancellationToken)
     {
-        if (string.IsNullOrWhiteSpace(request.Message))
+        var requestStopwatch = Stopwatch.StartNew();
+
+        using var logScope = _logger.BeginScope(
+            new Dictionary<string, object?>
+            {
+                ["TraceId"] = HttpContext.TraceIdentifier,
+                ["SessionId"] = request.SessionId ?? "new"
+            });
+
+        _logger.LogInformation(
+            "Copilot chat request started.");
+
+        try
         {
-            return BadRequest(new { Message = "Message cannot be empty." });
-        }
+            if (string.IsNullOrWhiteSpace(request.Message))
+            {
+                return BadRequest(new
+                {
+                    Message = "Message cannot be empty."
+                });
+            }
 
-        var result = await _copilotService.SendMessageAsync(
-            request.Message,
-            request.SessionId,
-            cancellationToken);
+            var result =
+                await _copilotService.SendMessageAsync(
+                    request.Message,
+                    request.SessionId,
+                    cancellationToken);
 
-        return Ok(
-            new CopilotChatResponse(
-                result.Response,
+            _logger.LogInformation(
+                "Copilot chat request completed. SessionId: {SessionId}, RequiresApproval: {RequiresApproval}",
                 result.SessionId,
-                result.RequiresApproval,
-                result.Approval));
+                result.RequiresApproval);
+
+            return Ok(
+                new CopilotChatResponse(
+                    result.Response,
+                    result.SessionId,
+                    result.RequiresApproval,
+                    result.Approval));
+        }
+        finally
+        {
+            requestStopwatch.Stop();
+
+            _logger.LogInformation(
+                "Copilot HTTP request finished after {ElapsedMilliseconds} ms.",
+                requestStopwatch.ElapsedMilliseconds);
+        }
     }
 
     [HttpPost("approval")]

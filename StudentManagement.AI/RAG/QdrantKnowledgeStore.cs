@@ -1,8 +1,10 @@
 ﻿using ElBruno.LocalEmbeddings;
+using Grpc.Core;
+using Microsoft.Extensions.Logging;
 using Qdrant.Client;
 using Qdrant.Client.Grpc;
 using StudentManagement.AI.RAG.Models;
-using Grpc.Core;
+using System.Diagnostics;
 
 namespace StudentManagement.AI.RAG;
 
@@ -13,12 +15,14 @@ public sealed class QdrantKnowledgeStore
     private const ulong VectorSize = 384;
 
     private readonly QdrantClient _client;
+    private readonly ILogger<QdrantKnowledgeStore> _logger;
 
-    public QdrantKnowledgeStore()
+    public QdrantKnowledgeStore(ILogger<QdrantKnowledgeStore> logger)
     {
         _client = new QdrantClient(
             host: "localhost",
             port: 6334);
+        _logger = logger;
     }
 
     public async Task EnsureCollectionExistsAsync(CancellationToken cancellationToken = default)
@@ -90,29 +94,60 @@ public sealed class QdrantKnowledgeStore
     float minimumScore = 0.50f,
     CancellationToken cancellationToken = default)
     {
+        var totalStopwatch = Stopwatch.StartNew();
+
+        var generatorStopwatch = Stopwatch.StartNew();
+
         await using var generator =
             await LocalEmbeddingGenerator.CreateAsync();
+
+        generatorStopwatch.Stop();
+
+        _logger.LogInformation(
+            "Local embedding generator initialized in {ElapsedMilliseconds} ms.",
+            generatorStopwatch.ElapsedMilliseconds);
+
+
+        var embeddingStopwatch = Stopwatch.StartNew();
 
         var queryEmbedding =
             await generator.GenerateEmbeddingAsync(
                 query,
                 cancellationToken: cancellationToken);
 
+        embeddingStopwatch.Stop();
+
+        _logger.LogInformation(
+            "Query embedding generated in {ElapsedMilliseconds} ms.",
+            embeddingStopwatch.ElapsedMilliseconds);
+
+
         try
         {
+            var qdrantStopwatch = Stopwatch.StartNew();
+
             var results =
                 await _client.QueryAsync(
                     collectionName: CollectionName,
-                    query: new Query(queryEmbedding.Vector.ToArray()),
+                    query: new Query(
+                        queryEmbedding.Vector.ToArray()),
                     limit: (ulong)limit,
                     payloadSelector: true,
                     cancellationToken: cancellationToken);
 
-            Console.WriteLine(
-                $"Qdrant returned {results.Count} results.");
+            qdrantStopwatch.Stop();
 
-            return results
-                .Where(result => result.Score >= minimumScore)
+            _logger.LogInformation(
+                "Qdrant query returned {ResultCount} results in {ElapsedMilliseconds} ms.",
+                results.Count,
+                qdrantStopwatch.ElapsedMilliseconds);
+
+
+            var mappingStopwatch = Stopwatch.StartNew();
+
+            var mappedResults = results
+                .Where(result =>
+                    result.Score >= minimumScore)
                 .Select(result =>
                     new KnowledgeSearchResult(
                         Text: result.Payload.TryGetValue(
@@ -141,6 +176,19 @@ public sealed class QdrantKnowledgeStore
 
                         Score: result.Score))
                 .ToList();
+
+            mappingStopwatch.Stop();
+            totalStopwatch.Stop();
+
+            _logger.LogInformation(
+                "Qdrant results filtered and mapped in {ElapsedMilliseconds} ms.",
+                mappingStopwatch.ElapsedMilliseconds);
+
+            _logger.LogInformation(
+                "Knowledge search finished in {ElapsedMilliseconds} ms.",
+                totalStopwatch.ElapsedMilliseconds);
+
+            return mappedResults;
         }
         catch (RpcException ex)
             when (ex.StatusCode is

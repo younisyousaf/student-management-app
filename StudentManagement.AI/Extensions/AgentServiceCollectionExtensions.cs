@@ -1,15 +1,17 @@
-﻿using Microsoft.Agents.AI;
+﻿using OpenAI;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
+using StudentManagement.AI.RAG;
+using StudentManagement.AI.Agents;
+using Microsoft.Extensions.Logging;
+using StudentManagement.AI.Context;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using OpenAI;
-using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
-using StudentManagement.AI.Context;
-using StudentManagement.AI.RAG;
 using StudentManagement.AI.RAG.Readers;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
+using StudentManagement.AI.Observability;
 using StudentManagement.AI.Tools;
 using System.ClientModel;
 
@@ -21,7 +23,7 @@ public static class AgentServiceCollectionExtensions
     {
         services.Configure<OpenRouterOptions>(configuration.GetSection(OpenRouterOptions.SectionName));
 
-        services.AddSingleton<IChatClient>(_ =>
+        services.AddSingleton<IChatClient>(sp =>
         {
             var options = configuration.GetSection(OpenRouterOptions.SectionName).Get<OpenRouterOptions>()
                 ?? new OpenRouterOptions();
@@ -48,7 +50,16 @@ public static class AgentServiceCollectionExtensions
                 new ApiKeyCredential(apiKey),
                 new OpenAIClientOptions { Endpoint = new Uri(options.BaseUrl) });
 
-            return openAiClient.GetChatClient(options.Model).AsIChatClient();
+            var innerChatClient = openAiClient
+                    .GetChatClient(options.Model)
+                    .AsIChatClient();
+
+            var logger =
+                sp.GetRequiredService<ILogger<TimedChatClient>>();
+
+            return new TimedChatClient(
+                innerChatClient,
+                logger);
         });
         services.AddScoped<ICopilotService, CopilotService>();
         //services.AddSingleton<ISessionStore, InMemorySessionStore>();
@@ -78,15 +89,27 @@ public static class AgentServiceCollectionExtensions
             var authenticatedUserContext = sp.GetRequiredService<AuthenticatedUserContextProvider>();
             var knowledgeTools = sp.GetRequiredService<KnowledgeTools>();
 
-            //Write Tools
-            AIFunction enrollStudentFunction = AIFunctionFactory.Create( enrollmentTools.EnrollStudent, name: "enroll_student",
-                description:
-                    "Enroll a student in a course. " +
-                    "This operation modifies student enrollment data.");
-            AIFunction approvalRequiredEnrollStudent = new ApprovalRequiredAIFunction(enrollStudentFunction);
+            var toolLogger =
+                sp.GetRequiredService<ILogger<TimedAIFunction>>();
 
-            //var markAttendanceFunction = AIFunctionFactory.Create(attendanceTools.MarkAttendance, name: "mark_attendance");
-            //var markAttendanceWithApproval = new ApprovalRequiredAIFunction(markAttendanceFunction);
+            AIFunction Timed(AIFunction function) =>
+            new TimedAIFunction(
+                function,
+                toolLogger);
+
+            //Write Tools
+            AIFunction enrollStudentFunction =
+            Timed(
+                AIFunctionFactory.Create(
+                    enrollmentTools.EnrollStudent,
+                    name: "enroll_student",
+                    description:
+                        "Enroll a student in a course. " +
+                        "This operation modifies student enrollment data."));
+
+            AIFunction approvalRequiredEnrollStudent =
+                new ApprovalRequiredAIFunction(enrollStudentFunction);
+
             var markAttendanceTodayFunction = 
             AIFunctionFactory.Create(attendanceTools.MarkAttendanceToday,name: "mark_attendance_today",
                description:
@@ -165,19 +188,33 @@ public static class AgentServiceCollectionExtensions
 
             IList<AITool> tools =
             [
-                AIFunctionFactory.Create(studentTools.GetStudentByRollNumber),
-                AIFunctionFactory.Create(studentTools.SearchStudentsByName),
-                AIFunctionFactory.Create(studentTools.GetStudentById),
+                AIFunctionFactory.Create(
+                    studentTools.GetStudentByRollNumber),
 
-                AIFunctionFactory.Create(courseTools.GetCourseById),
-                AIFunctionFactory.Create(courseTools.GetCourseByCode),
-                AIFunctionFactory.Create(courseTools.GetAllCourses),
+                AIFunctionFactory.Create(
+                    studentTools.SearchStudentsByName),
 
-                AIFunctionFactory.Create(enrollmentTools.GetEnrollmentsByStudent),
-                AIFunctionFactory.Create(enrollmentTools.GetEnrollmentById),
-                //approval required tools
+                Timed(
+                    AIFunctionFactory.Create(
+                        studentTools.GetStudentById)),
+
+                AIFunctionFactory.Create(
+                    courseTools.GetCourseById),
+
+                AIFunctionFactory.Create(
+                    courseTools.GetCourseByCode),
+
+                AIFunctionFactory.Create(
+                    courseTools.GetAllCourses),
+
+                AIFunctionFactory.Create(
+                    enrollmentTools.GetEnrollmentsByStudent),
+
+                AIFunctionFactory.Create(
+                    enrollmentTools.GetEnrollmentById),
+
+                // Approval-required tools
                 approvalRequiredEnrollStudent,
-                //markAttendanceWithApproval,
                 markAttendanceTodayWithApproval,
                 updateAttendanceWithApproval,
                 processStudentPaymentWithApproval,
@@ -189,14 +226,28 @@ public static class AgentServiceCollectionExtensions
                 updateCoursePricingWithApproval,
                 removeCourseWithApproval,
 
-                AIFunctionFactory.Create(attendanceTools.GetAttendanceForStudent),
-                AIFunctionFactory.Create(attendanceTools.GetAttendanceForCourseOnDate),
-                AIFunctionFactory.Create(attendanceTools.GetAttendanceById),
-                AIFunctionFactory.Create(attendanceTools.GetAttendanceSummaryForStudent),
+                AIFunctionFactory.Create(
+                    attendanceTools.GetAttendanceForStudent),
 
-                AIFunctionFactory.Create(feeTools.GetFeeById),
-                AIFunctionFactory.Create(feeTools.GetFeeStatement),
-                AIFunctionFactory.Create(knowledgeTools.SearchInstitutionalKnowledge),
+                AIFunctionFactory.Create(
+                    attendanceTools.GetAttendanceForCourseOnDate),
+
+                AIFunctionFactory.Create(
+                    attendanceTools.GetAttendanceById),
+
+                Timed(
+                    AIFunctionFactory.Create(
+                        attendanceTools.GetAttendanceSummaryForStudent)),
+
+                AIFunctionFactory.Create(
+                    feeTools.GetFeeById),
+
+                AIFunctionFactory.Create(
+                    feeTools.GetFeeStatement),
+
+                Timed(
+                    AIFunctionFactory.Create(
+                        knowledgeTools.SearchInstitutionalKnowledge))
             ];
 
             return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext);
