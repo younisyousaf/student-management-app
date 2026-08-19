@@ -1,18 +1,20 @@
-﻿using OpenAI;
-using Microsoft.Agents.AI;
+﻿using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
-using StudentManagement.AI.RAG;
-using StudentManagement.AI.Agents;
-using Microsoft.Extensions.Logging;
-using StudentManagement.AI.Context;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
+using OpenAI;
+using StudentManagement.AI.Agents;
 using StudentManagement.AI.Configuration;
+using StudentManagement.AI.Context;
+using StudentManagement.AI.Observability;
+using StudentManagement.AI.RAG;
 using StudentManagement.AI.RAG.Readers;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
-using StudentManagement.AI.Observability;
 using StudentManagement.AI.Tools;
+using StudentManagement.AI.Workflows.Enrollment;
+using StudentManagement.AI.Workflows.Enrollment.Executors;
 using System.ClientModel;
 
 namespace StudentManagement.AI.Extensions;
@@ -76,6 +78,15 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<KnowledgeIngestionService>();
         services.AddScoped<IKnowledgeDocumentReader, TextKnowledgeDocumentReader>();
         services.AddScoped<IKnowledgeDocumentReader, PdfKnowledgeDocumentReader>();
+        services.AddScoped<ValidateStudentExecutor>();
+        services.AddScoped<ValidateCourseExecutor>();
+        services.AddScoped<CheckExistingEnrollmentExecutor>();
+        services.AddScoped<EnrollmentRejectedExecutor>();
+        services.AddScoped<PrepareEnrollmentApprovalExecutor>();
+        services.AddScoped<EnrollmentApprovalRejectedExecutor>();
+        services.AddScoped<EnrollStudentExecutor>();
+        services.AddScoped<EnrollmentWorkflowService>();
+        services.AddSingleton<EnrollmentWorkflowCheckpointStore>();
 
 
         services.AddScoped<AIAgent>(sp =>

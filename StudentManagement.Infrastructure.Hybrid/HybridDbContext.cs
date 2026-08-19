@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Core.Models;
+using StudentManagement.Core.Enums;
 using Microsoft.Data.SqlClient;
 
 namespace StudentManagement.Infrastructure.Hybrid
@@ -122,6 +123,59 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(x => x.ExpiresAt)
                       .IsRequired(false);
             });
+
+            //enrollment workflow
+            modelBuilder.Entity<EnrollmentWorkflowRecord>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.RequestId)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.RequestId)
+                    .IsUnique();
+
+                entity.Property(x => x.Status)
+                    .HasConversion<string>()
+                    .HasMaxLength(50);
+
+                entity.Property(x => x.CheckpointRunId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.CheckpointId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+            });
+
+            //workflow checkpoint
+            modelBuilder.Entity<WorkflowCheckpointRecord>(entity =>
+            {
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.SessionId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.CheckpointId)
+                    .HasMaxLength(200)
+                    .IsRequired();
+
+                entity.Property(x => x.ParentCheckpointId)
+                    .HasMaxLength(200);
+
+                entity.Property(x => x.CheckpointData)
+                    .IsRequired();
+
+                entity.HasIndex(
+                    x => new
+                    {
+                        x.SessionId,
+                        x.CheckpointId
+                    })
+                    .IsUnique();
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -132,5 +186,9 @@ namespace StudentManagement.Infrastructure.Hybrid
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<AgentSessionRecord> AgentSessions
             => Set<AgentSessionRecord>();
+        public DbSet<EnrollmentWorkflowRecord> EnrollmentWorkflowRecords 
+            => Set<EnrollmentWorkflowRecord>();
+        public DbSet<WorkflowCheckpointRecord> WorkflowCheckpoints 
+            => Set<WorkflowCheckpointRecord>();
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Workflows;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Cors.Infrastructure;
 using Microsoft.AspNetCore.Mvc;
@@ -10,12 +11,14 @@ using StudentManagement.AI.Extensions;
 using StudentManagement.AI.RAG;
 using StudentManagement.AI.Reliability;
 using StudentManagement.AI.Sessions;
+using StudentManagement.AI.Workflows.Enrollment;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
 using StudentManagementApp.WebApi.Services;
 using StudentManagementApp.WebApi.Sessions;
+using StudentManagementApp.WebApi.Workflows;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -27,8 +30,9 @@ var connectionString = builder.Configuration.GetConnectionString("DefaultConnect
     ?? throw new InvalidOperationException("Connection string 'DefaultConnection' not found.");
 
 // 2. Register HybridDbContext
-builder.Services.AddDbContext<HybridDbContext>(options =>
-    options.UseSqlServer(connectionString));
+builder.Services.AddDbContextFactory<HybridDbContext>(
+    options =>
+        options.UseSqlServer(connectionString));
 
 //SQL Server Session
 builder.Services.AddScoped<ISessionStore, SqlServerSessionStore>();
@@ -57,6 +61,19 @@ builder.Services.AddScoped<
 
 //AI Service
 builder.Services.AddStudentManagementAI(builder.Configuration);
+//sql workflow
+builder.Services.AddSingleton<SqlWorkflowCheckpointStore>();
+builder.Services.AddSingleton<CheckpointManager>(sp =>
+{
+    var store =
+        sp.GetRequiredService<SqlWorkflowCheckpointStore>();
+
+    return CheckpointManager.CreateJson(store);
+});
+builder.Services.AddSingleton<EnrollmentWorkflowRecordStore>();
+builder.Services.AddSingleton<
+    IEnrollmentWorkflowRecordStore,
+    EnrollmentWorkflowRecordStore>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]
