@@ -53,4 +53,30 @@ public sealed class EnrollmentWorkflowController : ControllerBase
             });
         }
     }
+
+    [HttpPost("{requestId}/recover")]
+    public async Task<IActionResult> Recover(
+    string requestId,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _workflowService.RecoverAsync(
+                requestId,
+                cancellationToken);
+
+        return Ok(result);
+    }
+
+    [HttpPost("{requestId}/retry")]
+    public async Task<IActionResult> Retry(
+    string requestId,
+    CancellationToken cancellationToken)
+    {
+        var result =
+            await _workflowService.RetryAsync(
+                requestId,
+                cancellationToken);
+
+        return Ok(result);
+    }
 }

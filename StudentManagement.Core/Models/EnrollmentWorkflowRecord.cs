@@ -11,10 +11,11 @@ public sealed class EnrollmentWorkflowRecord : BaseEntity
 
     public EnrollmentWorkflowStatus Status { get; set; }
 
+    public bool? Approved { get; set; }
+
     public string CheckpointRunId { get; set; } = string.Empty;
 
     public string CheckpointId { get; set; } = string.Empty;
-
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }

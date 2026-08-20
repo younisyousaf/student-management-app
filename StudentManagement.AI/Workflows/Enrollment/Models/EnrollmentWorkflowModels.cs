@@ -44,3 +44,18 @@ public sealed record EnrollmentWorkflowExecutionResult(
 public sealed record EnrollmentWorkflowApprovalDecision(
     string RequestId,
     bool Approved);
+
+public enum EnrollmentWorkflowRecoveryStatus
+{
+    RecoveredAsCompleted,
+    RecoveredAsRejected,
+    ReadyForRetry,
+    ManualReviewRequired
+}
+
+public sealed record EnrollmentWorkflowRecoveryResult(
+    EnrollmentWorkflowRecoveryStatus Status,
+    string RequestId,
+    int StudentId,
+    int CourseId,
+    string Message);
