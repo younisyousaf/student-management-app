@@ -1,4 +1,6 @@
+using System.Diagnostics;
 using Microsoft.Agents.AI.Workflows;
+using Microsoft.Extensions.Logging;
 using StudentManagement.AI.Workflows.Enrollment.Executors;
 using StudentManagement.AI.Workflows.Enrollment.Models;
 using StudentManagement.Core.Enums;
@@ -12,18 +14,20 @@ public sealed class EnrollmentWorkflowService
     private readonly EnrollmentWorkflowCheckpointStore _checkpointStore;
     private readonly IEnrollmentWorkflowRecordStore _recordStore;
     private readonly IEnrollmentService _enrollmentService;
+    private readonly ILogger<EnrollmentWorkflowService> _logger;
 
     public EnrollmentWorkflowService(
-    ValidateStudentExecutor validateStudent,
-    ValidateCourseExecutor validateCourse,
-    CheckExistingEnrollmentExecutor checkExistingEnrollment,
-    EnrollmentRejectedExecutor enrollmentRejected,
-    PrepareEnrollmentApprovalExecutor prepareApproval,
-    EnrollmentApprovalRejectedExecutor approvalRejected,
-    EnrollStudentExecutor enrollStudent,
-    EnrollmentWorkflowCheckpointStore checkpointStore,
-    IEnrollmentWorkflowRecordStore recordStore,
-    IEnrollmentService enrollmentService)
+        ValidateStudentExecutor validateStudent,
+        ValidateCourseExecutor validateCourse,
+        CheckExistingEnrollmentExecutor checkExistingEnrollment,
+        EnrollmentRejectedExecutor enrollmentRejected,
+        PrepareEnrollmentApprovalExecutor prepareApproval,
+        EnrollmentApprovalRejectedExecutor approvalRejected,
+        EnrollStudentExecutor enrollStudent,
+        EnrollmentWorkflowCheckpointStore checkpointStore,
+        IEnrollmentWorkflowRecordStore recordStore,
+        IEnrollmentService enrollmentService,
+        ILogger<EnrollmentWorkflowService> logger)
     {
         _workflow =
             EnrollmentWorkflowFactory.Create(
@@ -38,13 +42,29 @@ public sealed class EnrollmentWorkflowService
         _checkpointStore = checkpointStore;
         _recordStore = recordStore;
         _enrollmentService = enrollmentService;
+        _logger = logger;
     }
 
     public async Task<EnrollmentWorkflowExecutionResult> RunAsync(
-    EnrollmentWorkflowRequest request,
-    CancellationToken cancellationToken = default)
+        EnrollmentWorkflowRequest request,
+        CancellationToken cancellationToken = default)
     {
+        using var logScope =
+            _logger.BeginScope(
+                new Dictionary<string, object?>
+                {
+                    ["WorkflowName"] = "Enrollment",
+                    ["StudentId"] = request.StudentId,
+                    ["CourseId"] = request.CourseId
+                });
+
+        _logger.LogInformation(
+            "Enrollment workflow started.");
+
         RequestInfoEvent? pendingRequest = null;
+
+        var executorTimers =
+            new Dictionary<string, Stopwatch>();
 
         await using StreamingRun run =
             await InProcessExecution.RunStreamingAsync(
@@ -59,21 +79,78 @@ public sealed class EnrollmentWorkflowService
         {
             switch (workflowEvent)
             {
-                case ExecutorCompletedEvent executorCompleted:
-                    Console.WriteLine(
-                        $"Executor completed: {executorCompleted.ExecutorId}");
-                    break;
+                case ExecutorInvokedEvent executorInvoked:
+                    {
+                        var stopwatch =
+                            Stopwatch.StartNew();
 
+                        executorTimers[
+                            executorInvoked.ExecutorId] =
+                            stopwatch;
+
+                        _logger.LogDebug(
+                            "Enrollment workflow executor started. ExecutorId: {ExecutorId}",
+                            executorInvoked.ExecutorId);
+
+                        break;
+                    }
+
+                case ExecutorCompletedEvent executorCompleted:
+                    {
+                        if (executorTimers.Remove(
+                            executorCompleted.ExecutorId,
+                            out var stopwatch))
+                        {
+                            stopwatch.Stop();
+
+                            _logger.LogInformation(
+                                "Enrollment workflow executor completed. ExecutorId: {ExecutorId}, DurationMs: {DurationMs}",
+                                executorCompleted.ExecutorId,
+                                stopwatch.ElapsedMilliseconds);
+                        }
+                        else
+                        {
+                            _logger.LogInformation(
+                                "Enrollment workflow executor completed. ExecutorId: {ExecutorId}",
+                                executorCompleted.ExecutorId);
+                        }
+
+                        break;
+                    }
+
+                case ExecutorFailedEvent executorFailed:
+                    {
+                        if (executorTimers.Remove(
+                            executorFailed.ExecutorId,
+                            out var stopwatch))
+                        {
+                            stopwatch.Stop();
+
+                            _logger.LogError(
+                                "Enrollment workflow executor failed. ExecutorId: {ExecutorId}, DurationMs: {DurationMs}",
+                                executorFailed.ExecutorId,
+                                stopwatch.ElapsedMilliseconds);
+                        }
+                        else
+                        {
+                            _logger.LogError(
+                                "Enrollment workflow executor failed. ExecutorId: {ExecutorId}",
+                                executorFailed.ExecutorId);
+                        }
+
+                        break;
+                    }
 
                 case RequestInfoEvent requestInfo:
-                    pendingRequest = requestInfo;
+                    {
+                        pendingRequest = requestInfo;
 
-                    Console.WriteLine(
-                        $"Workflow requested external input. " +
-                        $"RequestId: {requestInfo.Request.RequestId}");
+                        _logger.LogInformation(
+                            "Enrollment workflow is waiting for human approval. RequestId: {RequestId}",
+                            requestInfo.Request.RequestId);
 
-                    break;
-
+                        break;
+                    }
 
                 case SuperStepCompletedEvent superStepCompleted:
                     {
@@ -87,18 +164,28 @@ public sealed class EnrollmentWorkflowService
                             break;
                         }
 
-                        Console.WriteLine(
-                            "Workflow checkpoint created.");
+                        _logger.LogDebug(
+                            "Enrollment workflow checkpoint created.");
 
                         if (pendingRequest is not null)
                         {
                             await _recordStore.SavePendingAsync(
-                                requestId: pendingRequest.Request.RequestId,
-                                studentId: request.StudentId,
-                                courseId: request.CourseId,
-                                checkpointRunId: checkpoint.SessionId,
-                                checkpointId: checkpoint.CheckpointId,
-                                cancellationToken: cancellationToken);
+                                requestId:
+                                    pendingRequest.Request.RequestId,
+                                studentId:
+                                    request.StudentId,
+                                courseId:
+                                    request.CourseId,
+                                checkpointRunId:
+                                    checkpoint.SessionId,
+                                checkpointId:
+                                    checkpoint.CheckpointId,
+                                cancellationToken:
+                                    cancellationToken);
+
+                            _logger.LogInformation(
+                                "Enrollment workflow paused and persisted while waiting for human approval. RequestId: {RequestId}",
+                                pendingRequest.Request.RequestId);
 
                             return new EnrollmentWorkflowExecutionResult(
                                 Status:
@@ -124,12 +211,15 @@ public sealed class EnrollmentWorkflowService
                         break;
                     }
 
-
                 case WorkflowOutputEvent output:
                     {
                         if (output.Data
                             is EnrollmentWorkflowResult result)
                         {
+                            _logger.LogInformation(
+                                "Enrollment workflow completed. Success: {Success}",
+                                result.Success);
+
                             return new EnrollmentWorkflowExecutionResult(
                                 Status:
                                     EnrollmentWorkflowExecutionStatus
@@ -154,11 +244,16 @@ public sealed class EnrollmentWorkflowService
                         break;
                     }
 
-
                 case WorkflowErrorEvent error:
-                    throw new InvalidOperationException(
-                        "Enrollment workflow failed.",
-                        error.Exception);
+                    {
+                        _logger.LogError(
+                            error.Exception,
+                            "Enrollment workflow execution failed.");
+
+                        throw new InvalidOperationException(
+                            "Enrollment workflow failed.",
+                            error.Exception);
+                    }
             }
         }
 
@@ -172,9 +267,9 @@ public sealed class EnrollmentWorkflowService
     CancellationToken cancellationToken = default)
     {
         var pendingWorkflow =
-        await _recordStore.GetByRequestIdAsync(
-            requestId,
-            cancellationToken);
+            await _recordStore.GetByRequestIdAsync(
+                requestId,
+                cancellationToken);
 
         if (pendingWorkflow is null)
         {
@@ -182,17 +277,40 @@ public sealed class EnrollmentWorkflowService
                 $"No pending enrollment workflow was found for request '{requestId}'.");
         }
 
-        if (pendingWorkflow.Status != EnrollmentWorkflowStatus.WaitingForApproval)
+        using var logScope =
+            _logger.BeginScope(
+                new Dictionary<string, object?>
+                {
+                    ["WorkflowName"] = "Enrollment",
+                    ["RequestId"] = requestId,
+                    ["StudentId"] = pendingWorkflow.StudentId,
+                    ["CourseId"] = pendingWorkflow.CourseId
+                });
+
+        var approvalWaitDuration =
+            DateTime.UtcNow - pendingWorkflow.UpdatedAt;
+
+        _logger.LogInformation(
+            "Enrollment workflow approval received. ApprovalWaitMs: {ApprovalWaitMs}, ApprovalWaitSeconds: {ApprovalWaitSeconds}",
+            approvalWaitDuration.TotalMilliseconds,
+            approvalWaitDuration.TotalSeconds);
+
+        _logger.LogInformation(
+            "Enrollment workflow resume started. Approved: {Approved}",
+            approved);
+
+        if (pendingWorkflow.Status !=
+            EnrollmentWorkflowStatus.WaitingForApproval)
         {
             throw new InvalidOperationException(
                 $"Enrollment workflow '{requestId}' is not waiting for approval.");
         }
 
         bool processingStarted =
-        await _recordStore.TryBeginProcessingAsync(
-            requestId,
-            approved,
-            cancellationToken);
+            await _recordStore.TryBeginProcessingAsync(
+                requestId,
+                approved,
+                cancellationToken);
 
         if (!processingStarted)
         {
@@ -200,12 +318,15 @@ public sealed class EnrollmentWorkflowService
                 $"Enrollment workflow '{requestId}' is already being processed or has already been completed.");
         }
 
+        _logger.LogInformation(
+            "Enrollment workflow claimed for processing.");
+
         try
         {
             var checkpoint =
-            new CheckpointInfo(
-                pendingWorkflow.CheckpointRunId,
-                pendingWorkflow.CheckpointId);
+                new CheckpointInfo(
+                    pendingWorkflow.CheckpointRunId,
+                    pendingWorkflow.CheckpointId);
 
             await using StreamingRun run =
                 await InProcessExecution.ResumeStreamingAsync(
@@ -216,27 +337,50 @@ public sealed class EnrollmentWorkflowService
 
             bool responseSent = false;
 
+            var executorTimers =
+                new Dictionary<string, Stopwatch>();
+
             await foreach (
                 WorkflowEvent workflowEvent
                 in run.WatchStreamAsync())
             {
                 switch (workflowEvent)
                 {
+                    case ExecutorInvokedEvent executorInvoked:
+                        {
+                            var stopwatch =
+                                Stopwatch.StartNew();
+
+                            executorTimers[
+                                executorInvoked.ExecutorId] =
+                                stopwatch;
+
+                            _logger.LogDebug(
+                                "Enrollment workflow executor started after resume. ExecutorId: {ExecutorId}",
+                                executorInvoked.ExecutorId);
+
+                            break;
+                        }
+
                     case RequestInfoEvent requestInfo
                         when requestInfo.Request.RequestId == requestId
                              && !responseSent:
                         {
-                            Console.WriteLine(
-                                $"Restored approval request: {requestId}");
+                            _logger.LogInformation(
+                                "Enrollment workflow approval request restored.");
 
                             var approvalResponse =
-                            new EnrollmentApprovalResponse(
-                                StudentId: pendingWorkflow.StudentId,
-                                CourseId: pendingWorkflow.CourseId,
-                                Approved: approved,
-                                Reason: approved
-                                    ? null
-                                    : "Enrollment rejected by administrator.");
+                                new EnrollmentApprovalResponse(
+                                    StudentId:
+                                        pendingWorkflow.StudentId,
+                                    CourseId:
+                                        pendingWorkflow.CourseId,
+                                    Approved:
+                                        approved,
+                                    Reason:
+                                        approved
+                                            ? null
+                                            : "Enrollment rejected by administrator.");
 
                             await run.SendResponseAsync(
                                 requestInfo.Request.CreateResponse(
@@ -244,24 +388,63 @@ public sealed class EnrollmentWorkflowService
 
                             responseSent = true;
 
-                            Console.WriteLine(
-                                $"Approval response sent. Approved: {approved}");
+                            _logger.LogInformation(
+                                "Enrollment workflow approval decision sent. Approved: {Approved}",
+                                approved);
 
                             break;
                         }
 
                     case ExecutorCompletedEvent executorCompleted:
                         {
-                            Console.WriteLine(
-                                $"Executor completed: {executorCompleted.ExecutorId}");
+                            if (executorTimers.Remove(
+                                executorCompleted.ExecutorId,
+                                out var stopwatch))
+                            {
+                                stopwatch.Stop();
+
+                                _logger.LogInformation(
+                                    "Enrollment workflow executor completed after resume. ExecutorId: {ExecutorId}, DurationMs: {DurationMs}",
+                                    executorCompleted.ExecutorId,
+                                    stopwatch.ElapsedMilliseconds);
+                            }
+                            else
+                            {
+                                _logger.LogInformation(
+                                    "Enrollment workflow executor completed after resume. ExecutorId: {ExecutorId}",
+                                    executorCompleted.ExecutorId);
+                            }
+
+                            break;
+                        }
+
+                    case ExecutorFailedEvent executorFailed:
+                        {
+                            if (executorTimers.Remove(
+                                executorFailed.ExecutorId,
+                                out var stopwatch))
+                            {
+                                stopwatch.Stop();
+
+                                _logger.LogError(
+                                    "Enrollment workflow executor failed after resume. ExecutorId: {ExecutorId}, DurationMs: {DurationMs}",
+                                    executorFailed.ExecutorId,
+                                    stopwatch.ElapsedMilliseconds);
+                            }
+                            else
+                            {
+                                _logger.LogError(
+                                    "Enrollment workflow executor failed after resume. ExecutorId: {ExecutorId}",
+                                    executorFailed.ExecutorId);
+                            }
 
                             break;
                         }
 
                     case SuperStepCompletedEvent:
                         {
-                            Console.WriteLine(
-                                "Resumed workflow super step completed.");
+                            _logger.LogDebug(
+                                "Enrollment workflow resumed super step completed.");
 
                             break;
                         }
@@ -278,9 +461,19 @@ public sealed class EnrollmentWorkflowService
                                         : EnrollmentWorkflowStatus.Rejected,
                                     cancellationToken);
 
+                                var totalWorkflowDuration =
+                                    DateTime.UtcNow - pendingWorkflow.CreatedAt;
+
+                                _logger.LogInformation(
+                                    "Enrollment workflow completed after resume. Success: {Success}, TotalDurationMs: {TotalDurationMs}, TotalDurationSeconds: {TotalDurationSeconds}",
+                                    result.Success,
+                                    totalWorkflowDuration.TotalMilliseconds,
+                                    totalWorkflowDuration.TotalSeconds);
+
                                 return new EnrollmentWorkflowExecutionResult(
                                     Status:
-                                        EnrollmentWorkflowExecutionStatus.Completed,
+                                        EnrollmentWorkflowExecutionStatus
+                                            .Completed,
 
                                     RequestId:
                                         null,
@@ -320,12 +513,20 @@ public sealed class EnrollmentWorkflowService
                 await _recordStore.MarkInterruptedAsync(
                     requestId,
                     CancellationToken.None);
+
+                _logger.LogWarning(
+                    ex,
+                    "Enrollment workflow interrupted.");
             }
             else
             {
                 await _recordStore.MarkFailedAsync(
                     requestId,
                     CancellationToken.None);
+
+                _logger.LogError(
+                    ex,
+                    "Enrollment workflow failed.");
             }
 
             throw;
@@ -333,8 +534,8 @@ public sealed class EnrollmentWorkflowService
     }
 
     public async Task<EnrollmentWorkflowRecoveryResult> RecoverAsync(
-    string requestId,
-    CancellationToken cancellationToken = default)
+        string requestId,
+        CancellationToken cancellationToken = default)
     {
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
@@ -347,9 +548,28 @@ public sealed class EnrollmentWorkflowService
                 $"No enrollment workflow was found for request '{requestId}'.");
         }
 
-        if (workflowRecord.Status != EnrollmentWorkflowStatus.Failed &&
-            workflowRecord.Status != EnrollmentWorkflowStatus.Interrupted)
+        using var logScope =
+            _logger.BeginScope(
+                new Dictionary<string, object?>
+                {
+                    ["WorkflowName"] = "Enrollment",
+                    ["RequestId"] = requestId,
+                    ["StudentId"] = workflowRecord.StudentId,
+                    ["CourseId"] = workflowRecord.CourseId,
+                    ["WorkflowStatus"] = workflowRecord.Status
+                });
+
+        _logger.LogInformation(
+            "Enrollment workflow recovery started.");
+
+        if (workflowRecord.Status !=
+                EnrollmentWorkflowStatus.Failed &&
+            workflowRecord.Status !=
+                EnrollmentWorkflowStatus.Interrupted)
         {
+            _logger.LogWarning(
+                "Enrollment workflow recovery rejected because the workflow is not in a recoverable state.");
+
             throw new InvalidOperationException(
                 $"Enrollment workflow '{requestId}' is not in a recoverable state.");
         }
@@ -361,6 +581,9 @@ public sealed class EnrollmentWorkflowService
                 EnrollmentWorkflowStatus.Rejected,
                 cancellationToken);
 
+            _logger.LogInformation(
+                "Enrollment workflow recovered as rejected.");
+
             return new EnrollmentWorkflowRecoveryResult(
                 EnrollmentWorkflowRecoveryStatus.RecoveredAsRejected,
                 requestId,
@@ -371,6 +594,9 @@ public sealed class EnrollmentWorkflowService
 
         if (workflowRecord.Approved is not true)
         {
+            _logger.LogWarning(
+                "Enrollment workflow requires manual review because no valid approval decision is available.");
+
             return new EnrollmentWorkflowRecoveryResult(
                 EnrollmentWorkflowRecoveryStatus.ManualReviewRequired,
                 requestId,
@@ -381,7 +607,8 @@ public sealed class EnrollmentWorkflowService
 
         var existingEnrollment =
             _enrollmentService
-                .GetEnrollmentsByStudent(workflowRecord.StudentId)
+                .GetEnrollmentsByStudent(
+                    workflowRecord.StudentId)
                 .FirstOrDefault(x =>
                     x.CourseId == workflowRecord.CourseId &&
                     x.Status == "Active");
@@ -393,6 +620,9 @@ public sealed class EnrollmentWorkflowService
                 EnrollmentWorkflowStatus.Completed,
                 cancellationToken);
 
+            _logger.LogInformation(
+                "Enrollment workflow reconciled as completed because an active enrollment already exists.");
+
             return new EnrollmentWorkflowRecoveryResult(
                 EnrollmentWorkflowRecoveryStatus.RecoveredAsCompleted,
                 requestId,
@@ -402,15 +632,21 @@ public sealed class EnrollmentWorkflowService
         }
 
         bool markedReady =
-        await _recordStore.MarkReadyForRetryAsync(
-            requestId,
-            cancellationToken);
+            await _recordStore.MarkReadyForRetryAsync(
+                requestId,
+                cancellationToken);
 
         if (!markedReady)
         {
+            _logger.LogError(
+                "Enrollment workflow could not be marked ready for retry.");
+
             throw new InvalidOperationException(
                 $"Enrollment workflow '{requestId}' could not be marked as ready for retry.");
         }
+
+        _logger.LogInformation(
+            "Enrollment workflow marked ready for retry.");
 
         return new EnrollmentWorkflowRecoveryResult(
             EnrollmentWorkflowRecoveryStatus.ReadyForRetry,
@@ -421,8 +657,8 @@ public sealed class EnrollmentWorkflowService
     }
 
     public async Task<EnrollmentWorkflowExecutionResult> RetryAsync(
-    string requestId,
-    CancellationToken cancellationToken = default)
+        string requestId,
+        CancellationToken cancellationToken = default)
     {
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
@@ -435,15 +671,35 @@ public sealed class EnrollmentWorkflowService
                 $"No enrollment workflow was found for request '{requestId}'.");
         }
 
+        using var logScope =
+            _logger.BeginScope(
+                new Dictionary<string, object?>
+                {
+                    ["WorkflowName"] = "Enrollment",
+                    ["RequestId"] = requestId,
+                    ["StudentId"] = workflowRecord.StudentId,
+                    ["CourseId"] = workflowRecord.CourseId,
+                    ["WorkflowStatus"] = workflowRecord.Status
+                });
+
+        _logger.LogInformation(
+            "Enrollment workflow retry started.");
+
         if (workflowRecord.Status !=
             EnrollmentWorkflowStatus.ReadyForRetry)
         {
+            _logger.LogWarning(
+                "Enrollment workflow retry rejected because the workflow is not ready for retry.");
+
             throw new InvalidOperationException(
                 $"Enrollment workflow '{requestId}' is not ready for retry.");
         }
 
         if (workflowRecord.Approved is not true)
         {
+            _logger.LogWarning(
+                "Enrollment workflow retry rejected because an approved decision is not available.");
+
             throw new InvalidOperationException(
                 $"Enrollment workflow '{requestId}' does not contain an approved decision.");
         }
@@ -463,6 +719,9 @@ public sealed class EnrollmentWorkflowService
                 EnrollmentWorkflowStatus.Completed,
                 cancellationToken);
 
+            _logger.LogInformation(
+                "Retry skipped because the student is already actively enrolled. Workflow reconciled as completed.");
+
             return new EnrollmentWorkflowExecutionResult(
                 EnrollmentWorkflowExecutionStatus.Completed,
                 null,
@@ -476,6 +735,9 @@ public sealed class EnrollmentWorkflowService
                 "The student is already actively enrolled. The workflow was reconciled as completed.");
         }
 
+        _logger.LogInformation(
+            "Executing enrollment business operation during retry.");
+
         _enrollmentService.EnrollStudent(
             workflowRecord.StudentId,
             workflowRecord.CourseId);
@@ -484,6 +746,9 @@ public sealed class EnrollmentWorkflowService
             requestId,
             EnrollmentWorkflowStatus.Completed,
             cancellationToken);
+
+        _logger.LogInformation(
+            "Enrollment workflow retry completed successfully.");
 
         return new EnrollmentWorkflowExecutionResult(
             EnrollmentWorkflowExecutionStatus.Completed,
@@ -499,7 +764,7 @@ public sealed class EnrollmentWorkflowService
     }
 
     private static bool IsCancellationException(
-    Exception? exception)
+        Exception? exception)
     {
         while (exception is not null)
         {
