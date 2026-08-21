@@ -147,6 +147,12 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(x => x.CheckpointId)
                     .HasMaxLength(200)
                     .IsRequired();
+                entity.Property(x => x.ActiveKey)
+                    .HasMaxLength(100);
+
+                entity.HasIndex(x => x.ActiveKey)
+                    .IsUnique()
+                    .HasFilter("[ActiveKey] IS NOT NULL");
             });
 
             //workflow checkpoint

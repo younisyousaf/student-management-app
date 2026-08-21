@@ -13,6 +13,8 @@ public sealed class EnrollmentWorkflowRecord : BaseEntity
 
     public bool? Approved { get; set; }
 
+    public string? ActiveKey { get; set; }
+
     public string CheckpointRunId { get; set; } = string.Empty;
 
     public string CheckpointId { get; set; } = string.Empty;

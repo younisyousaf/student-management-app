@@ -1,3 +1,5 @@
+using StudentManagement.AI.Common.Models;
+using StudentManagement.AI.Workflows.Enrollment.Models;
 using StudentManagement.Core.Enums;
 using StudentManagement.Core.Models;
 
@@ -17,14 +19,27 @@ public interface IEnrollmentWorkflowRecordStore
         string requestId,
         CancellationToken cancellationToken = default);
 
-    Task MarkCompletedAsync(
-        string requestId,
-        EnrollmentWorkflowStatus status,
+    Task<EnrollmentWorkflowRecord?> GetActiveByStudentAndCourseAsync(
+        int studentId,
+        int courseId,
         CancellationToken cancellationToken = default);
 
     Task<bool> TryBeginProcessingAsync(
         string requestId,
         bool approved,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TryMarkCompletedFromProcessingAsync(
+        string requestId,
+        EnrollmentWorkflowStatus finalStatus,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TryReconcileAsCompletedAsync(
+        string requestId,
+        CancellationToken cancellationToken = default);
+
+    Task<bool> TryReconcileAsRejectedAsync(
+        string requestId,
         CancellationToken cancellationToken = default);
 
     Task MarkFailedAsync(
@@ -39,6 +54,18 @@ public interface IEnrollmentWorkflowRecordStore
         string requestId,
         CancellationToken cancellationToken = default);
 
+    Task<bool> TryBeginRetryAsync(
+        string requestId,
+        CancellationToken cancellationToken = default);
+
+    Task<int> MarkStaleProcessingAsInterruptedAsync(
+        DateTime staleBeforeUtc,
+        CancellationToken cancellationToken = default);
+
     Task<IReadOnlyList<EnrollmentWorkflowRecord>> GetAllAsync(
+        CancellationToken cancellationToken = default);
+
+    Task<PagedResult<EnrollmentWorkflowRecord>> QueryAsync(
+        EnrollmentWorkflowQuery query,
         CancellationToken cancellationToken = default);
 }

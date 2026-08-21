@@ -1,5 +1,6 @@
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.Extensions.Logging;
+using StudentManagement.AI.Common.Models;
 using StudentManagement.AI.Workflows.Enrollment.Executors;
 using StudentManagement.AI.Workflows.Enrollment.Models;
 using StudentManagement.Core.Enums;
@@ -61,6 +62,20 @@ public sealed class EnrollmentWorkflowService
                     ["StudentId"] = request.StudentId,
                     ["CourseId"] = request.CourseId
                 });
+
+        var existingWorkflow =
+        await _recordStore.GetActiveByStudentAndCourseAsync(
+            request.StudentId,
+            request.CourseId,
+            cancellationToken);
+
+        if (existingWorkflow is not null)
+        {
+            throw new InvalidOperationException(
+                $"An active enrollment workflow already exists for student '{request.StudentId}' " +
+                $"and course '{request.CourseId}'. RequestId: '{existingWorkflow.RequestId}', " +
+                $"Status: '{existingWorkflow.Status}'.");
+        }
 
         _logger.LogInformation(
             "Enrollment workflow started.");
@@ -280,6 +295,13 @@ public sealed class EnrollmentWorkflowService
         bool approved,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            throw new ArgumentException(
+                "RequestId is required.",
+                nameof(requestId));
+        }
+
         var pendingWorkflow =
             await _recordStore.GetByRequestIdAsync(
                 requestId,
@@ -300,26 +322,6 @@ public sealed class EnrollmentWorkflowService
                     ["StudentId"] = pendingWorkflow.StudentId,
                     ["CourseId"] = pendingWorkflow.CourseId
                 });
-
-        var approvalWaitDuration =
-            DateTime.UtcNow - pendingWorkflow.UpdatedAt;
-
-        await _historyStore.AddAsync(
-            requestId: requestId,
-            eventType: "ApprovalReceived",
-            durationMs:
-                (long)approvalWaitDuration.TotalMilliseconds,
-            message:
-                approved
-                    ? "Enrollment was approved."
-                    : "Enrollment was rejected.",
-            cancellationToken:
-                cancellationToken);
-
-        _logger.LogInformation(
-            "Enrollment workflow approval received. ApprovalWaitMs: {ApprovalWaitMs}, ApprovalWaitSeconds: {ApprovalWaitSeconds}",
-            approvalWaitDuration.TotalMilliseconds,
-            approvalWaitDuration.TotalSeconds);
 
         _logger.LogInformation(
             "Enrollment workflow resume started. Approved: {Approved}",
@@ -346,6 +348,29 @@ public sealed class EnrollmentWorkflowService
 
         _logger.LogInformation(
             "Enrollment workflow claimed for processing.");
+
+        var approvalWaitDuration =
+            DateTime.UtcNow -
+            pendingWorkflow.UpdatedAt;
+
+        await _historyStore.AddAsync(
+            requestId:
+                requestId,
+            eventType:
+                "ApprovalReceived",
+            durationMs:
+                (long)approvalWaitDuration.TotalMilliseconds,
+            message:
+                approved
+                    ? "Enrollment was approved."
+                    : "Enrollment was rejected.",
+            cancellationToken:
+                cancellationToken);
+
+        _logger.LogInformation(
+            "Enrollment workflow approval received. ApprovalWaitMs: {ApprovalWaitMs}, ApprovalWaitSeconds: {ApprovalWaitSeconds}",
+            approvalWaitDuration.TotalMilliseconds,
+            approvalWaitDuration.TotalSeconds);
 
         try
         {
@@ -502,12 +527,20 @@ public sealed class EnrollmentWorkflowService
                             if (output.Data
                                 is EnrollmentWorkflowResult result)
                             {
-                                await _recordStore.MarkCompletedAsync(
-                                    requestId,
-                                    result.Success
-                                        ? EnrollmentWorkflowStatus.Completed
-                                        : EnrollmentWorkflowStatus.Rejected,
-                                    cancellationToken);
+                                bool finalized =
+                                    await _recordStore
+                                        .TryMarkCompletedFromProcessingAsync(
+                                            requestId,
+                                            result.Success
+                                                ? EnrollmentWorkflowStatus.Completed
+                                                : EnrollmentWorkflowStatus.Rejected,
+                                            cancellationToken);
+
+                                if (!finalized)
+                                {
+                                    throw new InvalidOperationException(
+                                        $"Enrollment workflow '{requestId}' could not be finalized because its state changed.");
+                                }
 
                                 var totalWorkflowDuration =
                                     DateTime.UtcNow -
@@ -621,6 +654,13 @@ public sealed class EnrollmentWorkflowService
         string requestId,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            throw new ArgumentException(
+                "RequestId is required.",
+                nameof(requestId));
+        }
+
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
                 requestId,
@@ -660,10 +700,16 @@ public sealed class EnrollmentWorkflowService
 
         if (workflowRecord.Approved is false)
         {
-            await _recordStore.MarkCompletedAsync(
-                requestId,
-                EnrollmentWorkflowStatus.Rejected,
-                cancellationToken);
+            bool reconciledAsRejected =
+                await _recordStore.TryReconcileAsRejectedAsync(
+                    requestId,
+                    cancellationToken);
+
+            if (!reconciledAsRejected)
+            {
+                throw new InvalidOperationException(
+                    $"Enrollment workflow '{requestId}' could not be reconciled as rejected because its state changed.");
+            }
 
             await _historyStore.AddAsync(
                 requestId:
@@ -720,10 +766,16 @@ public sealed class EnrollmentWorkflowService
 
         if (existingEnrollment is not null)
         {
-            await _recordStore.MarkCompletedAsync(
-                requestId,
-                EnrollmentWorkflowStatus.Completed,
-                cancellationToken);
+            bool reconciledAsCompleted =
+                await _recordStore.TryReconcileAsCompletedAsync(
+                    requestId,
+                    cancellationToken);
+
+            if (!reconciledAsCompleted)
+            {
+                throw new InvalidOperationException(
+                    $"Enrollment workflow '{requestId}' could not be reconciled as completed because its state changed.");
+            }
 
             await _historyStore.AddAsync(
                 requestId:
@@ -753,11 +805,11 @@ public sealed class EnrollmentWorkflowService
 
         if (!markedReady)
         {
-            _logger.LogError(
-                "Enrollment workflow could not be marked ready for retry.");
+            _logger.LogWarning(
+                "Enrollment workflow could not be marked ready for retry because its state changed.");
 
             throw new InvalidOperationException(
-                $"Enrollment workflow '{requestId}' could not be marked as ready for retry.");
+                $"Enrollment workflow '{requestId}' could not be marked as ready for retry because its state changed.");
         }
 
         await _historyStore.AddAsync(
@@ -785,6 +837,13 @@ public sealed class EnrollmentWorkflowService
         string requestId,
         CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            throw new ArgumentException(
+                "RequestId is required.",
+                nameof(requestId));
+        }
+
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
                 requestId,
@@ -829,34 +888,107 @@ public sealed class EnrollmentWorkflowService
                 $"Enrollment workflow '{requestId}' does not contain an approved decision.");
         }
 
-        var existingEnrollment =
-            _enrollmentService
-                .GetEnrollmentsByStudent(
-                    workflowRecord.StudentId)
-                .FirstOrDefault(x =>
-                    x.CourseId ==
-                        workflowRecord.CourseId &&
-                    x.Status == "Active");
-
-        if (existingEnrollment is not null)
-        {
-            await _recordStore.MarkCompletedAsync(
+        bool retryStarted =
+            await _recordStore.TryBeginRetryAsync(
                 requestId,
-                EnrollmentWorkflowStatus.Completed,
                 cancellationToken);
+
+        if (!retryStarted)
+        {
+            _logger.LogWarning(
+                "Enrollment workflow retry could not be claimed because its state changed.");
+
+            throw new InvalidOperationException(
+                $"Enrollment workflow '{requestId}' is already being processed or is no longer ready for retry.");
+        }
+
+        _logger.LogInformation(
+            "Enrollment workflow claimed for retry processing.");
+
+        try
+        {
+            var existingEnrollment =
+                _enrollmentService
+                    .GetEnrollmentsByStudent(
+                        workflowRecord.StudentId)
+                    .FirstOrDefault(x =>
+                        x.CourseId ==
+                            workflowRecord.CourseId &&
+                        x.Status == "Active");
+
+            if (existingEnrollment is not null)
+            {
+                bool finalized =
+                    await _recordStore
+                        .TryMarkCompletedFromProcessingAsync(
+                            requestId,
+                            EnrollmentWorkflowStatus.Completed,
+                            cancellationToken);
+
+                if (!finalized)
+                {
+                    throw new InvalidOperationException(
+                        $"Enrollment workflow '{requestId}' could not be finalized after retry reconciliation.");
+                }
+
+                await _historyStore.AddAsync(
+                    requestId:
+                        requestId,
+                    eventType:
+                        "RetryReconciledAsCompleted",
+                    message:
+                        "Retry was not executed because the student is already actively enrolled.",
+                    cancellationToken:
+                        cancellationToken);
+
+                _logger.LogInformation(
+                    "Retry skipped because the student is already actively enrolled. Workflow reconciled as completed.");
+
+                return new EnrollmentWorkflowExecutionResult(
+                    EnrollmentWorkflowExecutionStatus.Completed,
+                    null,
+                    workflowRecord.StudentId,
+                    workflowRecord.CourseId,
+                    new EnrollmentWorkflowResult(
+                        true,
+                        workflowRecord.StudentId,
+                        workflowRecord.CourseId,
+                        "The student is already actively enrolled. The workflow was reconciled as completed."),
+                    "The student is already actively enrolled. The workflow was reconciled as completed.");
+            }
+
+            _logger.LogInformation(
+                "Executing enrollment business operation during retry.");
+
+            _enrollmentService.EnrollStudent(
+                workflowRecord.StudentId,
+                workflowRecord.CourseId);
+
+            bool finalizedAfterRetry =
+                await _recordStore
+                    .TryMarkCompletedFromProcessingAsync(
+                        requestId,
+                        EnrollmentWorkflowStatus.Completed,
+                        cancellationToken);
+
+            if (!finalizedAfterRetry)
+            {
+                throw new InvalidOperationException(
+                    $"Enrollment workflow '{requestId}' could not be finalized after retry.");
+            }
 
             await _historyStore.AddAsync(
                 requestId:
                     requestId,
                 eventType:
-                    "RetryReconciledAsCompleted",
+                    "RetryCompleted",
                 message:
-                    "Retry was not executed because the student is already actively enrolled.",
+                    "Student enrolled successfully during controlled retry.",
                 cancellationToken:
                     cancellationToken);
 
             _logger.LogInformation(
-                "Retry skipped because the student is already actively enrolled. Workflow reconciled as completed.");
+                "Enrollment workflow retry completed successfully.");
 
             return new EnrollmentWorkflowExecutionResult(
                 EnrollmentWorkflowExecutionStatus.Completed,
@@ -867,54 +999,69 @@ public sealed class EnrollmentWorkflowService
                     true,
                     workflowRecord.StudentId,
                     workflowRecord.CourseId,
-                    "The student is already actively enrolled. The workflow was reconciled as completed."),
-                "The student is already actively enrolled. The workflow was reconciled as completed.");
+                    "Student enrolled successfully during retry."),
+                "Student enrolled successfully during retry.");
         }
+        catch (Exception ex)
+        {
+            if (IsCancellationException(ex))
+            {
+                await _recordStore.MarkInterruptedAsync(
+                    requestId,
+                    CancellationToken.None);
 
-        _logger.LogInformation(
-            "Executing enrollment business operation during retry.");
+                await _historyStore.AddAsync(
+                    requestId:
+                        requestId,
+                    eventType:
+                        "Interrupted",
+                    message:
+                        ex.Message,
+                    cancellationToken:
+                        CancellationToken.None);
 
-        _enrollmentService.EnrollStudent(
-            workflowRecord.StudentId,
-            workflowRecord.CourseId);
+                _logger.LogWarning(
+                    ex,
+                    "Enrollment workflow retry was interrupted.");
+            }
+            else
+            {
+                await _recordStore.MarkFailedAsync(
+                    requestId,
+                    CancellationToken.None);
 
-        await _recordStore.MarkCompletedAsync(
-            requestId,
-            EnrollmentWorkflowStatus.Completed,
-            cancellationToken);
+                await _historyStore.AddAsync(
+                    requestId:
+                        requestId,
+                    eventType:
+                        "Failed",
+                    message:
+                        ex.Message,
+                    cancellationToken:
+                        CancellationToken.None);
 
-        await _historyStore.AddAsync(
-            requestId:
-                requestId,
-            eventType:
-                "RetryCompleted",
-            message:
-                "Student enrolled successfully during controlled retry.",
-            cancellationToken:
-                cancellationToken);
+                _logger.LogError(
+                    ex,
+                    "Enrollment workflow retry failed.");
+            }
 
-        _logger.LogInformation(
-            "Enrollment workflow retry completed successfully.");
-
-        return new EnrollmentWorkflowExecutionResult(
-            EnrollmentWorkflowExecutionStatus.Completed,
-            null,
-            workflowRecord.StudentId,
-            workflowRecord.CourseId,
-            new EnrollmentWorkflowResult(
-                true,
-                workflowRecord.StudentId,
-                workflowRecord.CourseId,
-                "Student enrolled successfully during retry."),
-            "Student enrolled successfully during retry.");
+            throw;
+        }
     }
 
     public async Task<
-    IReadOnlyList<EnrollmentWorkflowHistory>>
-    GetHistoryAsync(
-        string requestId,
-        CancellationToken cancellationToken = default)
+        IReadOnlyList<EnrollmentWorkflowHistory>>
+        GetHistoryAsync(
+            string requestId,
+            CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            throw new ArgumentException(
+                "RequestId is required.",
+                nameof(requestId));
+        }
+
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
                 requestId,
@@ -945,9 +1092,16 @@ public sealed class EnrollmentWorkflowService
     }
 
     public async Task<EnrollmentWorkflowSummary> GetSummaryAsync(
-    string requestId,
-    CancellationToken cancellationToken = default)
+        string requestId,
+        CancellationToken cancellationToken = default)
     {
+        if (string.IsNullOrWhiteSpace(requestId))
+        {
+            throw new ArgumentException(
+                "RequestId is required.",
+                nameof(requestId));
+        }
+
         var workflowRecord =
             await _recordStore.GetByRequestIdAsync(
                 requestId,
@@ -988,8 +1142,6 @@ public sealed class EnrollmentWorkflowService
         long? totalDurationMs =
             completed?.DurationMs;
 
-        // Fallback for older workflow records that may not
-        // contain a persisted Completed history event.
         if (totalDurationMs is null &&
             workflowRecord.CompletedAt.HasValue)
         {
@@ -1001,40 +1153,120 @@ public sealed class EnrollmentWorkflowService
         }
 
         return new EnrollmentWorkflowSummary(
-            RequestId: workflowRecord.RequestId,
-            StudentId: workflowRecord.StudentId,
-            CourseId: workflowRecord.CourseId,
-            Status: workflowRecord.Status.ToString(),
-            Approved: workflowRecord.Approved,
-            TotalDurationMs: totalDurationMs,
-            ApprovalWaitMs: approvalReceived?.DurationMs,
-            CompletedExecutorCount: completedExecutorCount,
-            FailureCount: failureCount,
-            InterruptionCount: interruptionCount,
-            CreatedAt: workflowRecord.CreatedAt,
-            CompletedAt: workflowRecord.CompletedAt);
+            RequestId:
+                workflowRecord.RequestId,
+            StudentId:
+                workflowRecord.StudentId,
+            CourseId:
+                workflowRecord.CourseId,
+            Status:
+                workflowRecord.Status.ToString(),
+            Approved:
+                workflowRecord.Approved,
+            TotalDurationMs:
+                totalDurationMs,
+            ApprovalWaitMs:
+                approvalReceived?.DurationMs,
+            CompletedExecutorCount:
+                completedExecutorCount,
+            FailureCount:
+                failureCount,
+            InterruptionCount:
+                interruptionCount,
+            CreatedAt:
+                workflowRecord.CreatedAt,
+            CompletedAt:
+                workflowRecord.CompletedAt);
     }
 
-    public async Task<IReadOnlyList<EnrollmentWorkflowListItem>>
+    public async Task<PagedResult<EnrollmentWorkflowListItem>>
     GetWorkflowsAsync(
+        EnrollmentWorkflowQuery query,
         CancellationToken cancellationToken = default)
     {
-        var workflows =
-            await _recordStore.GetAllAsync(
+        if (query.Page <= 0)
+        {
+            throw new ArgumentException(
+                "Page must be greater than zero.",
+                nameof(query.Page));
+        }
+
+        if (query.PageSize <= 0 ||
+            query.PageSize > 100)
+        {
+            throw new ArgumentException(
+                "PageSize must be between 1 and 100.",
+                nameof(query.PageSize));
+        }
+
+        if (query.StudentId.HasValue &&
+            query.StudentId.Value <= 0)
+        {
+            throw new ArgumentException(
+                "StudentId must be greater than zero.",
+                nameof(query.StudentId));
+        }
+
+        if (query.CourseId.HasValue &&
+            query.CourseId.Value <= 0)
+        {
+            throw new ArgumentException(
+                "CourseId must be greater than zero.",
+                nameof(query.CourseId));
+        }
+
+        var result =
+            await _recordStore.QueryAsync(
+                query,
                 cancellationToken);
 
-        return workflows
-            .Select(x =>
-                new EnrollmentWorkflowListItem(
-                    RequestId: x.RequestId,
-                    StudentId: x.StudentId,
-                    CourseId: x.CourseId,
-                    Status: x.Status.ToString(),
-                    Approved: x.Approved,
-                    CreatedAt: x.CreatedAt,
-                    UpdatedAt: x.UpdatedAt,
-                    CompletedAt: x.CompletedAt))
-            .ToList();
+        var items =
+            result.Items
+                .Select(x =>
+                    new EnrollmentWorkflowListItem(
+                        RequestId: x.RequestId,
+                        StudentId: x.StudentId,
+                        CourseId: x.CourseId,
+                        Status: x.Status.ToString(),
+                        Approved: x.Approved,
+                        CreatedAt: x.CreatedAt,
+                        UpdatedAt: x.UpdatedAt,
+                        CompletedAt: x.CompletedAt))
+                .ToList();
+
+        return new PagedResult<EnrollmentWorkflowListItem>(
+            Items: items,
+            Page: result.Page,
+            PageSize: result.PageSize,
+            TotalCount: result.TotalCount,
+            TotalPages: result.TotalPages);
+    }
+
+    public async Task<int> RecoverStaleProcessingAsync(
+    TimeSpan staleAfter,
+    CancellationToken cancellationToken = default)
+    {
+        if (staleAfter <= TimeSpan.Zero)
+        {
+            throw new ArgumentException(
+                "Stale duration must be greater than zero.",
+                nameof(staleAfter));
+        }
+
+        var staleBeforeUtc =
+            DateTime.UtcNow - staleAfter;
+
+        int affectedRows =
+            await _recordStore
+                .MarkStaleProcessingAsInterruptedAsync(
+                    staleBeforeUtc,
+                    cancellationToken);
+
+        _logger.LogInformation(
+            "Stale processing workflow recovery completed. AffectedRows: {AffectedRows}",
+            affectedRows);
+
+        return affectedRows;
     }
 
     private static bool IsCancellationException(

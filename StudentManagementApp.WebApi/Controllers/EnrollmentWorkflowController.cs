@@ -30,30 +30,22 @@ public sealed class EnrollmentWorkflowController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("approval")]
     public async Task<IActionResult> Approve(
     [FromBody] EnrollmentWorkflowApprovalDecision request,
     CancellationToken cancellationToken)
     {
-        try
-        {
-            var result =
-                await _workflowService.ResumeAsync(
-                    request.RequestId,
-                    request.Approved,
-                    cancellationToken);
+        var result =
+            await _workflowService.ResumeAsync(
+                request.RequestId,
+                request.Approved,
+                cancellationToken);
 
-            return Ok(result);
-        }
-        catch (KeyNotFoundException ex)
-        {
-            return NotFound(new
-            {
-                Message = ex.Message
-            });
-        }
+        return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{requestId}/recover")]
     public async Task<IActionResult> Recover(
     string requestId,
@@ -67,6 +59,7 @@ public sealed class EnrollmentWorkflowController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpPost("{requestId}/retry")]
     public async Task<IActionResult> Retry(
     string requestId,
@@ -80,6 +73,7 @@ public sealed class EnrollmentWorkflowController : ControllerBase
         return Ok(result);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{requestId}/history")]
     public async Task<IActionResult> GetHistory(
     string requestId,
@@ -93,6 +87,7 @@ public sealed class EnrollmentWorkflowController : ControllerBase
         return Ok(history);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("{requestId}/summary")]
     public async Task<IActionResult> GetSummary(
     string requestId,
@@ -106,14 +101,44 @@ public sealed class EnrollmentWorkflowController : ControllerBase
         return Ok(summary);
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet]
     public async Task<IActionResult> GetWorkflows(
+    [FromQuery] EnrollmentWorkflowQuery query,
     CancellationToken cancellationToken)
     {
         var workflows =
             await _workflowService.GetWorkflowsAsync(
+                query,
                 cancellationToken);
 
         return Ok(workflows);
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("recover-stale")]
+    public async Task<IActionResult> RecoverStale(
+    [FromQuery] int staleMinutes = 30,
+    CancellationToken cancellationToken = default)
+    {
+        if (staleMinutes <= 0)
+        {
+            throw new ArgumentException(
+                "staleMinutes must be greater than zero.",
+                nameof(staleMinutes));
+        }
+
+        int affectedRows =
+            await _workflowService
+                .RecoverStaleProcessingAsync(
+                    TimeSpan.FromMinutes(staleMinutes),
+                    cancellationToken);
+
+        return Ok(new
+        {
+            affectedRows,
+            message =
+                $"{affectedRows} stale processing workflow(s) marked as interrupted."
+        });
     }
 }

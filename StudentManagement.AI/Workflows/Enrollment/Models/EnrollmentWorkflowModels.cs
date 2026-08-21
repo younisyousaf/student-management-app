@@ -1,7 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace StudentManagement.AI.Workflows.Enrollment.Models;
 
 public sealed record EnrollmentWorkflowRequest(
+    [Range(1, int.MaxValue)]
     int StudentId,
+
+    [Range(1, int.MaxValue)]
     int CourseId);
 
 public sealed record EnrollmentWorkflowResult(
@@ -42,7 +47,10 @@ public sealed record EnrollmentWorkflowExecutionResult(
     string Message);
 
 public sealed record EnrollmentWorkflowApprovalDecision(
+    [Required]
+    [MinLength(1)]
     string RequestId,
+
     bool Approved);
 
 public enum EnrollmentWorkflowRecoveryStatus
