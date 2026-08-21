@@ -176,6 +176,35 @@ namespace StudentManagement.Infrastructure.Hybrid
                     })
                     .IsUnique();
             });
+
+            //workflow history
+            modelBuilder.Entity<EnrollmentWorkflowHistory>(
+                entity =>
+                {
+                    entity.ToTable(
+                        "EnrollmentWorkflowHistories");
+
+                    entity.HasKey(x => x.Id);
+
+                    entity.Property(x => x.RequestId)
+                        .HasMaxLength(100)
+                        .IsRequired();
+
+                    entity.Property(x => x.EventType)
+                        .HasMaxLength(100)
+                        .IsRequired();
+
+                    entity.Property(x => x.ExecutorId)
+                        .HasMaxLength(200);
+
+                    entity.Property(x => x.Message)
+                        .HasMaxLength(1000);
+
+                    entity.Property(x => x.OccurredAt)
+                        .IsRequired();
+
+                    entity.HasIndex(x => x.RequestId);
+                });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -190,5 +219,7 @@ namespace StudentManagement.Infrastructure.Hybrid
             => Set<EnrollmentWorkflowRecord>();
         public DbSet<WorkflowCheckpointRecord> WorkflowCheckpoints 
             => Set<WorkflowCheckpointRecord>();
+        public DbSet<EnrollmentWorkflowHistory> EnrollmentWorkflowHistories 
+            => Set<EnrollmentWorkflowHistory>();
     }
 }

@@ -242,4 +242,17 @@ public sealed class EnrollmentWorkflowRecordStore
 
         return affectedRows == 1;
     }
+
+    public async Task<IReadOnlyList<EnrollmentWorkflowRecord>> GetAllAsync(
+    CancellationToken cancellationToken = default)
+    {
+        await using var dbContext =
+            await _dbContextFactory.CreateDbContextAsync(
+                cancellationToken);
+
+        return await dbContext.EnrollmentWorkflowRecords
+            .AsNoTracking()
+            .OrderByDescending(x => x.CreatedAt)
+            .ToListAsync(cancellationToken);
+    }
 }

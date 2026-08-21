@@ -79,4 +79,41 @@ public sealed class EnrollmentWorkflowController : ControllerBase
 
         return Ok(result);
     }
+
+    [HttpGet("{requestId}/history")]
+    public async Task<IActionResult> GetHistory(
+    string requestId,
+    CancellationToken cancellationToken)
+    {
+        var history =
+            await _workflowService.GetHistoryAsync(
+                requestId,
+                cancellationToken);
+
+        return Ok(history);
+    }
+
+    [HttpGet("{requestId}/summary")]
+    public async Task<IActionResult> GetSummary(
+    string requestId,
+    CancellationToken cancellationToken)
+    {
+        var summary =
+            await _workflowService.GetSummaryAsync(
+                requestId,
+                cancellationToken);
+
+        return Ok(summary);
+    }
+
+    [HttpGet]
+    public async Task<IActionResult> GetWorkflows(
+    CancellationToken cancellationToken)
+    {
+        var workflows =
+            await _workflowService.GetWorkflowsAsync(
+                cancellationToken);
+
+        return Ok(workflows);
+    }
 }

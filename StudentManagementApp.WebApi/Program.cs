@@ -74,6 +74,9 @@ builder.Services.AddSingleton<EnrollmentWorkflowRecordStore>();
 builder.Services.AddSingleton<
     IEnrollmentWorkflowRecordStore,
     EnrollmentWorkflowRecordStore>();
+builder.Services.AddSingleton<
+    IEnrollmentWorkflowHistoryStore,
+    EnrollmentWorkflowHistoryStore>();
 
 var jwtSettings = builder.Configuration.GetSection("JwtSettings");
 var secretKey = jwtSettings["SecretKey"]

@@ -38,4 +38,7 @@ public interface IEnrollmentWorkflowRecordStore
     Task<bool> MarkReadyForRetryAsync(
         string requestId,
         CancellationToken cancellationToken = default);
+
+    Task<IReadOnlyList<EnrollmentWorkflowRecord>> GetAllAsync(
+        CancellationToken cancellationToken = default);
 }
