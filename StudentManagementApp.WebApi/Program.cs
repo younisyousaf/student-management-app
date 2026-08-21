@@ -338,23 +338,6 @@ app.MapGet(
         Results.Redirect(
             "/swagger"));
 
-// Test Endpoint for Current User Context
-app.MapGet(
-    "/api/_test/current-user",
-    (ICurrentUserContext currentUser) =>
-    {
-        return Results.Ok(
-            new
-            {
-                currentUser.IsAuthenticated,
-                currentUser.UserId,
-                currentUser.Username,
-                currentUser.Email,
-                currentUser.Role
-            });
-    })
-    .RequireAuthorization();
-
 // Enable Swagger in Development
 if (app.Environment.IsDevelopment())
 {
