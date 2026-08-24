@@ -31,4 +31,8 @@ public interface ISessionStore
     Task ClearPendingApprovalAsync(
         string sessionId,
         CancellationToken cancellationToken = default);
+
+    Task DeleteAsync(
+        string sessionId,
+        CancellationToken cancellationToken = default);
 }

@@ -1,3 +1,4 @@
+using System.Security.Claims;
 using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -8,6 +9,8 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
 using StudentManagement.AI.Extensions;
 using StudentManagement.AI.RAG;
+using StudentManagement.AI.Agents;
+using StudentManagement.AI.Context;
 using StudentManagement.AI.Reliability;
 using StudentManagement.AI.Sessions;
 using StudentManagement.AI.Workflows.Enrollment;
@@ -19,6 +22,9 @@ using StudentManagementApp.WebApi.ExceptionHandling;
 using StudentManagementApp.WebApi.Services;
 using StudentManagementApp.WebApi.Sessions;
 using StudentManagementApp.WebApi.Workflows;
+using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
+using Microsoft.Agents.AI.Hosting;
+using StudentManagementApp.WebApi.AGUI;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -92,13 +98,64 @@ builder.Services.AddScoped<
 // Current User Context
 builder.Services.AddHttpContextAccessor();
 
-builder.Services.AddScoped<
+builder.Services.UseClaimsBasedAgentIsolation(
+    new()
+    {
+        ClaimType = ClaimTypes.NameIdentifier
+    });
+
+builder.Services.AddSingleton<
     ICurrentUserContext,
     CurrentUserContext>();
 
 // AI Services
 builder.Services.AddStudentManagementAI(
     builder.Configuration);
+const string HostedCopilotAgentName =
+    "student-management-copilot";
+
+var hostedCopilot =
+    builder.Services
+        .AddAIAgent(
+            HostedCopilotAgentName,
+            (sp, agentName) =>
+            {
+                var chatClient =
+                    sp.GetRequiredService<IChatClient>();
+
+                var authenticatedUserContext =
+                    sp.GetRequiredService<
+                        AuthenticatedUserContextProvider>();
+
+                var tools =
+                    HostedStudentManagementToolFactory
+                        .Create(sp);
+
+                var skillsProvider =
+                    StudentManagementSkillsFactory
+                        .Create();
+
+                var agent = StudentManagementAgent.Create(
+                    chatClient,
+                    tools,
+                    authenticatedUserContext,
+                    skillsProvider,
+                    name: agentName,
+                    description:
+                        "Student Management Copilot exposed through AG-UI.");
+
+                return new AGUIPersistedApprovalResumeAgent(agent);
+            },
+            ServiceLifetime.Singleton)
+        .WithSessionStore(
+            (sp, _) =>
+                sp.GetRequiredService<
+                    SqlHostedAgentSessionStore>(),
+            ServiceLifetime.Singleton,
+            withIsolation: true);
+
+//AG UI
+builder.Services.AddAGUIServer();
 
 // SQL Workflow Checkpointing
 builder.Services.AddSingleton<
@@ -130,6 +187,9 @@ builder.Services.AddSingleton<
 // Global Exception Handling
 builder.Services.AddExceptionHandler<
     GlobalExceptionHandler>();
+
+builder.Services.AddSingleton<
+    SqlHostedAgentSessionStore>();
 
 builder.Services.AddProblemDetails();
 
@@ -318,8 +378,7 @@ builder.Services.AddCors(
             policy =>
             {
                 policy
-                    .WithOrigins(
-                        "http://localhost:4200")
+                    .WithOrigins("http://localhost:4200")
                     .AllowAnyHeader()
                     .AllowAnyMethod()
                     .AllowCredentials();
@@ -367,5 +426,10 @@ app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
+
+app.MapAGUIServer(
+        hostedCopilot,
+        "/api/ag-ui/copilot")
+    .RequireAuthorization();
 
 app.Run();

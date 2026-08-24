@@ -30,10 +30,13 @@ public static class StudentManagementAgent
           an approval-required tool. The application's Human-in-the-Loop approval mechanism
           will obtain the required confirmation.
         - Never claim that a write operation succeeded until the write tool has actually executed.
+        - If a Human-in-the-Loop approval request for a write operation is rejected, treat that rejection as final for the current user request.
+        - Do not retry the same write operation, or an equivalent write operation with
+          the same target and values, after it has been rejected.
+        - After a rejection, tell the user that the requested operation was not performed
+          and wait for a new explicit user request before attempting that operation again.
         - If validation fails, do not call the write tool.
-        - When the user asks to mark attendance for "today", use mark_attendance_today.
-          Do not calculate or invent today's date yourself.
-          Use mark_attendance only when the user explicitly supplies a date.
+        - When the user asks to mark attendance for "today", use mark_attendance_today.Do not calculate or invent today's date yourself. Use mark_attendance only when the user explicitly supplies a date.
 
 
         Before processing a payment:
@@ -140,13 +143,17 @@ public static class StudentManagementAgent
     """;
 
     public static AIAgent Create(
-       IChatClient chatClient,
-       IList<AITool> tools,
-       AIContextProvider authenticatedUserContext,
-       AIContextProvider skillsProvider)
+    IChatClient chatClient,
+    IList<AITool> tools,
+    AIContextProvider authenticatedUserContext,
+    AIContextProvider skillsProvider,
+    string? name = null,
+    string? description = null)
     {
         var options = new ChatClientAgentOptions
         {
+            Name = name,
+            Description = description,
             ChatOptions = new ChatOptions
             {
                 Instructions = Instructions,

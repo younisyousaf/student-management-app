@@ -199,4 +199,34 @@ public sealed class SqlServerSessionStore : ISessionStore
                 await _dbContext.SaveChangesAsync(cancellationToken);
             });
     }
+
+    public async Task DeleteAsync(
+    string sessionId,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = _currentUserContext.UserId
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot sessions.");
+
+        await SessionStoreExecution.ExecuteAsync(
+            async () =>
+            {
+                var entity =
+                    await _dbContext.AgentSessions
+                        .SingleOrDefaultAsync(
+                            x => x.SessionId == sessionId &&
+                                 x.UserId == userId,
+                            cancellationToken);
+
+                if (entity is null)
+                {
+                    return;
+                }
+
+                _dbContext.AgentSessions.Remove(entity);
+
+                await _dbContext.SaveChangesAsync(
+                    cancellationToken);
+            });
+    }
 }

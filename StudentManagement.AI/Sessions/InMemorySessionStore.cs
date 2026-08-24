@@ -66,4 +66,19 @@ public class InMemorySessionStore : ISessionStore
 
         return Task.CompletedTask;
     }
+
+    public Task DeleteAsync(
+    string sessionId,
+    CancellationToken cancellationToken = default)
+    {
+        _sessions.TryRemove(
+            sessionId,
+            out _);
+
+        _pendingApprovals.TryRemove(
+            sessionId,
+            out _);
+
+        return Task.CompletedTask;
+    }
 }

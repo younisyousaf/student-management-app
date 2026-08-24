@@ -13,6 +13,7 @@ using StudentManagement.AI.RAG.Readers;
 using StudentManagement.AI.Services;
 using StudentManagement.AI.Sessions;
 using StudentManagement.AI.Tools;
+using StudentManagement.AI.Tools.Hosted;
 using StudentManagement.AI.Workflows.Enrollment;
 using StudentManagement.AI.Workflows.Enrollment.Executors;
 using System.ClientModel;
@@ -71,7 +72,7 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<EnrollmentTools>();
         services.AddScoped<AttendanceTools>();
         services.AddScoped<FeeTools>();
-        services.AddScoped<AuthenticatedUserContextProvider>();
+        services.AddSingleton<AuthenticatedUserContextProvider>();
         services.AddScoped<IApplicationDateTime, ApplicationDateTime>();
         services.AddSingleton<QdrantKnowledgeStore>();
         services.AddScoped<KnowledgeTools>();
@@ -87,6 +88,14 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<EnrollStudentExecutor>();
         services.AddScoped<EnrollmentWorkflowService>();
         services.AddSingleton<EnrollmentWorkflowCheckpointStore>();
+        services.AddSingleton<ScopedToolExecutor>();
+
+        services.AddSingleton<HostedStudentTools>();
+        services.AddSingleton<HostedCourseTools>();
+        services.AddSingleton<HostedEnrollmentTools>();
+        services.AddSingleton<HostedAttendanceTools>();
+        services.AddSingleton<HostedFeeTools>();
+        services.AddSingleton<HostedKnowledgeTools>();
 
 
         services.AddScoped<AIAgent>(sp =>
@@ -201,78 +210,11 @@ public static class AgentServiceCollectionExtensions
             Path.Combine(
                 AppContext.BaseDirectory,
                 "Skills");
-
-            var skillsProvider =
-            new AgentSkillsProvider(
-                skillPath: skillsPath,
-                options: new AgentSkillsProviderOptions
-                {
-                    DisableLoadSkillApproval = true
-                });
+            
+            var skillsProvider = StudentManagementSkillsFactory.Create();
 
             IList<AITool> tools =
-            [
-                AIFunctionFactory.Create(
-                    studentTools.GetStudentByRollNumber),
-
-                AIFunctionFactory.Create(
-                    studentTools.SearchStudentsByName),
-
-                Timed(
-                    AIFunctionFactory.Create(
-                        studentTools.GetStudentById)),
-
-                AIFunctionFactory.Create(
-                    courseTools.GetCourseById),
-
-                AIFunctionFactory.Create(
-                    courseTools.GetCourseByCode),
-
-                AIFunctionFactory.Create(
-                    courseTools.GetAllCourses),
-
-                AIFunctionFactory.Create(
-                    enrollmentTools.GetEnrollmentsByStudent),
-
-                AIFunctionFactory.Create(
-                    enrollmentTools.GetEnrollmentById),
-
-                // Approval-required tools
-                approvalRequiredEnrollStudent,
-                markAttendanceTodayWithApproval,
-                updateAttendanceWithApproval,
-                processStudentPaymentWithApproval,
-                dropCourseWithApproval,
-                completeCourseWithApproval,
-                updateStudentProfileWithApproval,
-                removeStudentWithApproval,
-                updateCourseDetailsWithApproval,
-                updateCoursePricingWithApproval,
-                removeCourseWithApproval,
-
-                AIFunctionFactory.Create(
-                    attendanceTools.GetAttendanceForStudent),
-
-                AIFunctionFactory.Create(
-                    attendanceTools.GetAttendanceForCourseOnDate),
-
-                AIFunctionFactory.Create(
-                    attendanceTools.GetAttendanceById),
-
-                Timed(
-                    AIFunctionFactory.Create(
-                        attendanceTools.GetAttendanceSummaryForStudent)),
-
-                AIFunctionFactory.Create(
-                    feeTools.GetFeeById),
-
-                AIFunctionFactory.Create(
-                    feeTools.GetFeeStatement),
-
-                Timed(
-                    AIFunctionFactory.Create(
-                        knowledgeTools.SearchInstitutionalKnowledge))
-            ];
+                StudentManagementToolFactory.Create(sp);
 
             return StudentManagementAgent.Create(chatClient, tools, authenticatedUserContext, skillsProvider);
         });
