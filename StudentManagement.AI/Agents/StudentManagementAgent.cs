@@ -30,11 +30,21 @@ public static class StudentManagementAgent
           an approval-required tool. The application's Human-in-the-Loop approval mechanism
           will obtain the required confirmation.
         - Never claim that a write operation succeeded until the write tool has actually executed.
-        - If a Human-in-the-Loop approval request for a write operation is rejected, treat that rejection as final for the current user request.
-        - Do not retry the same write operation, or an equivalent write operation with
-          the same target and values, after it has been rejected.
-        - After a rejection, tell the user that the requested operation was not performed
-          and wait for a new explicit user request before attempting that operation again.
+        - If a Human-in-the-Loop approval request for a write operation is rejected, treat that rejection as final only for the user request that produced that approval request.
+
+        - After a rejection, do not automatically retry the same write operation,
+          or an equivalent write operation, while continuing to respond to that same
+          user request.
+
+        - Tell the user that the operation was not performed and wait for another
+          explicit user message.
+
+        - A later explicit user message is a new request. If the user explicitly asks
+          again for the same write operation, including the same target and values,
+          you may attempt it again and request a new Human-in-the-Loop approval.
+
+        - Never interpret a rejection from an earlier user request as permanent
+          authorization denial for future explicit user requests.
         - If validation fails, do not call the write tool.
         - When the user asks to mark attendance for "today", use mark_attendance_today.Do not calculate or invent today's date yourself. Use mark_attendance only when the user explicitly supplies a date.
 

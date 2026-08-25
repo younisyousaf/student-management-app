@@ -1,0 +1,95 @@
+<div class="copilot-page">
+
+  <h1>AI Copilot</h1>
+
+  <div class="messages">
+
+    @for (message of messages(); track message.id) {
+
+    <div class="message" [class.user-message]="message.role === 'user'"
+      [class.assistant-message]="message.role === 'assistant'">
+
+      <strong>
+        {{ message.role === 'user' ? 'You' : 'Copilot' }}
+      </strong>
+
+      @if (message.content) {
+
+      <p>{{ message.content }}</p>
+
+      } @else if (
+      message.role === 'assistant' &&
+      isSending()
+      ) {
+
+      <p>Thinking...</p>
+
+      }
+
+    </div>
+
+    }
+
+    @if (errorMessage()) {
+    <p class="error">
+      {{ errorMessage() }}
+    </p>
+    }
+
+  </div>
+
+  @if (pendingApproval(); as approval) {
+
+  <div class="approval-card">
+
+    <h3>Approval Required</h3>
+
+    <p>
+      The Copilot wants to perform the following action:
+    </p>
+
+    <div class="approval-detail">
+      <strong>Action</strong>
+      <span>{{ approval.toolName }}</span>
+    </div>
+
+    <div class="approval-detail">
+      <strong>Details</strong>
+      <pre>{{ approval.arguments }}</pre>
+    </div>
+
+    @if (approval.message) {
+    <p>
+      {{ approval.message }}
+    </p>
+    }
+
+    <div class="approval-actions">
+
+      <button type="button" (click)="respondToApproval(true)" [disabled]="isSending()">
+        Approve
+      </button>
+
+      <button type="button" (click)="respondToApproval(false)" [disabled]="isSending()">
+        Reject
+      </button>
+
+    </div>
+
+  </div>
+
+  }
+
+  <div class="composer">
+
+    <textarea rows="4" placeholder="Ask the student management copilot..." [value]="message()"
+      (input)="onMessageInput($event)">
+    </textarea>
+
+    <button type="button" (click)="sendMessage()" [disabled]="isSending() || !message().trim()">
+      {{ isSending() ? 'Sending...' : 'Send' }}
+    </button>
+
+  </div>
+
+</div>

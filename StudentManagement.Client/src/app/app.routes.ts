@@ -42,6 +42,10 @@ export const routes: Routes = [
       {
         path: 'attendance',
         loadChildren: () => import('./features/attendance/attendance.routes').then(m => m.ATTENDANCE_ROUTES)
+      },
+      {
+        path: 'copilot',
+        loadComponent: () => import('./ai/copilot/pages/copilot-chat/copilot-chat').then(m => m.CopilotChat)
       }
     ]
   },

@@ -1,0 +1,91 @@
+.copilot-page {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.messages {
+  min-height: 300px;
+  margin: 24px 0;
+}
+
+.message {
+  padding: 16px;
+  margin-bottom: 16px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+
+  p {
+    margin: 8px 0 0;
+    white-space: pre-wrap;
+  }
+}
+
+.user-message {
+  margin-left: 80px;
+}
+
+.assistant-message {
+  margin-right: 80px;
+}
+
+.composer {
+  display: flex;
+  gap: 12px;
+  align-items: flex-end;
+
+  textarea {
+    flex: 1;
+    padding: 12px;
+    resize: vertical;
+  }
+
+  button {
+    padding: 12px 24px;
+    cursor: pointer;
+  }
+
+  button:disabled {
+    cursor: not-allowed;
+  }
+}
+
+.error {
+  margin-top: 12px;
+}
+
+.approval-card {
+  margin: 20px 0;
+  padding: 20px;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+
+  h3 {
+    margin-top: 0;
+  }
+}
+
+.approval-detail {
+  margin: 12px 0;
+
+  strong {
+    display: block;
+    margin-bottom: 4px;
+  }
+
+  pre {
+    margin: 0;
+    padding: 10px;
+    overflow-x: auto;
+  }
+}
+
+.approval-actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 16px;
+
+  button {
+    padding: 10px 18px;
+  }
+}

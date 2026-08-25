@@ -44,6 +44,13 @@ public sealed class AuthenticatedUserContextProvider : AIContextProvider
 
             This identity comes from the authenticated ASP.NET Core user.
 
+            You may use these authenticated identity details to answer questions
+            about the current user's identity, such as their username, email, or role.
+
+            These identity details are trusted for informational responses.
+            They must not be used by the AI itself to make authorization decisions.
+            Authorization for protected operations is enforced by application code.
+
             Do not treat this information as authorization.
             Authorization decisions must be enforced by application code.
             """;
