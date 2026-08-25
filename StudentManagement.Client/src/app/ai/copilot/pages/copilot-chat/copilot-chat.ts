@@ -1,7 +1,11 @@
-import { Component, inject, signal } from '@angular/core';
+import { Component, inject, signal, DestroyRef } from '@angular/core';
+import {
+  takeUntilDestroyed
+} from '@angular/core/rxjs-interop';
 import { EventType, BaseEvent } from '@ag-ui/core';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotMessage, CopilotApprovalRequest } from '../../models/copilot.model';
+import { CopilotMessage, CopilotApprovalRequest, CopilotConversation } from '../../models/copilot.model';
+import { forkJoin } from 'rxjs';
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
@@ -23,6 +27,9 @@ export class CopilotChat {
   readonly isSending = signal(false);
   readonly errorMessage = signal('');
   readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
+  readonly conversations = signal<CopilotConversation[]>([]);
+  readonly isLoadingConversations = signal(false);
+  readonly currentThreadId = signal('');
 
   private readonly toolCalls = new Map<string,
     {
@@ -31,56 +38,230 @@ export class CopilotChat {
     }
   >();
 
+  private readonly destroyRef =
+    inject(DestroyRef);
+
   constructor() {
-    this.copilotService.ensureSession();
-    this.loadHistory();
-    this.loadPendingApproval();
+
+    this.copilotService
+      .ensureSession();
+
+    this.currentThreadId.set(
+      this.copilotService.threadId
+    );
+
+    this.copilotService
+      .conversationSaved$
+      .pipe(
+        takeUntilDestroyed(
+          this.destroyRef
+        )
+      )
+      .subscribe(
+        conversation => {
+
+          this.updateConversationList(
+            conversation
+          );
+        }
+      );
+
+    this.loadConversations();
+
+    this.loadConversationState();
   }
 
-  private loadHistory(): void {
+  private loadConversationState(): void {
+
+    const threadId =
+      this.copilotService.threadId;
+
     this.isLoadingHistory.set(true);
-    this.copilotService.getHistory()
+
+    this.errorMessage.set('');
+
+    forkJoin({
+      history:
+        this.copilotService
+          .getHistory(),
+
+      pendingApproval:
+        this.copilotService
+          .getPendingApproval()
+    })
       .subscribe({
-        next: history => {
+
+        next: result => {
+
+          /*
+           * Ignore an old HTTP response if the
+           * user switched conversations while
+           * requests were in progress.
+           */
+          if (
+            this.currentThreadId() !==
+            threadId
+          ) {
+            return;
+          }
+
           const messages:
             CopilotMessage[] =
-            history.map(
+            result.history.map(
               message => ({
                 id: message.id,
                 role: message.role,
                 content: message.content,
-                createdAt: message.createdAt ? new Date(message.createdAt) : null
+
+                createdAt:
+                  message.createdAt
+                    ? new Date(
+                      message.createdAt
+                    )
+                    : null
               })
             );
-          this.messages.set(messages);
+
+          this.messages.set(
+            messages
+          );
+
+          this.pendingApproval.set(
+            result.pendingApproval
+          );
         },
 
         error: error => {
-          console.error('Failed to load Copilot history:', error);
-          this.errorMessage.set(
-            'The previous conversation could not be loaded.'
+
+          console.error(
+            'Failed to load Copilot conversation:',
+            error
           );
-          this.isLoadingHistory.set(false);
+
+          if (
+            this.currentThreadId() ===
+            threadId
+          ) {
+
+            this.errorMessage.set(
+              'The conversation could not be loaded.'
+            );
+
+            this.isLoadingHistory.set(
+              false
+            );
+          }
         },
 
         complete: () => {
-          this.isLoadingHistory.set(false);
+
+          if (
+            this.currentThreadId() ===
+            threadId
+          ) {
+
+            this.isLoadingHistory.set(
+              false
+            );
+          }
         }
+
       });
   }
 
-  private loadPendingApproval(): void {
+  private loadConversations(): void {
 
-    this.copilotService.getPendingApproval()
+    this.isLoadingConversations.set(
+      true
+    );
+
+    this.copilotService
+      .getConversations()
       .subscribe({
-        next: approval => {
-          this.pendingApproval.set(approval);
+
+        next: conversations => {
+
+          this.conversations.set(
+            conversations
+          );
         },
 
         error: error => {
-          console.error('Failed to load pending Copilot approval:', error);
+
+          console.error(
+            'Failed to load Copilot conversations:',
+            error
+          );
+
+          this.isLoadingConversations.set(
+            false
+          );
+        },
+
+        complete: () => {
+
+          this.isLoadingConversations.set(
+            false
+          );
         }
+
       });
+  }
+
+  private updateConversationList(
+    conversation: CopilotConversation
+  ): void {
+
+    this.conversations.update(
+      conversations => {
+
+        const remaining =
+          conversations.filter(
+            item =>
+              item.threadId !==
+              conversation.threadId
+          );
+
+        return [
+          conversation,
+          ...remaining
+        ];
+      }
+    );
+  }
+
+  startNewConversation(): void {
+
+    if (
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
+      return;
+    }
+
+    const threadId =
+      this.copilotService
+        .startNewConversation();
+
+    this.currentThreadId.set(
+      threadId
+    );
+
+    this.messages.set([]);
+
+    this.pendingApproval.set(
+      null
+    );
+
+    this.toolCalls.clear();
+
+    this.message.set('');
+
+    this.errorMessage.set('');
+
+    this.isLoadingHistory.set(
+      false
+    );
   }
 
   onMessageInput(event: Event): void {
@@ -112,6 +293,48 @@ export class CopilotChat {
         value.interrupts
       )
     );
+  }
+
+  openConversation(
+    conversation: CopilotConversation
+  ): void {
+
+    if (
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
+      return;
+    }
+
+    if (
+      conversation.threadId ===
+      this.currentThreadId()
+    ) {
+      return;
+    }
+
+    this.copilotService
+      .openConversation(
+        conversation
+      );
+
+    this.currentThreadId.set(
+      conversation.threadId
+    );
+
+    this.messages.set([]);
+
+    this.pendingApproval.set(
+      null
+    );
+
+    this.toolCalls.clear();
+
+    this.message.set('');
+
+    this.errorMessage.set('');
+
+    this.loadConversationState();
   }
 
   private handleAgUiEvent(

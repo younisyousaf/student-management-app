@@ -1,0 +1,170 @@
+﻿using Microsoft.EntityFrameworkCore;
+using StudentManagement.Core.Interfaces;
+using StudentManagement.Core.Models;
+using StudentManagement.Infrastructure.Hybrid;
+
+namespace StudentManagementApp.WebApi.Services;
+
+public sealed class CopilotConversationStore
+{
+    private const string DefaultTitle =
+        "New conversation";
+
+    private readonly HybridDbContext _dbContext;
+    private readonly ICurrentUserContext _currentUserContext;
+
+    public CopilotConversationStore(
+        HybridDbContext dbContext,
+        ICurrentUserContext currentUserContext)
+    {
+        _dbContext = dbContext;
+        _currentUserContext = currentUserContext;
+    }
+
+    public async Task<IReadOnlyList<CopilotConversationRecord>>
+        GetAllAsync(
+            CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        return await _dbContext
+            .CopilotConversations
+            .AsNoTracking()
+            .Where(
+                conversation =>
+                    conversation.UserId == userId)
+            .OrderByDescending(
+                conversation =>
+                    conversation.UpdatedAt)
+            .ToListAsync(
+                cancellationToken);
+    }
+
+    public async Task<CopilotConversationRecord>
+        SaveRunAsync(
+            string threadId,
+            string runId,
+            string? titleCandidate,
+            CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        var conversation =
+            await _dbContext
+                .CopilotConversations
+                .SingleOrDefaultAsync(
+                    x =>
+                        x.UserId == userId &&
+                        x.ThreadId == threadId,
+                    cancellationToken);
+
+        DateTime now =
+            DateTime.UtcNow;
+
+        if (conversation is null)
+        {
+            conversation =
+                new CopilotConversationRecord
+                {
+                    UserId = userId,
+
+                    ThreadId =
+                        threadId,
+
+                    Title =
+                        CreateTitle(
+                            titleCandidate),
+
+                    LastRunId =
+                        runId,
+
+                    CreatedAt =
+                        now,
+
+                    UpdatedAt =
+                        now
+                };
+
+            _dbContext
+                .CopilotConversations
+                .Add(conversation);
+        }
+        else
+        {
+            conversation.LastRunId =
+                runId;
+
+            conversation.UpdatedAt =
+                now;
+
+            /*
+             * Normally the title comes from the
+             * first user message.
+             *
+             * This also allows a placeholder title
+             * to be corrected later.
+             */
+            if (
+                conversation.Title ==
+                    DefaultTitle &&
+                !string.IsNullOrWhiteSpace(
+                    titleCandidate)
+            )
+            {
+                conversation.Title =
+                    CreateTitle(
+                        titleCandidate);
+            }
+        }
+
+        await _dbContext
+            .SaveChangesAsync(
+                cancellationToken);
+
+        return conversation;
+    }
+
+    private int GetRequiredUserId()
+    {
+        return _currentUserContext.UserId
+            ?? throw new UnauthorizedAccessException(
+                "An authenticated user is required to access Copilot conversations.");
+    }
+
+    private static string CreateTitle(
+        string? titleCandidate)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                titleCandidate)
+        )
+        {
+            return DefaultTitle;
+        }
+
+        string normalized =
+            string.Join(
+                " ",
+                titleCandidate
+                    .Split(
+                        [' ', '\r', '\n', '\t'],
+                        StringSplitOptions
+                            .RemoveEmptyEntries));
+
+        const int maxLength = 80;
+
+        if (
+            normalized.Length <=
+            maxLength
+        )
+        {
+            return normalized;
+        }
+
+        return
+            normalized[..77] +
+            "...";
+    }
+}

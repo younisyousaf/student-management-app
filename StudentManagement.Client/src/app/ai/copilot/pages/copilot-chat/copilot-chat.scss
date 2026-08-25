@@ -1,7 +1,69 @@
-.copilot-page {
-  max-width: 900px;
+.copilot-layout {
+  display: grid;
+  grid-template-columns: 260px minmax(0, 1fr);
+  gap: 24px;
+  max-width: 1200px;
   margin: 0 auto;
   padding: 24px;
+}
+
+.copilot-page {
+  min-width: 0;
+}
+
+.conversation-sidebar {
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 16px;
+
+  h3 {
+    margin: 20px 0 12px;
+  }
+}
+
+.new-conversation-button {
+  width: 100%;
+  padding: 10px 12px;
+  cursor: pointer;
+}
+
+.conversation-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.conversation-item {
+  width: 100%;
+  padding: 10px;
+  text-align: left;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+
+  &.active {
+    font-weight: 600;
+    border-width: 2px;
+  }
+}
+
+.conversation-item:disabled,
+.new-conversation-button:disabled {
+  cursor: not-allowed;
+}
+
+.conversation-status {
+  margin: 0;
+  font-size: 14px;
+}
+
+@media (max-width: 800px) {
+  .copilot-layout {
+    grid-template-columns: 1fr;
+  }
 }
 
 .messages {

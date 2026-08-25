@@ -6,9 +6,9 @@ import {
   EventType,
   RunAgentInput
 } from '@ag-ui/core';
-import { Observable, tap } from 'rxjs';
+import { Observable, tap, Subject } from 'rxjs';
 import { environment } from '../../../../environments/environment.development';
-import { CopilotApprovalRequest, CopilotHistoryMessage } from '../models/copilot.model';
+import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation } from '../models/copilot.model';
 
 @Injectable({
   providedIn: 'root'
@@ -29,6 +29,13 @@ export class AgUiCopilotService {
     sessionStorage.getItem(
       this.parentRunIdStorageKey
     ) ?? undefined;
+
+  private readonly conversationSavedSubject =
+    new Subject<CopilotConversation>();
+
+  readonly conversationSaved$ =
+    this.conversationSavedSubject
+      .asObservable();
 
   constructor() {
 
@@ -154,6 +161,11 @@ export class AgUiCopilotService {
             this.saveParentRunId(
               runId
             );
+
+            this.saveConversationRun(
+              runId,
+              message
+            );
           }
         })
       );
@@ -237,6 +249,10 @@ export class AgUiCopilotService {
             this.saveParentRunId(
               runId
             );
+
+            this.saveConversationRun(
+              runId
+            );
           }
         })
       );
@@ -301,6 +317,45 @@ export class AgUiCopilotService {
     );
   }
 
+  private saveConversationRun(
+    runId: string,
+    title?: string
+  ): void {
+
+    this.http.post<CopilotConversation>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/run`,
+      {
+        threadId:
+          this.agent.threadId,
+
+        runId,
+
+        title:
+          title ?? null
+      },
+      {
+        withCredentials: true
+      }
+    )
+      .subscribe({
+
+        next: conversation => {
+
+          this.conversationSavedSubject
+            .next(conversation);
+        },
+
+        error: error => {
+
+          console.error(
+            'Failed to save Copilot conversation metadata:',
+            error
+          );
+        }
+
+      });
+  }
+
   getHistory():
     Observable<CopilotHistoryMessage[]> {
 
@@ -340,4 +395,78 @@ export class AgUiCopilotService {
       }
     );
   }
+
+  getConversations():
+    Observable<CopilotConversation[]> {
+
+    return this.http.get<
+      CopilotConversation[]
+    >(
+      `${environment.apiUrl}/ag-ui/copilot/conversations`,
+      {
+        withCredentials: true
+      }
+    );
+  }
+
+  startNewConversation(): string {
+
+    const threadId =
+      crypto.randomUUID();
+
+    sessionStorage.setItem(
+      this.threadIdStorageKey,
+      threadId
+    );
+
+    sessionStorage.removeItem(
+      this.parentRunIdStorageKey
+    );
+
+    this.parentRunId =
+      undefined;
+
+    this.agent =
+      this.createAgent(
+        threadId
+      );
+
+    return threadId;
+  }
+
+  openConversation(
+    conversation: CopilotConversation
+  ): void {
+
+    sessionStorage.setItem(
+      this.threadIdStorageKey,
+      conversation.threadId
+    );
+
+    this.agent =
+      this.createAgent(
+        conversation.threadId
+      );
+
+    if (conversation.lastRunId) {
+
+      this.parentRunId =
+        conversation.lastRunId;
+
+      sessionStorage.setItem(
+        this.parentRunIdStorageKey,
+        conversation.lastRunId
+      );
+
+    } else {
+
+      this.parentRunId =
+        undefined;
+
+      sessionStorage.removeItem(
+        this.parentRunIdStorageKey
+      );
+    }
+  }
+
 }

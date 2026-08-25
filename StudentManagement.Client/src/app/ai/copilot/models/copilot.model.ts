@@ -32,3 +32,10 @@ export interface CopilotApprovalRequest {
   arguments: string;
   message?: string;
 }
+export interface CopilotConversation {
+  threadId: string;
+  title: string;
+  lastRunId: string | null;
+  createdAt: string;
+  updatedAt: string;
+}

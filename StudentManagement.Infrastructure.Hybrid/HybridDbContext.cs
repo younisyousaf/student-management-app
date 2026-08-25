@@ -211,6 +211,54 @@ namespace StudentManagement.Infrastructure.Hybrid
 
                     entity.HasIndex(x => x.RequestId);
                 });
+
+            //conversation history
+            modelBuilder.Entity<CopilotConversationRecord>(
+                entity =>
+                {
+                    entity.ToTable(
+                        "CopilotConversations");
+
+                    entity.HasKey(
+                        x => x.Id);
+
+                    entity.Property(
+                            x => x.ThreadId)
+                        .IsRequired()
+                        .HasMaxLength(100);
+
+                    entity.Property(
+                            x => x.Title)
+                        .IsRequired()
+                        .HasMaxLength(200);
+
+                    entity.Property(
+                            x => x.LastRunId)
+                        .HasMaxLength(200);
+
+                    entity.Property(
+                            x => x.CreatedAt)
+                        .IsRequired();
+
+                    entity.Property(
+                            x => x.UpdatedAt)
+                        .IsRequired();
+
+                    entity.HasIndex(
+                            x => new
+                            {
+                                x.UserId,
+                                x.ThreadId
+                            })
+                        .IsUnique();
+
+                    entity.HasIndex(
+                        x => new
+                        {
+                            x.UserId,
+                            x.UpdatedAt
+                        });
+                });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -221,11 +269,14 @@ namespace StudentManagement.Infrastructure.Hybrid
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<AgentSessionRecord> AgentSessions
             => Set<AgentSessionRecord>();
-        public DbSet<EnrollmentWorkflowRecord> EnrollmentWorkflowRecords 
+        public DbSet<EnrollmentWorkflowRecord> EnrollmentWorkflowRecords
             => Set<EnrollmentWorkflowRecord>();
-        public DbSet<WorkflowCheckpointRecord> WorkflowCheckpoints 
+        public DbSet<WorkflowCheckpointRecord> WorkflowCheckpoints
             => Set<WorkflowCheckpointRecord>();
-        public DbSet<EnrollmentWorkflowHistory> EnrollmentWorkflowHistories 
+        public DbSet<EnrollmentWorkflowHistory> EnrollmentWorkflowHistories
             => Set<EnrollmentWorkflowHistory>();
+
+        public DbSet<CopilotConversationRecord> CopilotConversations 
+            => Set<CopilotConversationRecord>();
     }
 }

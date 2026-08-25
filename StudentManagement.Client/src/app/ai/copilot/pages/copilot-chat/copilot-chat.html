@@ -1,4 +1,76 @@
-<div class="copilot-page">
+<main class="copilot-layout">
+
+  <aside class="conversation-sidebar">
+
+    <button
+      type="button"
+      class="new-conversation-button"
+      (click)="startNewConversation()"
+      [disabled]="
+        isSending() ||
+        isLoadingHistory()
+      ">
+      + New Conversation
+    </button>
+
+    <h3>
+      Previous Conversations
+    </h3>
+
+    @if (isLoadingConversations()) {
+
+      <p class="conversation-status">
+        Loading...
+      </p>
+
+    } @else if (
+      conversations().length === 0
+    ) {
+
+      <p class="conversation-status">
+        No previous conversations.
+      </p>
+
+    } @else {
+
+      <div class="conversation-list">
+
+        @for (
+          conversation of conversations();
+          track conversation.threadId
+        ) {
+
+          <button
+            type="button"
+            class="conversation-item"
+            [class.active]="
+              conversation.threadId ===
+              currentThreadId()
+            "
+            (click)="
+              openConversation(
+                conversation
+              )
+            "
+            [disabled]="
+              isSending() ||
+              isLoadingHistory()
+            "
+            [title]="conversation.title">
+
+            {{ conversation.title }}
+
+          </button>
+
+        }
+
+      </div>
+
+    }
+
+  </aside>
+
+  <main class="copilot-page">
 
   <h1>AI Copilot</h1>
 
@@ -100,4 +172,4 @@
 
   </div>
 
-</div>
+</main>
