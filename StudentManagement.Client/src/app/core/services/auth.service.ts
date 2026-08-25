@@ -32,10 +32,6 @@ export class AuthService {
           'student-management-copilot-parent-run-id'
         );
 
-        sessionStorage.removeItem(
-          'student-management-copilot-messages'
-        );
-
         this.authenticatedSignal.set(false);
         this.router.navigate(['/login']);
       }

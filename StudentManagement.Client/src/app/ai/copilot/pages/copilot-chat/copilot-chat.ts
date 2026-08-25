@@ -16,10 +16,10 @@ export class CopilotChat {
    * This belongs here because CopilotMessage[]
    * is UI state owned by this component.
    */
-  private readonly messagesStorageKey = 'student-management-copilot-messages';
 
   readonly message = signal('');
-  readonly messages = signal<CopilotMessage[]>(this.loadMessages());
+  readonly messages = signal<CopilotMessage[]>([]);
+  readonly isLoadingHistory = signal(false);
   readonly isSending = signal(false);
   readonly errorMessage = signal('');
   readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
@@ -33,17 +33,59 @@ export class CopilotChat {
 
   constructor() {
     this.copilotService.ensureSession();
+    this.loadHistory();
+    this.loadPendingApproval();
   }
 
-  onMessageInput(
-    event: Event
-  ): void {
+  private loadHistory(): void {
+    this.isLoadingHistory.set(true);
+    this.copilotService.getHistory()
+      .subscribe({
+        next: history => {
+          const messages:
+            CopilotMessage[] =
+            history.map(
+              message => ({
+                id: message.id,
+                role: message.role,
+                content: message.content,
+                createdAt: message.createdAt ? new Date(message.createdAt) : null
+              })
+            );
+          this.messages.set(messages);
+        },
 
+        error: error => {
+          console.error('Failed to load Copilot history:', error);
+          this.errorMessage.set(
+            'The previous conversation could not be loaded.'
+          );
+          this.isLoadingHistory.set(false);
+        },
+
+        complete: () => {
+          this.isLoadingHistory.set(false);
+        }
+      });
+  }
+
+  private loadPendingApproval(): void {
+
+    this.copilotService.getPendingApproval()
+      .subscribe({
+        next: approval => {
+          this.pendingApproval.set(approval);
+        },
+
+        error: error => {
+          console.error('Failed to load pending Copilot approval:', error);
+        }
+      });
+  }
+
+  onMessageInput(event: Event): void {
     const input = event.target as HTMLTextAreaElement;
-
-    this.message.set(
-      input.value
-    );
+    this.message.set(input.value);
   }
 
   private isInterruptOutcome(outcome: unknown): outcome is {
@@ -65,8 +107,7 @@ export class CopilotChat {
       interrupts?: unknown;
     };
 
-    return (
-      value.type === 'interrupt' &&
+    return (value.type === 'interrupt' &&
       Array.isArray(
         value.interrupts
       )
@@ -78,48 +119,27 @@ export class CopilotChat {
     assistantMessageId: string
   ): void {
 
-    if (
-      event.type ===
-      EventType.TEXT_MESSAGE_CONTENT
-    ) {
-
-      const delta =
-        event['delta'];
-
-      if (
-        typeof delta === 'string'
-      ) {
-
+    if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+      const delta = event['delta'];
+      if (typeof delta === 'string') {
         this.messages.update(
-          messages =>
-            messages.map(
-              message =>
-                message.id ===
-                  assistantMessageId
-                  ? {
-                    ...message,
-                    content:
-                      message.content +
-                      delta
-                  }
-                  : message
-            )
+          messages => messages.map(
+            message => message.id === assistantMessageId ?
+              {
+                ...message,
+                content:
+                  message.content +
+                  delta
+              }
+              : message
+          )
         );
-
-        this.saveMessages();
       }
     }
 
-    if (
-      event.type ===
-      EventType.TOOL_CALL_START
-    ) {
-
-      const toolCallId =
-        event['toolCallId'];
-
-      const toolCallName =
-        event['toolCallName'];
+    if (event.type === EventType.TOOL_CALL_START) {
+      const toolCallId = event['toolCallId'];
+      const toolCallName = event['toolCallName'];
 
       if (
         typeof toolCallId === 'string' &&
@@ -136,16 +156,9 @@ export class CopilotChat {
       }
     }
 
-    if (
-      event.type ===
-      EventType.TOOL_CALL_ARGS
-    ) {
-
-      const toolCallId =
-        event['toolCallId'];
-
-      const delta =
-        event['delta'];
+    if (event.type === EventType.TOOL_CALL_ARGS) {
+      const toolCallId = event['toolCallId'];
+      const delta = event['delta'];
 
       if (
         typeof toolCallId === 'string' &&
@@ -164,14 +177,8 @@ export class CopilotChat {
       }
     }
 
-    if (
-      event.type ===
-      EventType.RUN_FINISHED
-    ) {
-
-      const outcome =
-        event['outcome'];
-
+    if (event.type === EventType.RUN_FINISHED) {
+      const outcome = event['outcome'];
       if (
         typeof outcome === 'object' &&
         outcome !== null &&
@@ -235,10 +242,7 @@ export class CopilotChat {
     const text =
       this.message().trim();
 
-    if (
-      !text ||
-      this.isSending()
-    ) {
+    if (!text || this.isSending() || this.isLoadingHistory()) {
       return;
     }
 
@@ -268,7 +272,7 @@ export class CopilotChat {
       ]
     );
 
-    this.saveMessages();
+
 
     this.pendingApproval.set(
       null
@@ -364,7 +368,7 @@ export class CopilotChat {
       ]
     );
 
-    this.saveMessages();
+
 
     this.errorMessage.set('');
 
@@ -394,6 +398,10 @@ export class CopilotChat {
 
           this.removeEmptyAssistantMessage(
             assistantMessage.id
+          );
+
+          this.pendingApproval.set(
+            approval
           );
 
           this.errorMessage.set(
@@ -435,60 +443,6 @@ export class CopilotChat {
               !message.content.trim()
             )
         )
-    );
-
-    this.saveMessages();
-  }
-
-  private loadMessages():
-    CopilotMessage[] {
-
-    const storedMessages =
-      sessionStorage.getItem(
-        this.messagesStorageKey
-      );
-
-    if (!storedMessages) {
-      return [];
-    }
-
-    try {
-
-      const messages =
-        JSON.parse(
-          storedMessages
-        ) as Array<
-          Omit<
-            CopilotMessage,
-            'createdAt'
-          > & {
-            createdAt: string;
-          }
-        >;
-
-      return messages.map(
-        message => ({
-          ...message,
-          createdAt:
-            new Date(
-              message.createdAt
-            )
-        })
-      );
-
-    } catch {
-
-      return [];
-    }
-  }
-
-  private saveMessages(): void {
-
-    sessionStorage.setItem(
-      this.messagesStorageKey,
-      JSON.stringify(
-        this.messages()
-      )
     );
   }
 }

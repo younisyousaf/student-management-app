@@ -86,8 +86,16 @@
       (input)="onMessageInput($event)">
     </textarea>
 
-    <button type="button" (click)="sendMessage()" [disabled]="isSending() || !message().trim()">
-      {{ isSending() ? 'Sending...' : 'Send' }}
+    <button type="button" (click)="sendMessage()" [disabled]=" isSending() || isLoadingHistory() ||
+    !message().trim()
+  ">
+      {{
+      isLoadingHistory()
+      ? 'Loading...'
+      : isSending()
+      ? 'Sending...'
+      : 'Send'
+      }}
     </button>
 
   </div>

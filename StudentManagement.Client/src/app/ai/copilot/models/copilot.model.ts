@@ -16,9 +16,15 @@ export interface CopilotMessage {
   id: string;
   role: CopilotMessageRole;
   content: string;
-  createdAt: Date;
+  createdAt: Date | null;
 }
 
+export interface CopilotHistoryMessage {
+  id: string;
+  role: CopilotMessageRole;
+  content: string;
+  createdAt: string | null;
+}
 export interface CopilotApprovalRequest {
   interruptId: string;
   toolCallId: string;

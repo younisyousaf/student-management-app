@@ -20,7 +20,7 @@
             <td>{{ row.status }}</td>
             <td>
               @if (row.status === 'Active') {
-                <button (click)="completeEnrollment(row.id)">Complete</button>
+                <button (click)="completeEnrollment(row.id)" style="margin-right: 5px;">Complete</button>
                 <button class="btn-danger" (click)="dropEnrollment(row.id)">Drop</button>
               }
             </td>
