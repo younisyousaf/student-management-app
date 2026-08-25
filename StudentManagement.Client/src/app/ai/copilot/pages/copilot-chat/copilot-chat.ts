@@ -2,7 +2,6 @@ import { Component, inject, signal } from '@angular/core';
 import { EventType, BaseEvent } from '@ag-ui/core';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
 import { CopilotMessage, CopilotApprovalRequest } from '../../models/copilot.model';
-
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
@@ -13,29 +12,41 @@ import { CopilotMessage, CopilotApprovalRequest } from '../../models/copilot.mod
 export class CopilotChat {
 
   private readonly copilotService = inject(AgUiCopilotService);
+  /*
+   * This belongs here because CopilotMessage[]
+   * is UI state owned by this component.
+   */
+  private readonly messagesStorageKey = 'student-management-copilot-messages';
 
   readonly message = signal('');
-  readonly messages = signal<CopilotMessage[]>([]);
+  readonly messages = signal<CopilotMessage[]>(this.loadMessages());
   readonly isSending = signal(false);
   readonly errorMessage = signal('');
   readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
 
-  private readonly toolCalls = new Map<
-    string,
+  private readonly toolCalls = new Map<string,
     {
       name: string;
       arguments: string;
     }
   >();
 
-  onMessageInput(event: Event): void {
-    const input = event.target as HTMLTextAreaElement;
-    this.message.set(input.value);
+  constructor() {
+    this.copilotService.ensureSession();
   }
 
-  private isInterruptOutcome(
-    outcome: unknown
-  ): outcome is {
+  onMessageInput(
+    event: Event
+  ): void {
+
+    const input = event.target as HTMLTextAreaElement;
+
+    this.message.set(
+      input.value
+    );
+  }
+
+  private isInterruptOutcome(outcome: unknown): outcome is {
     type: 'interrupt';
     interrupts: Array<{
       id: string;
@@ -45,10 +56,7 @@ export class CopilotChat {
     }>;
   } {
 
-    if (
-      typeof outcome !== 'object' ||
-      outcome === null
-    ) {
+    if (typeof outcome !== 'object' || outcome === null) {
       return false;
     }
 
@@ -59,7 +67,9 @@ export class CopilotChat {
 
     return (
       value.type === 'interrupt' &&
-      Array.isArray(value.interrupts)
+      Array.isArray(
+        value.interrupts
+      )
     );
   }
 
@@ -68,63 +78,99 @@ export class CopilotChat {
     assistantMessageId: string
   ): void {
 
-    if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
+    if (
+      event.type ===
+      EventType.TEXT_MESSAGE_CONTENT
+    ) {
 
-      const delta = event['delta'];
+      const delta =
+        event['delta'];
 
-      if (typeof delta === 'string') {
+      if (
+        typeof delta === 'string'
+      ) {
 
-        this.messages.update(messages =>
-          messages.map(message =>
-            message.id === assistantMessageId
-              ? {
-                ...message,
-                content: message.content + delta
-              }
-              : message
-          )
+        this.messages.update(
+          messages =>
+            messages.map(
+              message =>
+                message.id ===
+                  assistantMessageId
+                  ? {
+                    ...message,
+                    content:
+                      message.content +
+                      delta
+                  }
+                  : message
+            )
         );
+
+        this.saveMessages();
       }
     }
 
-    if (event.type === EventType.TOOL_CALL_START) {
+    if (
+      event.type ===
+      EventType.TOOL_CALL_START
+    ) {
 
-      const toolCallId = event['toolCallId'];
-      const toolCallName = event['toolCallName'];
+      const toolCallId =
+        event['toolCallId'];
+
+      const toolCallName =
+        event['toolCallName'];
 
       if (
         typeof toolCallId === 'string' &&
         typeof toolCallName === 'string'
       ) {
 
-        this.toolCalls.set(toolCallId, {
-          name: toolCallName,
-          arguments: ''
-        });
+        this.toolCalls.set(
+          toolCallId,
+          {
+            name: toolCallName,
+            arguments: ''
+          }
+        );
       }
     }
 
-    if (event.type === EventType.TOOL_CALL_ARGS) {
+    if (
+      event.type ===
+      EventType.TOOL_CALL_ARGS
+    ) {
 
-      const toolCallId = event['toolCallId'];
-      const delta = event['delta'];
+      const toolCallId =
+        event['toolCallId'];
+
+      const delta =
+        event['delta'];
 
       if (
         typeof toolCallId === 'string' &&
         typeof delta === 'string'
       ) {
 
-        const toolCall = this.toolCalls.get(toolCallId);
+        const toolCall =
+          this.toolCalls.get(
+            toolCallId
+          );
 
         if (toolCall) {
-          toolCall.arguments += delta;
+          toolCall.arguments +=
+            delta;
         }
       }
     }
 
-    if (event.type === EventType.RUN_FINISHED) {
+    if (
+      event.type ===
+      EventType.RUN_FINISHED
+    ) {
 
-      const outcome = event['outcome'];
+      const outcome =
+        event['outcome'];
 
       if (
         typeof outcome === 'object' &&
@@ -133,32 +179,52 @@ export class CopilotChat {
         outcome.type === 'success'
       ) {
 
-        this.pendingApproval.set(null);
+        this.pendingApproval.set(
+          null
+        );
 
         return;
       }
 
-      if (this.isInterruptOutcome(outcome)) {
+      if (
+        this.isInterruptOutcome(
+          outcome
+        )
+      ) {
 
-        const interrupt = outcome.interrupts[0];
+        const interrupt =
+          outcome.interrupts[0];
 
-        if (!interrupt?.toolCallId) {
+        if (
+          !interrupt?.toolCallId
+        ) {
           return;
         }
 
         const toolCall =
-          this.toolCalls.get(interrupt.toolCallId);
+          this.toolCalls.get(
+            interrupt.toolCallId
+          );
 
         if (!toolCall) {
           return;
         }
 
         this.pendingApproval.set({
-          interruptId: interrupt.id,
-          toolCallId: interrupt.toolCallId,
-          toolName: toolCall.name,
-          arguments: toolCall.arguments,
-          message: interrupt.message
+          interruptId:
+            interrupt.id,
+
+          toolCallId:
+            interrupt.toolCallId,
+
+          toolName:
+            toolCall.name,
+
+          arguments:
+            toolCall.arguments,
+
+          message:
+            interrupt.message
         });
       }
     }
@@ -166,100 +232,153 @@ export class CopilotChat {
 
   sendMessage(): void {
 
-    const text = this.message().trim();
+    const text =
+      this.message().trim();
 
-    if (!text || this.isSending()) {
+    if (
+      !text ||
+      this.isSending()
+    ) {
       return;
     }
 
-    const userMessage: CopilotMessage = {
+    const userMessage:
+      CopilotMessage = {
+
       id: crypto.randomUUID(),
       role: 'user',
       content: text,
       createdAt: new Date()
     };
 
-    const assistantMessage: CopilotMessage = {
+    const assistantMessage:
+      CopilotMessage = {
+
       id: crypto.randomUUID(),
       role: 'assistant',
       content: '',
       createdAt: new Date()
     };
 
-    this.messages.update(messages => [
-      ...messages,
-      userMessage,
-      assistantMessage
-    ]);
+    this.messages.update(
+      messages => [
+        ...messages,
+        userMessage,
+        assistantMessage
+      ]
+    );
 
-    this.pendingApproval.set(null);
+    this.saveMessages();
+
+    this.pendingApproval.set(
+      null
+    );
+
     this.toolCalls.clear();
 
     this.message.set('');
+
     this.errorMessage.set('');
+
     this.isSending.set(true);
 
-    this.copilotService.sendMessage(text).subscribe({
+    this.copilotService
+      .sendMessage(text)
+      .subscribe({
 
-      next: event => {
-        this.handleAgUiEvent(
-          event,
-          assistantMessage.id
-        );
-      },
+        next: event => {
 
-      error: error => {
+          this.handleAgUiEvent(
+            event,
+            assistantMessage.id
+          );
+        },
 
-        console.error('AG-UI error:', error);
+        error: error => {
 
-        this.errorMessage.set(
-          'Something went wrong while contacting the assistant.'
-        );
+          console.error(
+            'AG-UI error:',
+            error
+          );
 
-        this.isSending.set(false);
-      },
+          this.removeEmptyAssistantMessage(
+            assistantMessage.id
+          );
 
-      complete: () => {
+          this.errorMessage.set(
+            'Something went wrong while contacting the assistant.'
+          );
 
-        this.removeEmptyAssistantMessage(
-          assistantMessage.id
-        );
-        this.isSending.set(false);
-      }
-    });
+          this.isSending.set(
+            false
+          );
+        },
+
+        complete: () => {
+
+          this.removeEmptyAssistantMessage(
+            assistantMessage.id
+          );
+
+          this.isSending.set(
+            false
+          );
+        }
+
+      });
   }
 
-  respondToApproval(approved: boolean): void {
+  respondToApproval(
+    approved: boolean
+  ): void {
 
-    const approval = this.pendingApproval();
+    const approval =
+      this.pendingApproval();
 
-    if (!approval || this.isSending()) {
+    if (
+      !approval ||
+      this.isSending()
+    ) {
       return;
     }
 
-    this.pendingApproval.set(null);
+    this.pendingApproval.set(
+      null
+    );
+
     this.toolCalls.clear();
 
-    const assistantMessage: CopilotMessage = {
+    const assistantMessage:
+      CopilotMessage = {
+
       id: crypto.randomUUID(),
       role: 'assistant',
       content: '',
       createdAt: new Date()
     };
 
-    this.messages.update(messages => [
-      ...messages,
-      assistantMessage
-    ]);
+    this.messages.update(
+      messages => [
+        ...messages,
+        assistantMessage
+      ]
+    );
+
+    this.saveMessages();
 
     this.errorMessage.set('');
+
     this.isSending.set(true);
 
     this.copilotService
-      .resumeApproval(approval, approved)
+      .resumeApproval(
+        approval,
+        approved
+      )
       .subscribe({
 
         next: event => {
+
           this.handleAgUiEvent(
             event,
             assistantMessage.id
@@ -281,7 +400,9 @@ export class CopilotChat {
             'Something went wrong while processing the approval.'
           );
 
-          this.isSending.set(false);
+          this.isSending.set(
+            false
+          );
         },
 
         complete: () => {
@@ -290,8 +411,11 @@ export class CopilotChat {
             assistantMessage.id
           );
 
-          this.isSending.set(false);
+          this.isSending.set(
+            false
+          );
         }
+
       });
   }
 
@@ -299,13 +423,71 @@ export class CopilotChat {
     assistantMessageId: string
   ): void {
 
-    this.messages.update(messages =>
-      messages.filter(message =>
-        !(
-          message.id === assistantMessageId &&
-          message.role === 'assistant' &&
-          !message.content.trim()
+    this.messages.update(
+      messages =>
+        messages.filter(
+          message =>
+            !(
+              message.id ===
+              assistantMessageId &&
+              message.role ===
+              'assistant' &&
+              !message.content.trim()
+            )
         )
+    );
+
+    this.saveMessages();
+  }
+
+  private loadMessages():
+    CopilotMessage[] {
+
+    const storedMessages =
+      sessionStorage.getItem(
+        this.messagesStorageKey
+      );
+
+    if (!storedMessages) {
+      return [];
+    }
+
+    try {
+
+      const messages =
+        JSON.parse(
+          storedMessages
+        ) as Array<
+          Omit<
+            CopilotMessage,
+            'createdAt'
+          > & {
+            createdAt: string;
+          }
+        >;
+
+      return messages.map(
+        message => ({
+          ...message,
+          createdAt:
+            new Date(
+              message.createdAt
+            )
+        })
+      );
+
+    } catch {
+
+      return [];
+    }
+  }
+
+  private saveMessages(): void {
+
+    sessionStorage.setItem(
+      this.messagesStorageKey,
+      JSON.stringify(
+        this.messages()
       )
     );
   }

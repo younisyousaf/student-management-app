@@ -24,6 +24,18 @@ export class AuthService {
   logout(): void {
     this.http.post(`${this.baseUrl}/logout`, {}, { withCredentials: true }).subscribe({
       complete: () => {
+        sessionStorage.removeItem(
+          'student-management-copilot-thread-id'
+        );
+
+        sessionStorage.removeItem(
+          'student-management-copilot-parent-run-id'
+        );
+
+        sessionStorage.removeItem(
+          'student-management-copilot-messages'
+        );
+
         this.authenticatedSignal.set(false);
         this.router.navigate(['/login']);
       }
