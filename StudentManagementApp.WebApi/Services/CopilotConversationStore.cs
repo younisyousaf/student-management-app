@@ -126,6 +126,112 @@ public sealed class CopilotConversationStore
         return conversation;
     }
 
+    public async Task<CopilotConversationRecord?>
+    GetByThreadIdAsync(
+        string threadId,
+        CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        return await _dbContext
+            .CopilotConversations
+            .AsNoTracking()
+            .SingleOrDefaultAsync(
+                conversation =>
+                    conversation.UserId == userId &&
+                    conversation.ThreadId == threadId,
+                cancellationToken);
+    }
+
+    public async Task<CopilotConversationRecord?>
+        RenameAsync(
+            string threadId,
+            string title,
+            CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        var conversation =
+            await _dbContext
+                .CopilotConversations
+                .SingleOrDefaultAsync(
+                    conversation =>
+                        conversation.UserId == userId &&
+                        conversation.ThreadId == threadId,
+                    cancellationToken);
+
+        if (conversation is null)
+        {
+            return null;
+        }
+
+        conversation.Title =
+            NormalizeTitle(title);
+
+        await _dbContext
+            .SaveChangesAsync(
+                cancellationToken);
+
+        return conversation;
+    }
+
+    public async Task<bool>
+        DeleteAsync(
+            string threadId,
+            CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        var conversation =
+            await _dbContext
+                .CopilotConversations
+                .SingleOrDefaultAsync(
+                    conversation =>
+                        conversation.UserId == userId &&
+                        conversation.ThreadId == threadId,
+                    cancellationToken);
+
+        if (conversation is null)
+        {
+            return false;
+        }
+
+        _dbContext
+            .CopilotConversations
+            .Remove(conversation);
+
+        await _dbContext
+            .SaveChangesAsync(
+                cancellationToken);
+
+        return true;
+    }
+
+    private static string NormalizeTitle(
+        string title)
+    {
+        string normalized =
+            string.Join(
+                " ",
+                title.Split(
+                    [' ', '\r', '\n', '\t'],
+                    StringSplitOptions.RemoveEmptyEntries));
+
+        const int maxLength = 80;
+
+        if (normalized.Length <= maxLength)
+        {
+            return normalized;
+        }
+
+        return
+            normalized[..77] +
+            "...";
+    }
+
     private int GetRequiredUserId()
     {
         return _currentUserContext.UserId

@@ -469,4 +469,32 @@ export class AgUiCopilotService {
     }
   }
 
+  renameConversation(
+  threadId: string,
+  title: string
+): Observable<CopilotConversation> {
+
+  return this.http.patch<CopilotConversation>(
+    `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}/title`,
+    {
+      title
+    },
+    {
+      withCredentials: true
+    }
+  );
+}
+
+deleteConversation(
+  threadId: string
+): Observable<void> {
+
+  return this.http.delete<void>(
+    `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}`,
+    {
+      withCredentials: true
+    }
+  );
+}
+
 }

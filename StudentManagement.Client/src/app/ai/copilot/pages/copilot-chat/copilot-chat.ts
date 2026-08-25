@@ -1,11 +1,33 @@
-import { Component, inject, signal, DestroyRef } from '@angular/core';
+import {
+  Component,
+  DestroyRef,
+  inject,
+  signal
+} from '@angular/core';
+
 import {
   takeUntilDestroyed
 } from '@angular/core/rxjs-interop';
-import { EventType, BaseEvent } from '@ag-ui/core';
-import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotMessage, CopilotApprovalRequest, CopilotConversation } from '../../models/copilot.model';
-import { forkJoin } from 'rxjs';
+
+import {
+  BaseEvent,
+  EventType
+} from '@ag-ui/core';
+
+import {
+  forkJoin
+} from 'rxjs';
+
+import {
+  AgUiCopilotService
+} from '../../services/ag-ui-copilot.service';
+
+import {
+  CopilotApprovalRequest,
+  CopilotConversation,
+  CopilotMessage
+} from '../../models/copilot.model';
+
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
@@ -15,31 +37,61 @@ import { forkJoin } from 'rxjs';
 })
 export class CopilotChat {
 
-  private readonly copilotService = inject(AgUiCopilotService);
-  /*
-   * This belongs here because CopilotMessage[]
-   * is UI state owned by this component.
-   */
-
-  readonly message = signal('');
-  readonly messages = signal<CopilotMessage[]>([]);
-  readonly isLoadingHistory = signal(false);
-  readonly isSending = signal(false);
-  readonly errorMessage = signal('');
-  readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
-  readonly conversations = signal<CopilotConversation[]>([]);
-  readonly isLoadingConversations = signal(false);
-  readonly currentThreadId = signal('');
-
-  private readonly toolCalls = new Map<string,
-    {
-      name: string;
-      arguments: string;
-    }
-  >();
+  private readonly copilotService =
+    inject(AgUiCopilotService);
 
   private readonly destroyRef =
     inject(DestroyRef);
+
+  readonly message =
+    signal('');
+
+  readonly messages =
+    signal<CopilotMessage[]>([]);
+
+  readonly isLoadingHistory =
+    signal(false);
+
+  readonly isSending =
+    signal(false);
+
+  readonly errorMessage =
+    signal('');
+
+  readonly pendingApproval =
+    signal<CopilotApprovalRequest | null>(
+      null
+    );
+
+  readonly conversations =
+    signal<CopilotConversation[]>([]);
+
+  readonly isLoadingConversations =
+    signal(false);
+
+  readonly currentThreadId =
+    signal('');
+
+  readonly openConversationMenuThreadId =
+    signal<string | null>(null);
+
+  readonly renamingConversationThreadId =
+    signal<string | null>(null);
+
+  readonly renameConversationTitle =
+    signal('');
+
+  readonly managingConversationThreadId =
+    signal<string | null>(null);
+
+  private readonly toolCalls =
+    new Map<
+      string,
+      {
+        name: string;
+        arguments: string;
+      }
+    >();
 
   constructor() {
 
@@ -76,7 +128,9 @@ export class CopilotChat {
     const threadId =
       this.copilotService.threadId;
 
-    this.isLoadingHistory.set(true);
+    this.isLoadingHistory.set(
+      true
+    );
 
     this.errorMessage.set('');
 
@@ -93,11 +147,6 @@ export class CopilotChat {
 
         next: result => {
 
-          /*
-           * Ignore an old HTTP response if the
-           * user switched conversations while
-           * requests were in progress.
-           */
           if (
             this.currentThreadId() !==
             threadId
@@ -109,9 +158,14 @@ export class CopilotChat {
             CopilotMessage[] =
             result.history.map(
               message => ({
-                id: message.id,
-                role: message.role,
-                content: message.content,
+                id:
+                  message.id,
+
+                role:
+                  message.role,
+
+                content:
+                  message.content,
 
                 createdAt:
                   message.createdAt
@@ -165,7 +219,6 @@ export class CopilotChat {
             );
           }
         }
-
       });
   }
 
@@ -204,7 +257,6 @@ export class CopilotChat {
             false
           );
         }
-
       });
   }
 
@@ -259,39 +311,12 @@ export class CopilotChat {
 
     this.errorMessage.set('');
 
+    this.closeConversationMenu();
+
+    this.cancelRenameConversation();
+
     this.isLoadingHistory.set(
       false
-    );
-  }
-
-  onMessageInput(event: Event): void {
-    const input = event.target as HTMLTextAreaElement;
-    this.message.set(input.value);
-  }
-
-  private isInterruptOutcome(outcome: unknown): outcome is {
-    type: 'interrupt';
-    interrupts: Array<{
-      id: string;
-      reason: string;
-      message?: string;
-      toolCallId?: string;
-    }>;
-  } {
-
-    if (typeof outcome !== 'object' || outcome === null) {
-      return false;
-    }
-
-    const value = outcome as {
-      type?: unknown;
-      interrupts?: unknown;
-    };
-
-    return (value.type === 'interrupt' &&
-      Array.isArray(
-        value.interrupts
-      )
     );
   }
 
@@ -312,6 +337,10 @@ export class CopilotChat {
     ) {
       return;
     }
+
+    this.closeConversationMenu();
+
+    this.cancelRenameConversation();
 
     this.copilotService
       .openConversation(
@@ -337,55 +366,134 @@ export class CopilotChat {
     this.loadConversationState();
   }
 
+  onMessageInput(
+    event: Event
+  ): void {
+
+    const input =
+      event.target as HTMLTextAreaElement;
+
+    this.message.set(
+      input.value
+    );
+  }
+
+  private isInterruptOutcome(
+    outcome: unknown
+  ): outcome is {
+    type: 'interrupt';
+    interrupts: Array<{
+      id: string;
+      reason: string;
+      message?: string;
+      toolCallId?: string;
+    }>;
+  } {
+
+    if (
+      typeof outcome !== 'object' ||
+      outcome === null
+    ) {
+      return false;
+    }
+
+    const value =
+      outcome as {
+        type?: unknown;
+        interrupts?: unknown;
+      };
+
+    return (
+      value.type === 'interrupt' &&
+      Array.isArray(
+        value.interrupts
+      )
+    );
+  }
+
   private handleAgUiEvent(
     event: BaseEvent,
     assistantMessageId: string
   ): void {
 
-    if (event.type === EventType.TEXT_MESSAGE_CONTENT) {
-      const delta = event['delta'];
-      if (typeof delta === 'string') {
+    if (
+      event.type ===
+      EventType.TEXT_MESSAGE_CONTENT
+    ) {
+
+      const delta =
+        event['delta'];
+
+      if (
+        typeof delta === 'string'
+      ) {
+
         this.messages.update(
-          messages => messages.map(
-            message => message.id === assistantMessageId ?
-              {
-                ...message,
-                content:
-                  message.content +
-                  delta
-              }
-              : message
-          )
+          messages =>
+            messages.map(
+              message =>
+                message.id ===
+                  assistantMessageId
+                  ? {
+                    ...message,
+
+                    content:
+                      message.content +
+                      delta
+                  }
+                  : message
+            )
         );
       }
     }
 
-    if (event.type === EventType.TOOL_CALL_START) {
-      const toolCallId = event['toolCallId'];
-      const toolCallName = event['toolCallName'];
+    if (
+      event.type ===
+      EventType.TOOL_CALL_START
+    ) {
+
+      const toolCallId =
+        event['toolCallId'];
+
+      const toolCallName =
+        event['toolCallName'];
 
       if (
-        typeof toolCallId === 'string' &&
-        typeof toolCallName === 'string'
+        typeof toolCallId ===
+        'string' &&
+        typeof toolCallName ===
+        'string'
       ) {
 
         this.toolCalls.set(
           toolCallId,
           {
-            name: toolCallName,
-            arguments: ''
+            name:
+              toolCallName,
+
+            arguments:
+              ''
           }
         );
       }
     }
 
-    if (event.type === EventType.TOOL_CALL_ARGS) {
-      const toolCallId = event['toolCallId'];
-      const delta = event['delta'];
+    if (
+      event.type ===
+      EventType.TOOL_CALL_ARGS
+    ) {
+
+      const toolCallId =
+        event['toolCallId'];
+
+      const delta =
+        event['delta'];
 
       if (
-        typeof toolCallId === 'string' &&
-        typeof delta === 'string'
+        typeof toolCallId ===
+        'string' &&
+        typeof delta ===
+        'string'
       ) {
 
         const toolCall =
@@ -394,19 +502,28 @@ export class CopilotChat {
           );
 
         if (toolCall) {
+
           toolCall.arguments +=
             delta;
         }
       }
     }
 
-    if (event.type === EventType.RUN_FINISHED) {
-      const outcome = event['outcome'];
+    if (
+      event.type ===
+      EventType.RUN_FINISHED
+    ) {
+
+      const outcome =
+        event['outcome'];
+
       if (
-        typeof outcome === 'object' &&
+        typeof outcome ===
+        'object' &&
         outcome !== null &&
         'type' in outcome &&
-        outcome.type === 'success'
+        outcome.type ===
+        'success'
       ) {
 
         this.pendingApproval.set(
@@ -465,26 +582,44 @@ export class CopilotChat {
     const text =
       this.message().trim();
 
-    if (!text || this.isSending() || this.isLoadingHistory()) {
+    if (
+      !text ||
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
       return;
     }
 
     const userMessage:
       CopilotMessage = {
 
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: text,
-      createdAt: new Date()
+      id:
+        crypto.randomUUID(),
+
+      role:
+        'user',
+
+      content:
+        text,
+
+      createdAt:
+        new Date()
     };
 
     const assistantMessage:
       CopilotMessage = {
 
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: '',
-      createdAt: new Date()
+      id:
+        crypto.randomUUID(),
+
+      role:
+        'assistant',
+
+      content:
+        '',
+
+      createdAt:
+        new Date()
     };
 
     this.messages.update(
@@ -494,8 +629,6 @@ export class CopilotChat {
         assistantMessage
       ]
     );
-
-
 
     this.pendingApproval.set(
       null
@@ -507,10 +640,16 @@ export class CopilotChat {
 
     this.errorMessage.set('');
 
-    this.isSending.set(true);
+    this.closeConversationMenu();
+
+    this.isSending.set(
+      true
+    );
 
     this.copilotService
-      .sendMessage(text)
+      .sendMessage(
+        text
+      )
       .subscribe({
 
         next: event => {
@@ -551,7 +690,6 @@ export class CopilotChat {
             false
           );
         }
-
       });
   }
 
@@ -578,10 +716,17 @@ export class CopilotChat {
     const assistantMessage:
       CopilotMessage = {
 
-      id: crypto.randomUUID(),
-      role: 'assistant',
-      content: '',
-      createdAt: new Date()
+      id:
+        crypto.randomUUID(),
+
+      role:
+        'assistant',
+
+      content:
+        '',
+
+      createdAt:
+        new Date()
     };
 
     this.messages.update(
@@ -591,11 +736,11 @@ export class CopilotChat {
       ]
     );
 
-
-
     this.errorMessage.set('');
 
-    this.isSending.set(true);
+    this.isSending.set(
+      true
+    );
 
     this.copilotService
       .resumeApproval(
@@ -646,7 +791,247 @@ export class CopilotChat {
             false
           );
         }
+      });
+  }
 
+  toggleConversationMenu(
+    threadId: string,
+    event: Event
+  ): void {
+
+    event.stopPropagation();
+
+    this.openConversationMenuThreadId
+      .update(
+        current =>
+          current === threadId
+            ? null
+            : threadId
+      );
+  }
+
+  closeConversationMenu(): void {
+
+    this.openConversationMenuThreadId.set(
+      null
+    );
+  }
+
+  beginRenameConversation(
+    conversation: CopilotConversation,
+    event: Event
+  ): void {
+
+    event.stopPropagation();
+
+    this.renamingConversationThreadId.set(
+      conversation.threadId
+    );
+
+    this.renameConversationTitle.set(
+      conversation.title
+    );
+
+    this.closeConversationMenu();
+  }
+
+  onRenameConversationInput(
+    event: Event
+  ): void {
+
+    const input =
+      event.target as HTMLInputElement;
+
+    this.renameConversationTitle.set(
+      input.value
+    );
+  }
+
+  cancelRenameConversation(
+    event?: Event
+  ): void {
+
+    event?.stopPropagation();
+
+    this.renamingConversationThreadId.set(
+      null
+    );
+
+    this.renameConversationTitle.set(
+      ''
+    );
+  }
+
+  saveRenameConversation(
+    conversation: CopilotConversation,
+    event: Event
+  ): void {
+
+    event.stopPropagation();
+
+    const title =
+      this.renameConversationTitle()
+        .trim();
+
+    if (!title) {
+      return;
+    }
+
+    if (
+      title ===
+      conversation.title
+    ) {
+
+      this.cancelRenameConversation();
+
+      return;
+    }
+
+    this.managingConversationThreadId.set(
+      conversation.threadId
+    );
+
+    this.errorMessage.set('');
+
+    this.copilotService
+      .renameConversation(
+        conversation.threadId,
+        title
+      )
+      .subscribe({
+
+        next:
+          updatedConversation => {
+
+            this.conversations.update(
+              conversations =>
+                conversations.map(
+                  item =>
+                    item.threadId ===
+                      updatedConversation.threadId
+                      ? updatedConversation
+                      : item
+                )
+            );
+
+            this.cancelRenameConversation();
+          },
+
+        error: error => {
+
+          console.error(
+            'Failed to rename Copilot conversation:',
+            error
+          );
+
+          this.errorMessage.set(
+            'The conversation could not be renamed.'
+          );
+
+          this.managingConversationThreadId.set(
+            null
+          );
+        },
+
+        complete: () => {
+
+          this.managingConversationThreadId.set(
+            null
+          );
+        }
+      });
+  }
+
+  deleteConversation(
+    conversation: CopilotConversation,
+    event: Event
+  ): void {
+
+    event.stopPropagation();
+
+    this.closeConversationMenu();
+
+    const confirmed =
+      window.confirm(
+        `Delete "${conversation.title}"? This conversation cannot be recovered.`
+      );
+
+    if (!confirmed) {
+      return;
+    }
+
+    this.managingConversationThreadId.set(
+      conversation.threadId
+    );
+
+    this.errorMessage.set('');
+
+    this.copilotService
+      .deleteConversation(
+        conversation.threadId
+      )
+      .subscribe({
+
+        next: () => {
+
+          this.conversations.update(
+            conversations =>
+              conversations.filter(
+                item =>
+                  item.threadId !==
+                  conversation.threadId
+              )
+          );
+
+          if (
+            conversation.threadId ===
+            this.currentThreadId()
+          ) {
+
+            const threadId =
+              this.copilotService
+                .startNewConversation();
+
+            this.currentThreadId.set(
+              threadId
+            );
+
+            this.messages.set([]);
+
+            this.pendingApproval.set(
+              null
+            );
+
+            this.toolCalls.clear();
+
+            this.message.set('');
+
+            this.errorMessage.set('');
+          }
+        },
+
+        error: error => {
+
+          console.error(
+            'Failed to delete Copilot conversation:',
+            error
+          );
+
+          this.errorMessage.set(
+            'The conversation could not be deleted.'
+          );
+
+          this.managingConversationThreadId.set(
+            null
+          );
+        },
+
+        complete: () => {
+
+          this.managingConversationThreadId.set(
+            null
+          );
+        }
       });
   }
 
