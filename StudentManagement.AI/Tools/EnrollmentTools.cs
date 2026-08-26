@@ -39,6 +39,73 @@ public class EnrollmentTools
     }
 
     [Description(
+    "Check whether a student currently has an active enrollment " +
+    "in a specific course. " +
+    "Use this when both the exact student ID and course ID are known. " +
+    "Always check Found before using the returned enrollment.")]
+    public EnrollmentLookupResult
+    GetEnrollmentForStudentCourse(
+        [Description(
+            "The exact internal student ID.")]
+        int studentId,
+
+        [Description(
+            "The exact internal course ID.")]
+        int courseId)
+    {
+        var enrollment =
+            _enrollmentService
+                .GetEnrollmentsByStudent(
+                    studentId)
+                .FirstOrDefault(
+                    enrollment =>
+                        enrollment.CourseId ==
+                            courseId &&
+                        string.Equals(
+                            enrollment.Status,
+                            "Active",
+                            StringComparison
+                                .OrdinalIgnoreCase));
+
+        return enrollment is null
+            ? new EnrollmentLookupResult(
+                false,
+                null,
+                $"Student {studentId} does not have " +
+                $"an active enrollment in course {courseId}.")
+            : new EnrollmentLookupResult(
+                true,
+                ToSummary(enrollment),
+                null);
+    }
+
+    [Description(
+    "Get enrollment records for a specific course. " +
+    "Returns active, completed, and dropped enrollments. " +
+    "Use this when the user asks which students are or were " +
+    "associated with a course.")]
+    public IEnumerable<EnrollmentSummary>
+    GetEnrollmentsByCourse(
+        [Description(
+            "The exact internal course ID.")]
+        int courseId)
+    {
+        if (courseId <= 0)
+        {
+            return [];
+        }
+
+        return _enrollmentService
+            .GetAllEnrollments()
+            .Where(
+                enrollment =>
+                    enrollment.CourseId ==
+                    courseId)
+            .Take(50)
+            .Select(ToSummary);
+    }
+
+    [Description(
     "Enroll a student in a course. " +
     "This changes application data and requires human approval before execution.")]
     public string EnrollStudent(

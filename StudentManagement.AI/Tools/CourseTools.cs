@@ -29,6 +29,32 @@ public class CourseTools
             : new CourseLookupResult(true, ToSummary(course), null);
     }
 
+    [Description(
+    "Search for courses by full or partial course name. " +
+    "Use this when the user provides a course name instead of " +
+    "an exact course code or internal course ID. " +
+    "Returns an empty list when no courses match.")]
+    public IEnumerable<CourseSummary>
+    SearchCoursesByName(
+        [Description(
+            "Full or partial course name to search for.")]
+        string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return [];
+        }
+
+        return _courseService
+            .GetAllCourses()
+            .Where(course =>
+                course.Name.Contains(
+                    name,
+                    StringComparison.OrdinalIgnoreCase))
+            .Take(10)
+            .Select(ToSummary);
+    }
+
     [Description("List all courses currently offered, including their fee and duration.")]
     public IEnumerable<CourseSummary> GetAllCourses()
     {
@@ -53,6 +79,51 @@ public class CourseTools
                 true,
                 ToSummary(course),
                 null);
+    }
+
+    [Description(
+    "Create a new course. " +
+    "All required course information must come from the user. " +
+    "Never invent a course code, name, duration, or fee amount. " +
+    "This modifies course data and requires human approval.")]
+    public string CreateCourse(
+    [Description(
+        "The unique course code.")]
+    string code,
+
+    [Description(
+        "The course name.")]
+    string name,
+
+    [Description(
+        "Course duration in months.")]
+    int durationMonths,
+
+    [Description(
+        "Initial course fee amount.")]
+    decimal feeAmount,
+
+    [Description(
+        "Optional course description.")]
+    string? description = null)
+    {
+        var course =
+            new Course(
+                code,
+                name,
+                durationMonths,
+                feeAmount)
+            {
+                Description = description
+            };
+
+        _courseService.CreateCourse(
+            course);
+
+        return
+            $"Course '{course.Name}' " +
+            $"with code '{course.Code}' " +
+            $"was successfully created.";
     }
 
     [Description(

@@ -157,6 +157,28 @@ public static class HostedStudentManagementToolFactory
                         "Permanently remove an existing course. " +
                         "This is a destructive operation."));
 
+        AIFunction createStudent =
+            RequiresApproval(
+                AIFunctionFactory.Create(
+                    studentTools.CreateStudent,
+                    name: "create_student",
+                    description:
+                        "Create a new student record. " +
+                        "All required student information must come from the user. " +
+                        "This modifies student data."));
+
+        AIFunction createCourse =
+            RequiresApproval(
+                AIFunctionFactory.Create(
+                    courseTools.CreateCourse,
+                    name: "create_course",
+                    description:
+                        "Create a new course. " +
+                        "All required course information must come from the user. " +
+                        "This modifies course data."));
+
+        
+
         // -------------------------
         // COMPLETE TOOL SET
         // -------------------------
@@ -189,6 +211,10 @@ public static class HostedStudentManagementToolFactory
                 AIFunctionFactory.Create(
                     courseTools.GetAllCourses)),
 
+            Timed(
+                AIFunctionFactory.Create(
+                    courseTools.SearchCoursesByName)),
+
             // Enrollments
             Timed(
                 AIFunctionFactory.Create(
@@ -197,6 +223,16 @@ public static class HostedStudentManagementToolFactory
             Timed(
                 AIFunctionFactory.Create(
                     enrollmentTools.GetEnrollmentById)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    enrollmentTools
+                        .GetEnrollmentForStudentCourse)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    enrollmentTools
+                        .GetEnrollmentsByCourse)),
 
             // Attendance
             Timed(
@@ -224,12 +260,18 @@ public static class HostedStudentManagementToolFactory
                 AIFunctionFactory.Create(
                     feeTools.GetFeeStatement)),
 
+            Timed(
+                AIFunctionFactory.Create(
+                    feeTools.GetFeesForStudent)),
+
             // RAG
             Timed(
                 AIFunctionFactory.Create(
                     knowledgeTools.SearchInstitutionalKnowledge)),
 
             // Approval-required writes
+            createStudent,
+            createCourse,
             enrollStudent,
             markAttendance,
             markAttendanceToday,

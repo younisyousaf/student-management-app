@@ -4,7 +4,7 @@ using StudentManagement.Core.Models;
 
 namespace StudentManagement.AI.Tools;
 
-public record StudentSummary(int Id, string RollNumber, string FullName, string Email, string? Phone);
+public record StudentSummary(int Id, string RollNumber, string FullName, string Email, string? Phone, string? Address, DateTime? DateOfBirth, DateTime? AdmissionDate);
 
 public record StudentLookupResult(bool Found, StudentSummary? Student, string? Message);
 
@@ -59,6 +59,54 @@ public class StudentTools
                 ToSummary(student),
                 null);
     }
+
+    [Description(
+    "Create a new student record. " +
+    "All required student information must come from the user. " +
+    "Never invent a roll number, name, email, or date of birth. " +
+    "This modifies student data and requires human approval.")]
+    public string CreateStudent(
+    [Description("The student's unique roll number.")]
+    string rollNumber,
+
+    [Description("The student's first name.")]
+    string firstName,
+
+    [Description("The student's last name.")]
+    string lastName,
+
+    [Description("The student's email address.")]
+    string email,
+
+    [Description(
+        "The student's date of birth.")]
+    DateTime dateOfBirth,
+
+    [Description(
+        "Optional phone number.")]
+    string? phone = null,
+
+    [Description(
+        "Optional address.")]
+    string? address = null)
+    {
+        var student = new Student(rollNumber, firstName, lastName, email, dateOfBirth);
+
+        if (phone is not null || address is not null)
+        {
+            student.UpdateProfile(
+                firstName,
+                lastName,
+                phone,
+                address);
+        }
+        _studentService.RegisterStudent(student);
+        return
+            $"Student '{student.FullName}' " +
+            $"with roll number '{student.RollNumber}' " +
+            $"was successfully created.";
+    }
+
 
     [Description(
     "Update one or more fields of an existing student's profile. " +
@@ -124,5 +172,5 @@ public class StudentTools
     }
 
     private static StudentSummary ToSummary(Student student) =>
-        new(student.Id, student.RollNumber, student.FullName, student.Email, student.Phone);
+        new(student.Id, student.RollNumber, student.FullName, student.Email, student.Phone, student.Address, student.DateOfBirth, student.AdmissionDate);
 }
