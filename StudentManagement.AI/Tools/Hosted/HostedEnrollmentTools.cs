@@ -42,6 +42,47 @@ public sealed class HostedEnrollmentTools
     }
 
     [Description(
+    "Check whether a student currently has an active enrollment " +
+    "in a specific course. " +
+    "Always check Found first.")]
+    public EnrollmentLookupResult
+    GetEnrollmentForStudentCourse(
+        [Description(
+            "The exact internal student ID.")]
+        int studentId,
+
+        [Description(
+            "The exact internal course ID.")]
+        int courseId)
+    {
+        return _executor.Execute<
+            EnrollmentTools,
+            EnrollmentLookupResult>(
+                tools =>
+                    tools.GetEnrollmentForStudentCourse(
+                        studentId,
+                        courseId));
+    }
+
+    [Description(
+    "Get enrollment records for a specific course. " +
+    "Returns active, completed, and dropped enrollments.")]
+    public IReadOnlyList<EnrollmentSummary>
+    GetEnrollmentsByCourse(
+        [Description(
+            "The exact internal course ID.")]
+        int courseId)
+    {
+        return _executor.Execute<
+            EnrollmentTools,
+            IReadOnlyList<EnrollmentSummary>>(
+                tools =>
+                    tools.GetEnrollmentsByCourse(
+                        courseId)
+                    .ToList());
+    }
+
+    [Description(
         "Enroll a student in a course. " +
         "This modifies application data and requires human approval.")]
     public string EnrollStudent(

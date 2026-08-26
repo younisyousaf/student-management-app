@@ -183,6 +183,34 @@ public static class StudentManagementToolFactory
             new ApprovalRequiredAIFunction(
                 removeCourseFunction);
 
+        AIFunction createStudentFunction =
+            Timed(
+                AIFunctionFactory.Create(
+                    studentTools.CreateStudent,
+                    name: "create_student",
+                    description:
+                        "Create a new student record. " +
+                        "All required student information must come from the user. " +
+                        "This operation modifies student data."));
+
+        AIFunction approvalRequiredCreateStudent =
+            new ApprovalRequiredAIFunction(
+                createStudentFunction);
+
+        AIFunction createCourseFunction =
+            Timed(
+                AIFunctionFactory.Create(
+                    courseTools.CreateCourse,
+                    name: "create_course",
+                    description:
+                        "Create a new course. " +
+                        "All required course information must come from the user. " +
+                        "This operation modifies course data."));
+
+        AIFunction approvalRequiredCreateCourse =
+            new ApprovalRequiredAIFunction(
+                createCourseFunction);
+
         // -------------------------
         // Read + write tool list
         // -------------------------
@@ -208,11 +236,20 @@ public static class StudentManagementToolFactory
             AIFunctionFactory.Create(
                 courseTools.GetAllCourses),
 
+            Timed(AIFunctionFactory.Create(
+                courseTools.SearchCoursesByName)),
+
             AIFunctionFactory.Create(
                 enrollmentTools.GetEnrollmentsByStudent),
 
             AIFunctionFactory.Create(
                 enrollmentTools.GetEnrollmentById),
+
+            Timed(AIFunctionFactory.Create(
+                enrollmentTools.GetEnrollmentForStudentCourse)),
+
+            Timed(AIFunctionFactory.Create(
+                enrollmentTools.GetEnrollmentsByCourse)),
 
             approvalRequiredEnrollStudent,
             markAttendanceTodayWithApproval,
@@ -225,6 +262,8 @@ public static class StudentManagementToolFactory
             updateCourseDetailsWithApproval,
             updateCoursePricingWithApproval,
             removeCourseWithApproval,
+            approvalRequiredCreateStudent,
+            approvalRequiredCreateCourse,
 
             AIFunctionFactory.Create(
                 attendanceTools.GetAttendanceForStudent),
@@ -245,6 +284,9 @@ public static class StudentManagementToolFactory
 
             AIFunctionFactory.Create(
                 feeTools.GetFeeStatement),
+
+            Timed(AIFunctionFactory.Create(
+                feeTools.GetFeesForStudent)),
 
             Timed(
                 AIFunctionFactory.Create(

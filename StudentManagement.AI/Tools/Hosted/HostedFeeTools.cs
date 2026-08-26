@@ -45,6 +45,25 @@ public sealed class HostedFeeTools
     }
 
     [Description(
+    "Get all fee records for a specific student across their courses. " +
+    "Use this for overall fee obligations, paid fees, unpaid fees, " +
+    "or outstanding balances.")]
+    public IReadOnlyList<FeeSummary>
+    GetFeesForStudent(
+        [Description(
+            "The exact internal student ID.")]
+        int studentId)
+    {
+        return _executor.Execute<
+            FeeTools,
+            IReadOnlyList<FeeSummary>>(
+                tools =>
+                    tools.GetFeesForStudent(
+                        studentId)
+                    .ToList());
+    }
+
+    [Description(
         "Process a payment against a student's course fee. " +
         "This modifies financial data and requires human approval.")]
     public string ProcessStudentPayment(

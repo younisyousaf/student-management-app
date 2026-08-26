@@ -59,6 +59,46 @@ public sealed class HostedStudentTools
     }
 
     [Description(
+    "Create a new student record. " +
+    "All required student information must come from the user. " +
+    "This modifies student data and requires human approval.")]
+    public string CreateStudent(
+    [Description("The student's unique roll number.")]
+    string rollNumber,
+
+    [Description("The student's first name.")]
+    string firstName,
+
+    [Description("The student's last name.")]
+    string lastName,
+
+    [Description("The student's email address.")]
+    string email,
+
+    [Description("The student's date of birth.")]
+    DateTime dateOfBirth,
+
+    [Description("Optional phone number.")]
+    string? phone = null,
+
+    [Description("Optional address.")]
+    string? address = null)
+    {
+        return _executor.Execute<
+            StudentTools,
+            string>(
+                tools =>
+                    tools.CreateStudent(
+                        rollNumber,
+                        firstName,
+                        lastName,
+                        email,
+                        dateOfBirth,
+                        phone,
+                        address));
+    }
+
+    [Description(
         "Update one or more fields of an existing student's profile. " +
         "The exact student must be verified first. " +
         "This modifies student data and requires human approval.")]

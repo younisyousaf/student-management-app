@@ -41,6 +41,31 @@ public class FeeTools
     }
 
     [Description(
+    "Get all fee records for a specific student across their courses. " +
+    "Use this when the user asks about the student's overall fee " +
+    "obligations, paid fees, unpaid fees, or outstanding balances.")]
+    public IEnumerable<FeeSummary>
+    GetFeesForStudent(
+        [Description(
+            "The exact internal student ID.")]
+        int studentId)
+    {
+        if (studentId <= 0)
+        {
+            return [];
+        }
+
+        return _feeService
+            .GetAllFeeLedgers()
+            .Where(
+                fee =>
+                    fee.StudentId ==
+                    studentId)
+            .Take(50)
+            .Select(ToSummary);
+    }
+
+    [Description(
     "Process a payment for a student's course fee. " +
     "This modifies financial data and must only execute after human approval. " +
     "Before using this tool, verify the exact student and course, and retrieve the fee statement.")]

@@ -27,6 +27,25 @@ public sealed class HostedCourseTools
     }
 
     [Description(
+    "Search for courses by full or partial course name. " +
+    "Returns an empty list when no courses match.")]
+    public IReadOnlyList<CourseSummary>
+    SearchCoursesByName(
+        [Description(
+            "Full or partial course name.")]
+        string name)
+    {
+        return _executor.Execute<
+            CourseTools,
+            IReadOnlyList<CourseSummary>>(
+                tools =>
+                    tools.SearchCoursesByName(
+                        name)
+                    .ToList());
+    }
+
+
+    [Description(
         "List all courses currently offered, including fee and duration.")]
     public IReadOnlyList<CourseSummary> GetAllCourses()
     {
@@ -51,6 +70,38 @@ public sealed class HostedCourseTools
                 tools =>
                     tools.GetCourseById(
                         courseId));
+    }
+
+    [Description(
+    "Create a new course. " +
+    "All required course information must come from the user. " +
+    "This modifies course data and requires human approval.")]
+    public string CreateCourse(
+    [Description("The unique course code.")]
+    string code,
+
+    [Description("The course name.")]
+    string name,
+
+    [Description("Course duration in months.")]
+    int durationMonths,
+
+    [Description("Initial course fee amount.")]
+    decimal feeAmount,
+
+    [Description("Optional course description.")]
+    string? description = null)
+    {
+        return _executor.Execute<
+            CourseTools,
+            string>(
+                tools =>
+                    tools.CreateCourse(
+                        code,
+                        name,
+                        durationMonths,
+                        feeAmount,
+                        description));
     }
 
     [Description(
