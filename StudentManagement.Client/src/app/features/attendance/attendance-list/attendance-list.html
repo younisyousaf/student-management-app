@@ -3,40 +3,53 @@
     <h2>Attendance</h2>
     <a routerLink="/attendance/mark">+ Mark Attendance</a>
   </div>
-
   @if (isLoading()) {
-  <p>Loading attendance records...</p>
+  <div class="loading-state">
+    Loading attendance records...
+  </div>
   } @else {
-  <table>
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Course</th>
-        <th>Date</th>
-        <th>Status</th>
-        <th>Remarks</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of rows(); track row.id) {
-      <tr>
-        <td>{{ row.studentName }}</td>
-        <td>{{ row.courseName }}</td>
-        <td>{{ row.date | date:'mediumDate' }}</td>
-        <td>{{ row.statusLabel }}</td>
-        <td>{{ row.remarks || '—' }}</td>
-        <td>
-          <a [routerLink]="['/attendance', row.id, 'edit']">Edit</a>
-        </td>
-      </tr>
-      } @empty {
-      <tr>
-        <td colspan="6">No attendance records yet.</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Course</th>
+          <th>Date</th>
+          <th>Status</th>
+          <th>Remarks</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+        <tr>
+          <td>{{ row.studentName }}</td>
+          <td>{{ row.courseName }}</td>
+          <td>{{ row.date | date:'mediumDate' }}</td>
+          <td>
+            <span class="status-badge" [class.status-badge--success]="row.status === 0"
+              [class.status-badge--danger]="row.status === 1" [class.status-badge--warning]="row.status === 2"
+              [class.status-badge--info]="row.status === 3">
+              {{ row.statusLabel }}
+            </span>
+          </td>
+          <td>{{ row.remarks || '—' }}</td>
+          <td class="table-actions-cell">
+            <div class="table-actions">
+              <a class="action-link" [routerLink]="['/attendance', row.id,'edit']">
+                Edit
+              </a>
+            </div>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="6" class="empty-state-cell">No attendance records yet.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <app-pagination [pageNumber]="
     attendanceResource.value()?.data?.pageNumber ??
     pageNumber()

@@ -2,23 +2,19 @@ export interface CopilotChatRequest {
   message: string;
   sessionId?: string | null;
 }
-
 export interface CopilotChatResponse {
   response: string;
   sessionId: string;
 }
-
 export type CopilotMessageRole =
   | 'user'
   | 'assistant';
-
 export interface CopilotMessage {
   id: string;
   role: CopilotMessageRole;
   content: string;
   createdAt: Date | null;
 }
-
 export interface CopilotHistoryMessage {
   id: string;
   role: CopilotMessageRole;

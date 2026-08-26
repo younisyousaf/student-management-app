@@ -6,7 +6,6 @@ export interface Course {
   durationMonths: number;
   feeAmount: number;
 }
-
 export interface CourseRequest {
   code: string;
   name: string;

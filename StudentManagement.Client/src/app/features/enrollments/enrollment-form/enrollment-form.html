@@ -1,6 +1,5 @@
 <div class="form-page">
   <h2>Enroll Student</h2>
-
   <form (ngSubmit)="onSubmit()">
     <label>Student
       <select [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
@@ -10,7 +9,6 @@
         }
       </select>
     </label>
-
     <label>Course
       <select [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
         <option [ngValue]="null">-- Select a course --</option>
@@ -19,15 +17,12 @@
         }
       </select>
     </label>
-
     @if (errorMessage()) {
       <p class="error">{{ errorMessage() }}</p>
     }
-
     <button type="submit" [disabled]="isSaving()">
       {{ isSaving() ? 'Enrolling...' : 'Enroll' }}
     </button>
   </form>
-
   <a routerLink="/enrollments">Cancel</a>
 </div>

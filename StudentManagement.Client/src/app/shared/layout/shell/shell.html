@@ -1,18 +1,64 @@
 <div class="app-shell">
   <header class="topbar">
-    <div class="topbar__logo">Student Management</div>
-    <button class="topbar__logout" (click)="logout()">Log out</button>
+    <div class="topbar__left">
+      <button
+        type="button"
+        class="topbar__menu"
+        (click)="toggleMobileNav()"
+        [class.topbar__menu--open]="
+          isMobileNavOpen()
+        "
+        [attr.aria-expanded]="
+          isMobileNavOpen()
+        "
+        aria-controls="main-navigation"
+        aria-label="Toggle navigation">
+        <span></span>
+        <span></span>
+        <span></span>
+      </button>
+      <div class="topbar__logo">
+        Student Management
+      </div>
+    </div>
+    <button
+      type="button"
+      class="topbar__logout"
+      (click)="logout()">
+      Log out
+    </button>
   </header>
-
   <div class="app-shell__body">
-    <nav class="sidebar">
-      @for (link of navLinks; track link.path) {
-        <a [routerLink]="link.path" routerLinkActive="sidebar__link--active" class="sidebar__link">
+    @if (isMobileNavOpen()) {
+      <button
+        type="button"
+        class="sidebar-backdrop"
+        (click)="closeMobileNav()"
+        aria-label="Close navigation">
+      </button>
+    }
+    <nav
+      id="main-navigation"
+      class="sidebar"
+      [class.sidebar--open]="
+        isMobileNavOpen()
+      ">
+      <div class="sidebar__heading">
+        Navigation
+      </div>
+      @for (
+        link of navLinks;
+        track link.path
+      ) {
+        <a
+          [routerLink]="link.path"
+          routerLinkActive="sidebar__link--active"
+          class="sidebar__link"
+          (click)="closeMobileNav()">
           {{ link.label }}
         </a>
       }
     </nav>
-
     <main class="main-content">
       <router-outlet />
     </main>

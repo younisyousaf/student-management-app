@@ -3,41 +3,52 @@
     <h2>Students</h2>
     <a routerLink="/students/new">+ Add Student</a>
   </div>
-
   @if (studentsResource.isLoading()) {
-  <p>Loading students...</p>
+  <div class="loading-state" role="status" aria-live="polite">
+    Loading students...
+  </div>
   } @else if (studentsResource.error()) {
-  <p class="error">Could not load students.</p>
+  <p class="error" role="alert">Could not load students.</p>
   } @else {
-  <table>
-    <thead>
-      <tr>
-        <th>Roll #</th>
-        <th>Name</th>
-        <th>Email</th>
-        <th>Phone</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (student of studentsResource.value()?.data?.items ?? []; track student.id) {
-      <tr>
-        <td>{{ student.rollNumber }}</td>
-        <td>{{ student.fullName }}</td>
-        <td>{{ student.email }}</td>
-        <td>{{ student.phone || '—' }}</td>
-        <td>
-          <a [routerLink]="['/students', student.id, 'edit']">Edit</a>
-          <button class="btn-danger" (click)="deleteStudent(student.id)">Delete</button>
-        </td>
-      </tr>
-      } @empty {
-      <tr>
-        <td colspan="5">No students yet.</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Roll #</th>
+          <th>Name</th>
+          <th>Email</th>
+          <th>Phone</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (student of studentsResource.value()?.data?.items ?? []; track student.id) {
+        <tr>
+          <td>{{ student.rollNumber }}</td>
+          <td>{{ student.fullName }}</td>
+          <td>{{ student.email }}</td>
+          <td>{{ student.phone || '—' }}</td>
+          <td class="table-actions-cell">
+            <div class="table-actions">
+              <a class="action-link" [routerLink]="['/students', student.id, 'edit']">
+                Edit
+              </a>
+              <button class="btn-danger" (click)="deleteStudent(student.id)">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="5" class="empty-state-cell">
+            No students yet.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <app-pagination [pageNumber]="
     studentsResource.value()?.data?.pageNumber ??
     pageNumber()

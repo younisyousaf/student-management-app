@@ -1,55 +1,52 @@
 <div class="copilot-layout">
-
+  <!-- =====================================
+       Conversation Sidebar
+       ===================================== -->
   <aside class="conversation-sidebar">
-
     <button type="button" class="new-conversation-button" (click)="startNewConversation()" [disabled]="
         isSending() ||
         isLoadingHistory()
       ">
       + New Conversation
     </button>
-
     <h3>
       Previous Conversations
     </h3>
-
     @if (isLoadingConversations()) {
-
     <p class="conversation-status">
-      Loading...
+      Loading conversations...
     </p>
-
     } @else if (
     conversations().length === 0
     ) {
-
     <p class="conversation-status">
       No previous conversations.
     </p>
-
     } @else {
-
     <div class="conversation-list">
-
       @for (
       conversation of conversations();
       track conversation.threadId
       ) {
-
       <div class="conversation-row" [class.active]="
               conversation.threadId ===
               currentThreadId()
             ">
-
+        <!-- Rename Mode -->
         @if (
         renamingConversationThreadId() ===
         conversation.threadId
         ) {
-
         <div class="conversation-rename">
-
-          <input type="text" [value]="renameConversationTitle()" (input)="onRenameConversationInput($event)"
-            (click)="$event.stopPropagation()" (keydown.enter)="
+          <input type="text" [value]="
+                    renameConversationTitle()
+                  " (input)="
+                    onRenameConversationInput(
+                      $event
+                    )
+                  " (click)="
+                    $event.stopPropagation()
+                  " (keydown.enter)="
                     saveRenameConversation(
                       conversation,
                       $event
@@ -59,22 +56,20 @@
                       $event
                     )
                   " maxlength="80" autofocus>
-
           <div class="conversation-rename-actions">
-
             <button type="button" (click)="
                       saveRenameConversation(
                         conversation,
                         $event
                       )
                     " [disabled]="
-                      !renameConversationTitle().trim() ||
+                      !renameConversationTitle()
+                        .trim() ||
                       managingConversationThreadId() ===
                         conversation.threadId
                     ">
               Save
             </button>
-
             <button type="button" (click)="
                       cancelRenameConversation(
                         $event
@@ -82,13 +77,10 @@
                     ">
               Cancel
             </button>
-
           </div>
-
         </div>
-
         } @else {
-
+        <!-- Conversation Title -->
         <button type="button" class="conversation-title-button" (click)="
                   openConversation(
                     conversation
@@ -99,13 +91,10 @@
                   managingConversationThreadId() ===
                     conversation.threadId
                 " [title]="conversation.title">
-
           {{ conversation.title }}
-
         </button>
-
+        <!-- Conversation Actions -->
         <div class="conversation-menu-wrapper">
-
           <button type="button" class="conversation-menu-button" aria-label="Conversation actions" (click)="
                     toggleConversationMenu(
                       conversation.threadId,
@@ -117,14 +106,11 @@
                   ">
             ⋯
           </button>
-
           @if (
           openConversationMenuThreadId() ===
           conversation.threadId
           ) {
-
           <div class="conversation-menu">
-
             <button type="button" (click)="
                         beginRenameConversation(
                           conversation,
@@ -133,57 +119,47 @@
                       ">
               Rename
             </button>
-
             <button type="button" class="delete-action" (click)="
-                        deleteConversation(
+                        requestDeleteConversation(
                           conversation,
                           $event
                         )
                       ">
               Delete
             </button>
-
           </div>
-
           }
-
         </div>
-
         }
-
       </div>
-
       }
-
     </div>
-
+    <!-- Conversation Pagination -->
     @if (
     conversationTotalPages() > 0
     ) {
-
     <div class="conversation-pagination">
-
-      <button type="button" class="pagination-arrow previous" (click)="previousConversationPage()" [disabled]="
-    isLoadingConversations() ||
-    !conversationHasPreviousPage()
-  " aria-label="Previous conversation page">
+      <button type="button" class="pagination-arrow previous" (click)="
+              previousConversationPage()
+            " [disabled]="
+              isLoadingConversations() ||
+              !conversationHasPreviousPage()
+            " aria-label="Previous conversation page">
       </button>
-
       <span>
         Page
         {{ conversationPageNumber() }}
         of
         {{ conversationTotalPages() }}
       </span>
-
-      <button type="button" class="pagination-arrow next" (click)="nextConversationPage()" [disabled]="
-    isLoadingConversations() ||
-    !conversationHasNextPage()
-  " aria-label="Next conversation page">
+      <button type="button" class="pagination-arrow next" (click)="
+              nextConversationPage()
+            " [disabled]="
+              isLoadingConversations() ||
+              !conversationHasNextPage()
+            " aria-label="Next conversation page">
       </button>
-
     </div>
-
     <p class="conversation-count">
       {{ conversationTotalCount() }}
       {{
@@ -192,30 +168,55 @@
       : 'conversations'
       }}
     </p>
-
     }
-
     }
-
   </aside>
-
+  <!-- =====================================
+       Main Copilot Area
+       ===================================== -->
   <section class="copilot-page">
-
-    <h1>AI Copilot</h1>
-
+    <h1>
+      AI Copilot
+    </h1>
     <div class="messages">
-
+      <!-- Loading Conversation -->
+      @if (isLoadingHistory()) {
+      <div class="chat-empty-state">
+        <h3>
+          Loading conversation
+        </h3>
+        <p>
+          Restoring your previous
+          messages...
+        </p>
+      </div>
+      } @else if (
+      messages().length === 0
+      ) {
+      <!-- Empty Conversation -->
+      <div class="chat-empty-state">
+        <h3>
+          How can I help?
+        </h3>
+        <p>
+          Ask the Copilot about
+          students, courses,
+          enrollments, attendance,
+          fees, or other supported
+          student-management tasks.
+        </p>
+      </div>
+      }
+      <!-- Messages -->
       @for (
       message of messages();
       track message.id
       ) {
-
       <div class="message" [class.user-message]="
             message.role === 'user'
           " [class.assistant-message]="
             message.role === 'assistant'
           ">
-
         <strong>
           {{
           message.role === 'user'
@@ -223,109 +224,83 @@
           : 'Copilot'
           }}
         </strong>
-
         @if (message.content) {
-
         <p>
           {{ message.content }}
         </p>
-
         } @else if (
         message.role === 'assistant' &&
         isSending()
         ) {
-
         <p>
           Thinking...
         </p>
-
         }
-
       </div>
-
       }
-
+      <!-- Chat Error -->
       @if (errorMessage()) {
-
-      <p class="error">
+      <p class="error" role="alert">
         {{ errorMessage() }}
       </p>
-
       }
-
     </div>
-
+    <!-- =====================================
+         Human-in-the-loop Approval
+         ===================================== -->
     @if (
     pendingApproval();
     as approval
     ) {
-
     <div class="approval-card">
-
       <h3>
         Approval Required
       </h3>
-
       <p>
-        The Copilot wants to perform the following action:
+        The Copilot wants to perform
+        the following action:
       </p>
-
       <div class="approval-detail">
-
         <strong>
           Action
         </strong>
-
         <span>
           {{ approval.toolName }}
         </span>
-
       </div>
-
       <div class="approval-detail">
-
         <strong>
           Details
         </strong>
-
         <pre>{{ approval.arguments }}</pre>
-
       </div>
-
       @if (approval.message) {
-
       <p>
         {{ approval.message }}
       </p>
-
       }
-
       <div class="approval-actions">
-
         <button type="button" (click)="
               respondToApproval(true)
             " [disabled]="isSending()">
           Approve
         </button>
-
         <button type="button" (click)="
               respondToApproval(false)
             " [disabled]="isSending()">
           Reject
         </button>
-
       </div>
-
     </div>
-
     }
-
+    <!-- =====================================
+         Message Composer
+         ===================================== -->
     <div class="composer">
-
-      <textarea rows="4" placeholder="Ask the student management copilot..." [value]="message()"
-        (input)="onMessageInput($event)">
+      <textarea rows="3" placeholder="Ask the student management copilot..." [value]="message()" (input)="
+          onMessageInput($event)
+        ">
       </textarea>
-
       <button type="button" (click)="sendMessage()" [disabled]="
           isSending() ||
           isLoadingHistory() ||
@@ -339,9 +314,56 @@
         : 'Send'
         }}
       </button>
-
     </div>
-
   </section>
-
 </div>
+<!-- =====================================
+     Delete Conversation Modal
+     ===================================== -->
+@if (
+conversationPendingDelete();
+as conversation
+) {
+<div class="modal-backdrop" (click)="cancelDeleteConversation()">
+  <div class="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-conversation-title" (click)="
+        $event.stopPropagation()
+      ">
+    <div class="delete-modal__content">
+      <h3 id="delete-conversation-title">
+        Delete conversation?
+      </h3>
+      <p>
+        Are you sure you want to delete
+        <strong>
+          "{{ conversation.title }}"
+        </strong>?
+      </p>
+      <p class="delete-modal__warning">
+        This conversation cannot
+        be recovered.
+      </p>
+    </div>
+    <div class="delete-modal__actions">
+      <button type="button" (click)="
+            cancelDeleteConversation()
+          " [disabled]="
+            managingConversationThreadId() ===
+            conversation.threadId
+          ">
+        Cancel
+      </button>
+      <button type="button" class="delete-modal__confirm" (click)="deleteConversation()" [disabled]="
+            managingConversationThreadId() ===
+            conversation.threadId
+          ">
+        {{
+        managingConversationThreadId() ===
+        conversation.threadId
+        ? 'Deleting...'
+        : 'Delete'
+        }}
+      </button>
+    </div>
+  </div>
+</div>
+}

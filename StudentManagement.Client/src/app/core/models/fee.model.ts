@@ -3,7 +3,6 @@ export enum PaymentStatus {
   Partial = 1,
   Paid = 2
 }
-
 export interface Fee {
   id: number;
   studentId: number;
@@ -16,7 +15,6 @@ export interface Fee {
   remainingBalance: number;
   isFullySettled: boolean;
 }
-
 export interface ProcessPaymentRequest {
   studentId: number;
   courseId: number;

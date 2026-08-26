@@ -4,7 +4,6 @@ export enum AttendanceStatus {
   Late = 2,
   Excused = 3
 }
-
 export interface Attendance {
   id: number;
   studentId: number;
@@ -13,7 +12,6 @@ export interface Attendance {
   status: AttendanceStatus;
   remarks: string | null;
 }
-
 export interface MarkAttendanceRequest {
   studentId: number;
   courseId: number;
@@ -21,7 +19,6 @@ export interface MarkAttendanceRequest {
   status: AttendanceStatus;
   remarks?: string;
 }
-
 export interface UpdateAttendanceRequest {
   status: AttendanceStatus;
   remarks?: string;

@@ -3,41 +3,52 @@
     <h2>Courses</h2>
     <a routerLink="/courses/new">+ Add Course</a>
   </div>
-
   @if (coursesResource.isLoading()) {
-  <p>Loading courses...</p>
+  <div class="loading-state">
+    Loading courses...
+  </div>
   } @else if (coursesResource.error()) {
   <p class="error">Could not load courses.</p>
   } @else {
-  <table>
-    <thead>
-      <tr>
-        <th>Code</th>
-        <th>Name</th>
-        <th>Duration</th>
-        <th>Fee</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (course of coursesResource.value()?.data?.items ?? []; track course.id) {
-      <tr>
-        <td>{{ course.code }}</td>
-        <td>{{ course.name }}</td>
-        <td>{{ course.durationMonths }} months</td>
-        <td>{{ course.feeAmount | currency }}</td>
-        <td>
-          <a [routerLink]="['/courses', course.id, 'edit']">Edit</a>
-          <button class="btn-danger" (click)="deleteCourse(course.id)">Delete</button>
-        </td>
-      </tr>
-      } @empty {
-      <tr>
-        <td colspan="5">No courses yet.</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Code</th>
+          <th>Name</th>
+          <th>Duration</th>
+          <th>Fee</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (course of coursesResource.value()?.data?.items ?? []; track course.id) {
+        <tr>
+          <td>{{ course.code }}</td>
+          <td>{{ course.name }}</td>
+          <td>{{ course.durationMonths }} months</td>
+          <td>{{ course.feeAmount | currency }}</td>
+          <td class="table-actions-cell">
+            <div class="table-actions">
+              <a class="action-link" [routerLink]="['/courses', course.id, 'edit']">
+                Edit
+              </a>
+              <button class="btn-danger" (click)="deleteCourse(course.id)">
+                Delete
+              </button>
+            </div>
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="5" class="empty-state-cell">
+            No courses yet.
+          </td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <app-pagination [pageNumber]="
     coursesResource.value()?.data?.pageNumber ??
     pageNumber()

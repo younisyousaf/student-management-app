@@ -10,7 +10,6 @@ export interface Student {
   admissionDate: string;
   fullName: string;
 }
-
 export interface CreateStudentRequest {
   rollNumber: string;
   firstName: string;
@@ -20,7 +19,6 @@ export interface CreateStudentRequest {
   phone?: string;
   address?: string;
 }
-
 export interface UpdateStudentRequest {
   firstName: string;
   lastName: string;

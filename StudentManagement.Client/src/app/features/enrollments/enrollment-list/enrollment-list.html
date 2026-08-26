@@ -3,41 +3,56 @@
     <h2>Enrollments</h2>
     <a routerLink="/enrollments/new">+ Enroll Student</a>
   </div>
-
   @if (isLoading()) {
-  <p>Loading enrollments...</p>
+  <div class="loading-state">
+    Loading enrollments...
+  </div>
   } @else {
-  <table>
-    <thead>
-      <tr>
-        <th>Student</th>
-        <th>Course</th>
-        <th>Enrolled</th>
-        <th>Status</th>
-        <th></th>
-      </tr>
-    </thead>
-    <tbody>
-      @for (row of rows(); track row.id) {
-      <tr>
-        <td>{{ row.studentName }}</td>
-        <td>{{ row.courseName }}</td>
-        <td>{{ row.enrollDate | date:'mediumDate' }}</td>
-        <td>{{ row.status }}</td>
-        <td>
-          @if (row.status === 'Active') {
-          <button (click)="completeEnrollment(row.id)" style="margin-right: 5px;">Complete</button>
-          <button class="btn-danger" (click)="dropEnrollment(row.id)">Drop</button>
-          }
-        </td>
-      </tr>
-      } @empty {
-      <tr>
-        <td colspan="5">No enrollments yet.</td>
-      </tr>
-      }
-    </tbody>
-  </table>
+  <div class="table-container">
+    <table>
+      <thead>
+        <tr>
+          <th>Student</th>
+          <th>Course</th>
+          <th>Enrolled</th>
+          <th>Status</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (row of rows(); track row.id) {
+        <tr>
+          <td>{{ row.studentName }}</td>
+          <td>{{ row.courseName }}</td>
+          <td>{{ row.enrollDate | date:'mediumDate' }}</td>
+          <td>
+            <span class="status-badge" [class.status-badge--success]="row.status === 'Active'"
+              [class.status-badge--info]="row.status === 'Completed'"
+              [class.status-badge--danger]="row.status === 'Dropped'">
+              {{ row.status }}
+            </span>
+          </td>
+          <td class="table-actions-cell">
+            @if (row.status === 'Active') {
+            <div class="table-actions">
+              <button (click)="completeEnrollment(row.id)">
+                Complete
+              </button>
+              <button class="btn-danger" (click)="dropEnrollment(row.id)">
+                Drop
+              </button>
+            </div>
+            }
+          </td>
+        </tr>
+        } @empty {
+        <tr>
+          <td colspan="5" class="empty-state-cell">No enrollments yet.</td>
+        </tr>
+        }
+      </tbody>
+    </table>
+  </div>
   <app-pagination [pageNumber]="
     enrollmentsResource.value()?.data?.pageNumber ??
     pageNumber()

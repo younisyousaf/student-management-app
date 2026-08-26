@@ -5,7 +5,6 @@ export interface Enrollment {
   enrollDate: string;
   status: 'Active' | 'Dropped' | 'Completed';
 }
-
 export interface EnrollStudentRequest {
   studentId: number;
   courseId: number;

@@ -10,7 +10,6 @@ import { EnrollmentsService } from '../enrollments.service';
 import { DatePipe } from '@angular/common';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 import { Pagination } from '../../../shared/components/pagination/pagination';
-
 interface EnrollmentRow {
   id: number;
   studentName: string;
@@ -18,7 +17,6 @@ interface EnrollmentRow {
   enrollDate: string;
   status: string;
 }
-
 @Component({
   selector: 'app-enrollment-list',
   standalone: true,
@@ -39,16 +37,13 @@ export class EnrollmentList {
     );
   studentsResource = httpResource<ApiResponse<Student[]>>(() => `${environment.apiUrl}/Students`);
   coursesResource = httpResource<ApiResponse<Course[]>>(() => `${environment.apiUrl}/Courses`);
-
   isLoading = computed(() =>
     this.enrollmentsResource.isLoading() || this.studentsResource.isLoading() || this.coursesResource.isLoading()
   );
-
   rows = computed<EnrollmentRow[]>(() => {
     const enrollments = this.enrollmentsResource.value()?.data?.items ?? [];
     const students = this.studentsResource.value()?.data ?? [];
     const courses = this.coursesResource.value()?.data ?? [];
-
     return enrollments.map(e => ({
       id: e.id,
       studentName: students.find(s => s.id === e.studentId)?.fullName ?? `Student #${e.studentId}`,
@@ -57,13 +52,10 @@ export class EnrollmentList {
       status: e.status
     }));
   });
-
   changePage(pageNumber: number): void {
     this.pageNumber.set(pageNumber);
   }
-
   constructor(private enrollmentsService: EnrollmentsService) { }
-
   dropEnrollment(id: number): void {
     if (!confirm('Drop this enrollment?')) return;
     this.enrollmentsService.drop(id).subscribe({
@@ -71,14 +63,12 @@ export class EnrollmentList {
       error: (err: unknown) => alert(this.extractErrorMessage(err))
     });
   }
-
   completeEnrollment(id: number): void {
     this.enrollmentsService.complete(id).subscribe({
       next: () => this.enrollmentsResource.reload(),
       error: (err: unknown) => alert(this.extractErrorMessage(err))
     });
   }
-
   private extractErrorMessage(err: unknown): string {
     if (err && typeof err === 'object' && 'error' in err) {
       const httpError = (err as { error?: { message?: string } }).error;

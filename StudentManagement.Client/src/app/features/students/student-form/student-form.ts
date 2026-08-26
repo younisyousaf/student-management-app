@@ -2,7 +2,6 @@ import { Component, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router } from '@angular/router';
 import { StudentsService } from '../students.service';
-
 @Component({
   selector: 'app-student-form',
   standalone: true,
@@ -12,7 +11,6 @@ import { StudentsService } from '../students.service';
 export class StudentForm implements OnInit {
   isEditMode = signal(false);
   studentId = signal<number | null>(null);
-
   rollNumber = signal('');
   firstName = signal('');
   lastName = signal('');
@@ -20,25 +18,20 @@ export class StudentForm implements OnInit {
   dateOfBirth = signal('');
   phone = signal('');
   address = signal('');
-
   errorMessage = signal<string | null>(null);
   fieldErrors = signal<{ [field: string]: string[] }>({});
   isSaving = signal(false);
-
   constructor(
     private studentsService: StudentsService,
     private route: ActivatedRoute,
     private router: Router
   ) { }
-
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (!idParam) return;
-
     this.isEditMode.set(true);
     const id = Number(idParam);
     this.studentId.set(id);
-
     this.studentsService.getById(id).subscribe({
       next: (res) => {
         const s = res.data;
@@ -53,11 +46,9 @@ export class StudentForm implements OnInit {
       error: () => this.errorMessage.set('Could not load student.')
     });
   }
-
   onSubmit(): void {
     this.errorMessage.set(null);
     this.isSaving.set(true);
-
     if (this.isEditMode()) {
       this.studentsService.update(this.studentId()!, {
         firstName: this.firstName(),
@@ -90,7 +81,6 @@ export class StudentForm implements OnInit {
       });
     }
   }
-
   fieldError(name: string): string | null {
     const errors = this.fieldErrors();
     const key = Object.keys(errors).find(k => k.toLowerCase() === name.toLowerCase());

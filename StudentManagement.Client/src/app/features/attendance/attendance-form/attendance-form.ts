@@ -8,7 +8,6 @@ import { Student } from '../../../core/models/student.model';
 import { Course } from '../../../core/models/course.model';
 import { AttendanceStatus } from '../../../core/models/attendance.model';
 import { AttendanceService } from '../attendance.service';
-
 @Component({
   selector: 'app-attendance-form',
   standalone: true,
@@ -18,49 +17,39 @@ import { AttendanceService } from '../attendance.service';
 export class AttendanceForm implements OnInit {
   isEditMode = signal(false);
   attendanceId = signal<number | null>(null);
-
   studentsResource = httpResource<ApiResponse<Student[]>>(() => `${environment.apiUrl}/Students`);
   coursesResource = httpResource<ApiResponse<Course[]>>(() => `${environment.apiUrl}/Courses`);
-
   // Mark-mode fields
   selectedStudentId = signal<number | null>(null);
   selectedCourseId = signal<number | null>(null);
   date = signal<string>(new Date().toISOString().substring(0, 10));
-
   // Shared / edit-mode fields
   status = signal<AttendanceStatus>(AttendanceStatus.Present);
   remarks = signal('');
-
   // Edit-mode display-only context (can't be changed once recorded)
   studentName = signal('');
   courseName = signal('');
-
   errorMessage = signal<string | null>(null);
   isLoading = signal(false);
   isSaving = signal(false);
-
   readonly statusOptions = [
     { value: AttendanceStatus.Present, label: 'Present' },
     { value: AttendanceStatus.Absent, label: 'Absent' },
     { value: AttendanceStatus.Late, label: 'Late' },
     { value: AttendanceStatus.Excused, label: 'Excused' }
   ];
-
   constructor(
     private attendanceService: AttendanceService,
     private route: ActivatedRoute,
     private router: Router
   ) {}
-
   ngOnInit(): void {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (!idParam) return;
-
     this.isEditMode.set(true);
     const id = Number(idParam);
     this.attendanceId.set(id);
     this.isLoading.set(true);
-
     this.attendanceService.getById(id).subscribe({
       next: (res) => {
         const record = res.data;
@@ -75,10 +64,8 @@ export class AttendanceForm implements OnInit {
       }
     });
   }
-
   onSubmit(): void {
     this.errorMessage.set(null);
-
     if (this.isEditMode()) {
       this.isSaving.set(true);
       this.attendanceService.update(this.attendanceId()!, {
@@ -93,12 +80,10 @@ export class AttendanceForm implements OnInit {
       });
       return;
     }
-
     if (!this.selectedStudentId() || !this.selectedCourseId()) {
       this.errorMessage.set('Select a student and a course.');
       return;
     }
-
     this.isSaving.set(true);
     this.attendanceService.mark({
       studentId: this.selectedStudentId()!,
@@ -114,7 +99,6 @@ export class AttendanceForm implements OnInit {
       }
     });
   }
-
   private extractErrorMessage(err: unknown): string {
     if (err && typeof err === 'object' && 'error' in err) {
       const httpError = (err as { error?: { message?: string } }).error;
