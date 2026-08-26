@@ -2,33 +2,56 @@
   <h2>Fee Ledger</h2>
 
   @if (isLoading()) {
-    <p>Loading fee records...</p>
+  <p>Loading fee records...</p>
   } @else {
-    <table>
-      <thead>
-        <tr><th>Student</th><th>Course</th><th>Due</th><th>Paid</th><th>Balance</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-          <tr>
-            <td>{{ row.studentName }}</td>
-            <td>{{ row.courseName }}</td>
-            <td>{{ row.amountDue | currency }}</td>
-            <td>{{ row.amountPaid | currency }}</td>
-            <td>{{ row.remainingBalance | currency }}</td>
-            <td>{{ row.statusLabel }}</td>
-            <td>
-              @if (!row.isFullySettled) {
-                <a [routerLink]="['/fees/pay']" [queryParams]="{ studentId: row.studentId, courseId: row.courseId }">
-                  Record Payment
-                </a>
-              }
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="7">No fee records yet.</td></tr>
-        }
-      </tbody>
-    </table>
+  <table>
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Due</th>
+        <th>Paid</th>
+        <th>Balance</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+      <tr>
+        <td>{{ row.studentName }}</td>
+        <td>{{ row.courseName }}</td>
+        <td>{{ row.amountDue | currency }}</td>
+        <td>{{ row.amountPaid | currency }}</td>
+        <td>{{ row.remainingBalance | currency }}</td>
+        <td>{{ row.statusLabel }}</td>
+        <td>
+          @if (!row.isFullySettled) {
+          <a [routerLink]="['/fees/pay']" [queryParams]="{ studentId: row.studentId, courseId: row.courseId }">
+            Record Payment
+          </a>
+          }
+        </td>
+      </tr>
+      } @empty {
+      <tr>
+        <td colspan="7">No fee records yet.</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <app-pagination [pageNumber]="
+    feesResource.value()?.data?.pageNumber ??
+    pageNumber()
+  " [totalPages]="
+    feesResource.value()?.data?.totalPages ??
+    0
+  " [totalCount]="
+    feesResource.value()?.data?.totalCount ??
+    0
+  " [isLoading]="
+    feesResource.isLoading()
+  " (pageChange)="changePage($event)">
+  </app-pagination>
   }
 </div>

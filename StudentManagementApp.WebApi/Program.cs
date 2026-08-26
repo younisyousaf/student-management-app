@@ -111,6 +111,8 @@ builder.Services.AddSingleton<
 // AI Services
 builder.Services.AddScoped<
     CopilotConversationStore>();
+builder.Services.AddScoped<
+    ManagementPaginationStore>();
 builder.Services.AddStudentManagementAI(
     builder.Configuration);
 const string HostedCopilotAgentName =

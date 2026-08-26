@@ -1,33 +1,9 @@
-import {
-  Component,
-  DestroyRef,
-  inject,
-  signal
-} from '@angular/core';
-
-import {
-  takeUntilDestroyed
-} from '@angular/core/rxjs-interop';
-
-import {
-  BaseEvent,
-  EventType
-} from '@ag-ui/core';
-
-import {
-  forkJoin
-} from 'rxjs';
-
-import {
-  AgUiCopilotService
-} from '../../services/ag-ui-copilot.service';
-
-import {
-  CopilotApprovalRequest,
-  CopilotConversation,
-  CopilotMessage
-} from '../../models/copilot.model';
-
+import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
+import { BaseEvent, EventType } from '@ag-ui/core';
+import { forkJoin } from 'rxjs';
+import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
+import { CopilotApprovalRequest, CopilotConversation, CopilotMessage } from '../../models/copilot.model';
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
@@ -37,52 +13,27 @@ import {
 })
 export class CopilotChat {
 
-  private readonly copilotService =
-    inject(AgUiCopilotService);
-
-  private readonly destroyRef =
-    inject(DestroyRef);
-
-  readonly message =
-    signal('');
-
-  readonly messages =
-    signal<CopilotMessage[]>([]);
-
-  readonly isLoadingHistory =
-    signal(false);
-
-  readonly isSending =
-    signal(false);
-
-  readonly errorMessage =
-    signal('');
-
-  readonly pendingApproval =
-    signal<CopilotApprovalRequest | null>(
-      null
-    );
-
-  readonly conversations =
-    signal<CopilotConversation[]>([]);
-
-  readonly isLoadingConversations =
-    signal(false);
-
-  readonly currentThreadId =
-    signal('');
-
-  readonly openConversationMenuThreadId =
-    signal<string | null>(null);
-
-  readonly renamingConversationThreadId =
-    signal<string | null>(null);
-
-  readonly renameConversationTitle =
-    signal('');
-
-  readonly managingConversationThreadId =
-    signal<string | null>(null);
+  private readonly copilotService = inject(AgUiCopilotService);
+  private readonly destroyRef = inject(DestroyRef);
+  readonly message = signal('');
+  readonly messages = signal<CopilotMessage[]>([]);
+  readonly isLoadingHistory = signal(false);
+  readonly isSending = signal(false);
+  readonly errorMessage = signal('');
+  readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
+  readonly conversations = signal<CopilotConversation[]>([]);
+  readonly conversationPageNumber = signal(1);
+  readonly conversationTotalCount = signal(0);
+  readonly conversationTotalPages = signal(0);
+  readonly conversationHasPreviousPage = signal(false);
+  readonly conversationHasNextPage = signal(false);
+  readonly conversationPageSize = 10;
+  readonly isLoadingConversations = signal(false);
+  readonly currentThreadId = signal('');
+  readonly openConversationMenuThreadId = signal<string | null>(null);
+  readonly renamingConversationThreadId = signal<string | null>(null);
+  readonly renameConversationTitle = signal('');
+  readonly managingConversationThreadId = signal<string | null>(null);
 
   private readonly toolCalls =
     new Map<
@@ -95,45 +46,21 @@ export class CopilotChat {
 
   constructor() {
 
-    this.copilotService
-      .ensureSession();
-
-    this.currentThreadId.set(
-      this.copilotService.threadId
-    );
-
-    this.copilotService
-      .conversationSaved$
-      .pipe(
-        takeUntilDestroyed(
-          this.destroyRef
-        )
-      )
-      .subscribe(
-        conversation => {
-
-          this.updateConversationList(
-            conversation
-          );
-        }
-      );
-
+    this.copilotService.ensureSession();
+    this.currentThreadId.set(this.copilotService.threadId);
+    this.copilotService.conversationSaved$.pipe(
+        takeUntilDestroyed(this.destroyRef)
+      ).subscribe(() => {
+        this.loadConversations(1);
+      });
     this.loadConversations();
-
     this.loadConversationState();
   }
 
   private loadConversationState(): void {
-
-    const threadId =
-      this.copilotService.threadId;
-
-    this.isLoadingHistory.set(
-      true
-    );
-
+    const threadId = this.copilotService.threadId;
+    this.isLoadingHistory.set(true);
     this.errorMessage.set('');
-
     forkJoin({
       history:
         this.copilotService
@@ -222,20 +149,47 @@ export class CopilotChat {
       });
   }
 
-  private loadConversations(): void {
+  private loadConversations(
+    pageNumber:
+      number =
+      this.conversationPageNumber()
+  ): void {
 
     this.isLoadingConversations.set(
       true
     );
 
     this.copilotService
-      .getConversations()
+      .getConversations(
+        pageNumber,
+        this.conversationPageSize
+      )
       .subscribe({
 
-        next: conversations => {
+        next: result => {
 
           this.conversations.set(
-            conversations
+            result.items
+          );
+
+          this.conversationPageNumber.set(
+            result.pageNumber
+          );
+
+          this.conversationTotalCount.set(
+            result.totalCount
+          );
+
+          this.conversationTotalPages.set(
+            result.totalPages
+          );
+
+          this.conversationHasPreviousPage.set(
+            result.hasPreviousPage
+          );
+
+          this.conversationHasNextPage.set(
+            result.hasNextPage
           );
         },
 
@@ -258,28 +212,6 @@ export class CopilotChat {
           );
         }
       });
-  }
-
-  private updateConversationList(
-    conversation: CopilotConversation
-  ): void {
-
-    this.conversations.update(
-      conversations => {
-
-        const remaining =
-          conversations.filter(
-            item =>
-              item.threadId !==
-              conversation.threadId
-          );
-
-        return [
-          conversation,
-          ...remaining
-        ];
-      }
-    );
   }
 
   startNewConversation(): void {
@@ -974,15 +906,6 @@ export class CopilotChat {
 
         next: () => {
 
-          this.conversations.update(
-            conversations =>
-              conversations.filter(
-                item =>
-                  item.threadId !==
-                  conversation.threadId
-              )
-          );
-
           if (
             conversation.threadId ===
             this.currentThreadId()
@@ -1008,6 +931,33 @@ export class CopilotChat {
 
             this.errorMessage.set('');
           }
+
+          const remainingCount =
+            Math.max(
+              0,
+              this.conversationTotalCount() - 1
+            );
+
+          const remainingPages =
+            remainingCount === 0
+              ? 0
+              : Math.ceil(
+                remainingCount /
+                this.conversationPageSize
+              );
+
+          const pageToLoad =
+            Math.min(
+              this.conversationPageNumber(),
+              Math.max(
+                1,
+                remainingPages
+              )
+            );
+
+          this.loadConversations(
+            pageToLoad
+          );
         },
 
         error: error => {
@@ -1033,6 +983,42 @@ export class CopilotChat {
           );
         }
       });
+  }
+
+  previousConversationPage(): void {
+
+    if (
+      this.isLoadingConversations() ||
+      !this.conversationHasPreviousPage()
+    ) {
+      return;
+    }
+
+    this.closeConversationMenu();
+
+    this.cancelRenameConversation();
+
+    this.loadConversations(
+      this.conversationPageNumber() - 1
+    );
+  }
+
+  nextConversationPage(): void {
+
+    if (
+      this.isLoadingConversations() ||
+      !this.conversationHasNextPage()
+    ) {
+      return;
+    }
+
+    this.closeConversationMenu();
+
+    this.cancelRenameConversation();
+
+    this.loadConversations(
+      this.conversationPageNumber() + 1
+    );
   }
 
   private removeEmptyAssistantMessage(

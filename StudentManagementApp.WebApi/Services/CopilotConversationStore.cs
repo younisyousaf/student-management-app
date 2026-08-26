@@ -21,24 +21,52 @@ public sealed class CopilotConversationStore
         _currentUserContext = currentUserContext;
     }
 
-    public async Task<IReadOnlyList<CopilotConversationRecord>>
-        GetAllAsync(
-            CancellationToken cancellationToken = default)
+    public async Task<
+     PaginatedResult<CopilotConversationRecord>>
+     GetPageAsync(
+         int pageNumber,
+         int pageSize,
+         CancellationToken cancellationToken = default)
     {
         int userId =
             GetRequiredUserId();
 
-        return await _dbContext
-            .CopilotConversations
-            .AsNoTracking()
-            .Where(
-                conversation =>
-                    conversation.UserId == userId)
-            .OrderByDescending(
-                conversation =>
-                    conversation.UpdatedAt)
-            .ToListAsync(
+        var query =
+            _dbContext
+                .CopilotConversations
+                .AsNoTracking()
+                .Where(
+                    conversation =>
+                        conversation.UserId ==
+                        userId);
+
+        int totalCount =
+            await query.CountAsync(
                 cancellationToken);
+
+        int skip =
+            (pageNumber - 1) *
+            pageSize;
+
+        var conversations =
+            await query
+                .OrderByDescending(
+                    conversation =>
+                        conversation.UpdatedAt)
+                .ThenByDescending(
+                    conversation =>
+                        conversation.Id)
+                .Skip(skip)
+                .Take(pageSize)
+                .ToListAsync(
+                    cancellationToken);
+
+        return new PaginatedResult<
+            CopilotConversationRecord>(
+                conversations,
+                pageNumber,
+                pageSize,
+                totalCount);
     }
 
     public async Task<CopilotConversationRecord>

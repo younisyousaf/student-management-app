@@ -1,9 +1,10 @@
-﻿using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using StudentManagementApp.WebApi.Services;
-using Microsoft.Agents.AI;
+﻿using Microsoft.Agents.AI;
 using Microsoft.Agents.AI.Hosting;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using StudentManagementApp.WebApi.DTOs;
+using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Models;
 
 namespace StudentManagementApp.WebApi.Controllers;
 
@@ -61,17 +62,21 @@ public sealed class AGUICopilotConversationsController
 
     [HttpGet]
     public async Task<ActionResult<
-        IReadOnlyList<CopilotConversationResponse>>>
-        GetConversations(
-            CancellationToken cancellationToken)
+    PaginatedResult<CopilotConversationResponse>>>
+    GetConversations(
+        [FromQuery]
+        PaginationQuery pagination,
+        CancellationToken cancellationToken)
     {
-        var conversations =
+        var result =
             await _conversationStore
-                .GetAllAsync(
+                .GetPageAsync(
+                    pagination.PageNumber,
+                    pagination.PageSize,
                     cancellationToken);
 
-        var response =
-            conversations
+        var conversations =
+            result.Items
                 .Select(
                     conversation =>
                         new CopilotConversationResponse(
@@ -81,6 +86,14 @@ public sealed class AGUICopilotConversationsController
                             conversation.CreatedAt,
                             conversation.UpdatedAt))
                 .ToList();
+
+        var response =
+            new PaginatedResult<
+                CopilotConversationResponse>(
+                    conversations,
+                    result.PageNumber,
+                    result.PageSize,
+                    result.TotalCount);
 
         return Ok(response);
     }

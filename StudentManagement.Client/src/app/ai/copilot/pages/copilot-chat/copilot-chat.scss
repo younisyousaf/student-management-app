@@ -240,3 +240,56 @@
     margin-right: 0;
   }
 }
+
+.conversation-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 12px;
+
+  span {
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  .pagination-arrow {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    display: grid;
+    place-items: center;
+
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    background: transparent;
+    cursor: pointer;
+
+    &::before {
+      content: '';
+      width: 7px;
+      height: 7px;
+      border-top: 1.5px solid currentColor;
+      border-right: 1.5px solid currentColor;
+    }
+
+    &.previous::before {
+      transform: rotate(-135deg);
+    }
+
+    &.next::before {
+      transform: rotate(45deg);
+    }
+
+    &:disabled {
+      cursor: not-allowed;
+      opacity: 0.45;
+    }
+  }
+}
+
+.conversation-count {
+  margin: 8px 0 0;
+  text-align: center;
+  font-size: 12px;
+}

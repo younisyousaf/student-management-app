@@ -1,0 +1,35 @@
+@if (totalPages > 0) {
+
+<div class="pagination">
+
+  <button type="button" class="pagination-arrow previous" (click)="previousPage()" [disabled]="
+        isLoading ||
+        pageNumber <= 1
+      " aria-label="Previous page">
+  </button>
+
+  <span>
+    Page
+    {{ pageNumber }}
+    of
+    {{ totalPages }}
+  </span>
+
+  <button type="button" class="pagination-arrow next" (click)="nextPage()" [disabled]="
+        isLoading ||
+        pageNumber >= totalPages
+      " aria-label="Next page">
+  </button>
+
+</div>
+
+<p class="pagination-count">
+  {{ totalCount }}
+  {{
+  totalCount === 1
+  ? 'record'
+  : 'records'
+  }}
+</p>
+
+}

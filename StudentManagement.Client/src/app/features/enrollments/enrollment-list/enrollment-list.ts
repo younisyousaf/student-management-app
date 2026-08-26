@@ -1,4 +1,4 @@
-import { Component, computed } from '@angular/core';
+import { Component, computed, signal } from '@angular/core';
 import { httpResource } from '@angular/common/http';
 import { RouterLink } from '@angular/router';
 import { environment } from '../../../../environments/environment.development';
@@ -8,6 +8,8 @@ import { Student } from '../../../core/models/student.model';
 import { Course } from '../../../core/models/course.model';
 import { EnrollmentsService } from '../enrollments.service';
 import { DatePipe } from '@angular/common';
+import { PaginatedResult } from '../../../shared/models/paginated-result.model';
+import { Pagination } from '../../../shared/components/pagination/pagination';
 
 interface EnrollmentRow {
   id: number;
@@ -20,11 +22,21 @@ interface EnrollmentRow {
 @Component({
   selector: 'app-enrollment-list',
   standalone: true,
-  imports: [RouterLink, DatePipe],
+  imports: [RouterLink, DatePipe, Pagination],
   templateUrl: './enrollment-list.html'
 })
 export class EnrollmentList {
-  enrollmentsResource = httpResource<ApiResponse<Enrollment[]>>(() => `${environment.apiUrl}/Enrollments`);
+  readonly pageNumber = signal(1);
+  readonly pageSize = 10;
+  enrollmentsResource =
+    httpResource<
+      ApiResponse<
+        PaginatedResult<Enrollment>
+      >
+    >(
+      () =>
+        `${environment.apiUrl}/Enrollments/paged?pageNumber=${this.pageNumber()}&pageSize=${this.pageSize}`
+    );
   studentsResource = httpResource<ApiResponse<Student[]>>(() => `${environment.apiUrl}/Students`);
   coursesResource = httpResource<ApiResponse<Course[]>>(() => `${environment.apiUrl}/Courses`);
 
@@ -33,7 +45,7 @@ export class EnrollmentList {
   );
 
   rows = computed<EnrollmentRow[]>(() => {
-    const enrollments = this.enrollmentsResource.value()?.data ?? [];
+    const enrollments = this.enrollmentsResource.value()?.data?.items ?? [];
     const students = this.studentsResource.value()?.data ?? [];
     const courses = this.coursesResource.value()?.data ?? [];
 
@@ -46,7 +58,11 @@ export class EnrollmentList {
     }));
   });
 
-  constructor(private enrollmentsService: EnrollmentsService) {}
+  changePage(pageNumber: number): void {
+    this.pageNumber.set(pageNumber);
+  }
+
+  constructor(private enrollmentsService: EnrollmentsService) { }
 
   dropEnrollment(id: number): void {
     if (!confirm('Drop this enrollment?')) return;

@@ -9,6 +9,7 @@ import {
 import { Observable, tap, Subject } from 'rxjs';
 import { environment } from '../../../../environments/environment.development';
 import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation } from '../models/copilot.model';
+import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 
 @Injectable({
   providedIn: 'root'
@@ -396,14 +397,23 @@ export class AgUiCopilotService {
     );
   }
 
-  getConversations():
-    Observable<CopilotConversation[]> {
+  getConversations(
+    pageNumber: number,
+    pageSize: number
+  ): Observable<
+    PaginatedResult<CopilotConversation>
+  > {
 
     return this.http.get<
-      CopilotConversation[]
+      PaginatedResult<CopilotConversation>
     >(
       `${environment.apiUrl}/ag-ui/copilot/conversations`,
       {
+        params: {
+          pageNumber,
+          pageSize
+        },
+
         withCredentials: true
       }
     );
@@ -470,31 +480,31 @@ export class AgUiCopilotService {
   }
 
   renameConversation(
-  threadId: string,
-  title: string
-): Observable<CopilotConversation> {
+    threadId: string,
+    title: string
+  ): Observable<CopilotConversation> {
 
-  return this.http.patch<CopilotConversation>(
-    `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}/title`,
-    {
-      title
-    },
-    {
-      withCredentials: true
-    }
-  );
-}
+    return this.http.patch<CopilotConversation>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}/title`,
+      {
+        title
+      },
+      {
+        withCredentials: true
+      }
+    );
+  }
 
-deleteConversation(
-  threadId: string
-): Observable<void> {
+  deleteConversation(
+    threadId: string
+  ): Observable<void> {
 
-  return this.http.delete<void>(
-    `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}`,
-    {
-      withCredentials: true
-    }
-  );
-}
+    return this.http.delete<void>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${encodeURIComponent(threadId)}`,
+      {
+        withCredentials: true
+      }
+    );
+  }
 
 }

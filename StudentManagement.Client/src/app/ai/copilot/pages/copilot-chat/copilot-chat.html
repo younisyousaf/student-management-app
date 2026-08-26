@@ -157,6 +157,44 @@
 
     </div>
 
+    @if (
+    conversationTotalPages() > 0
+    ) {
+
+    <div class="conversation-pagination">
+
+      <button type="button" class="pagination-arrow previous" (click)="previousConversationPage()" [disabled]="
+    isLoadingConversations() ||
+    !conversationHasPreviousPage()
+  " aria-label="Previous conversation page">
+      </button>
+
+      <span>
+        Page
+        {{ conversationPageNumber() }}
+        of
+        {{ conversationTotalPages() }}
+      </span>
+
+      <button type="button" class="pagination-arrow next" (click)="nextConversationPage()" [disabled]="
+    isLoadingConversations() ||
+    !conversationHasNextPage()
+  " aria-label="Next conversation page">
+      </button>
+
+    </div>
+
+    <p class="conversation-count">
+      {{ conversationTotalCount() }}
+      {{
+      conversationTotalCount() === 1
+      ? 'conversation'
+      : 'conversations'
+      }}
+    </p>
+
+    }
+
     }
 
   </aside>

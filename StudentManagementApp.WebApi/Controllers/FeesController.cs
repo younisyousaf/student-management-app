@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
+using StudentManagementApp.WebApi.Services;
 
 namespace StudentManagementApp.WebApi.Controllers
 {
@@ -37,6 +38,86 @@ namespace StudentManagementApp.WebApi.Controllers
                 Message = "Fee records retrieved successfully.",
                 Data = data
             });
+        }
+
+        [HttpGet("paged")]
+        public async Task<ActionResult<
+    ApiResponse<
+        PaginatedResult<
+            FeeResponseDto>>>>
+    GetPaged(
+        [FromQuery]
+        PaginationQuery pagination,
+
+        [FromServices]
+        ManagementPaginationStore paginationStore,
+
+        CancellationToken cancellationToken)
+        {
+            var result =
+                await paginationStore
+                    .GetFeesAsync(
+                        pagination.PageNumber,
+                        pagination.PageSize,
+                        cancellationToken);
+
+            var items =
+                result.Items
+                    .Select(
+                        fee =>
+                            new FeeResponseDto
+                            {
+                                Id =
+                                    fee.Id,
+
+                                StudentId =
+                                    fee.StudentId,
+
+                                CourseId =
+                                    fee.CourseId,
+
+                                AmountDue =
+                                    fee.AmountDue,
+
+                                AmountPaid =
+                                    fee.AmountPaid,
+
+                                PaymentDate =
+                                    fee.PaymentDate,
+
+                                Remarks =
+                                    fee.Remarks,
+
+                                Status =
+                                    (int)fee.Status,
+
+                                RemainingBalance =
+                                    fee.RemainingBalance,
+
+                                IsFullySettled =
+                                    fee.IsFullySettled
+                            })
+                    .ToList();
+
+            var paginatedResult =
+                new PaginatedResult<
+                    FeeResponseDto>(
+                        items,
+                        result.PageNumber,
+                        result.PageSize,
+                        result.TotalCount);
+
+            return Ok(
+                new ApiResponse<
+                    PaginatedResult<
+                        FeeResponseDto>>
+                {
+                    Message =
+                        "Fee records retrieved successfully.",
+
+                    Data =
+                        paginatedResult
+                });
         }
 
         [HttpGet("{id}")]

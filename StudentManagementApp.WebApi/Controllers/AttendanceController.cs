@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
+using StudentManagementApp.WebApi.Services;
 
 namespace StudentManagementApp.WebApi.Controllers
 {
@@ -28,6 +29,53 @@ namespace StudentManagementApp.WebApi.Controllers
                 Message = "Attendance records retrieved successfully.",
                 Data = records.Select(ToDto)
             });
+        }
+
+        [HttpGet("paged")]
+        public async Task<ActionResult<
+    ApiResponse<
+        PaginatedResult<
+            AttendanceResponseDto>>>>
+    GetPaged(
+        [FromQuery]
+        PaginationQuery pagination,
+
+        [FromServices]
+        ManagementPaginationStore paginationStore,
+
+        CancellationToken cancellationToken)
+        {
+            var result =
+                await paginationStore
+                    .GetAttendanceAsync(
+                        pagination.PageNumber,
+                        pagination.PageSize,
+                        cancellationToken);
+
+            var items =
+                result.Items
+                    .Select(ToDto)
+                    .ToList();
+
+            var paginatedResult =
+                new PaginatedResult<
+                    AttendanceResponseDto>(
+                        items,
+                        result.PageNumber,
+                        result.PageSize,
+                        result.TotalCount);
+
+            return Ok(
+                new ApiResponse<
+                    PaginatedResult<
+                        AttendanceResponseDto>>
+                {
+                    Message =
+                        "Attendance records retrieved successfully.",
+
+                    Data =
+                        paginatedResult
+                });
         }
 
         [HttpGet("{id}")]

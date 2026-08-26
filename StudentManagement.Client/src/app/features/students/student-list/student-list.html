@@ -5,30 +5,51 @@
   </div>
 
   @if (studentsResource.isLoading()) {
-    <p>Loading students...</p>
+  <p>Loading students...</p>
   } @else if (studentsResource.error()) {
-    <p class="error">Could not load students.</p>
+  <p class="error">Could not load students.</p>
   } @else {
-    <table>
-      <thead>
-        <tr><th>Roll #</th><th>Name</th><th>Email</th><th>Phone</th><th></th></tr>
-      </thead>
-      <tbody>
-        @for (student of studentsResource.value()?.data ?? []; track student.id) {
-          <tr>
-            <td>{{ student.rollNumber }}</td>
-            <td>{{ student.fullName }}</td>
-            <td>{{ student.email }}</td>
-            <td>{{ student.phone || '—' }}</td>
-            <td>
-              <a [routerLink]="['/students', student.id, 'edit']">Edit</a>
-              <button class="btn-danger" (click)="deleteStudent(student.id)">Delete</button>
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="5">No students yet.</td></tr>
-        }
-      </tbody>
-    </table>
+  <table>
+    <thead>
+      <tr>
+        <th>Roll #</th>
+        <th>Name</th>
+        <th>Email</th>
+        <th>Phone</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (student of studentsResource.value()?.data?.items ?? []; track student.id) {
+      <tr>
+        <td>{{ student.rollNumber }}</td>
+        <td>{{ student.fullName }}</td>
+        <td>{{ student.email }}</td>
+        <td>{{ student.phone || '—' }}</td>
+        <td>
+          <a [routerLink]="['/students', student.id, 'edit']">Edit</a>
+          <button class="btn-danger" (click)="deleteStudent(student.id)">Delete</button>
+        </td>
+      </tr>
+      } @empty {
+      <tr>
+        <td colspan="5">No students yet.</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <app-pagination [pageNumber]="
+    studentsResource.value()?.data?.pageNumber ??
+    pageNumber()
+  " [totalPages]="
+    studentsResource.value()?.data?.totalPages ??
+    0
+  " [totalCount]="
+    studentsResource.value()?.data?.totalCount ??
+    0
+  " [isLoading]="
+    studentsResource.isLoading()
+  " (pageChange)="changePage($event)">
+  </app-pagination>
   }
 </div>

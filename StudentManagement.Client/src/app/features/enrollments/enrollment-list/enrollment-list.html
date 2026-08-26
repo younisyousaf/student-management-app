@@ -5,30 +5,51 @@
   </div>
 
   @if (isLoading()) {
-    <p>Loading enrollments...</p>
+  <p>Loading enrollments...</p>
   } @else {
-    <table>
-      <thead>
-        <tr><th>Student</th><th>Course</th><th>Enrolled</th><th>Status</th><th></th></tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-          <tr>
-            <td>{{ row.studentName }}</td>
-            <td>{{ row.courseName }}</td>
-            <td>{{ row.enrollDate | date:'mediumDate' }}</td>
-            <td>{{ row.status }}</td>
-            <td>
-              @if (row.status === 'Active') {
-                <button (click)="completeEnrollment(row.id)" style="margin-right: 5px;">Complete</button>
-                <button class="btn-danger" (click)="dropEnrollment(row.id)">Drop</button>
-              }
-            </td>
-          </tr>
-        } @empty {
-          <tr><td colspan="5">No enrollments yet.</td></tr>
-        }
-      </tbody>
-    </table>
+  <table>
+    <thead>
+      <tr>
+        <th>Student</th>
+        <th>Course</th>
+        <th>Enrolled</th>
+        <th>Status</th>
+        <th></th>
+      </tr>
+    </thead>
+    <tbody>
+      @for (row of rows(); track row.id) {
+      <tr>
+        <td>{{ row.studentName }}</td>
+        <td>{{ row.courseName }}</td>
+        <td>{{ row.enrollDate | date:'mediumDate' }}</td>
+        <td>{{ row.status }}</td>
+        <td>
+          @if (row.status === 'Active') {
+          <button (click)="completeEnrollment(row.id)" style="margin-right: 5px;">Complete</button>
+          <button class="btn-danger" (click)="dropEnrollment(row.id)">Drop</button>
+          }
+        </td>
+      </tr>
+      } @empty {
+      <tr>
+        <td colspan="5">No enrollments yet.</td>
+      </tr>
+      }
+    </tbody>
+  </table>
+  <app-pagination [pageNumber]="
+    enrollmentsResource.value()?.data?.pageNumber ??
+    pageNumber()
+  " [totalPages]="
+    enrollmentsResource.value()?.data?.totalPages ??
+    0
+  " [totalCount]="
+    enrollmentsResource.value()?.data?.totalCount ??
+    0
+  " [isLoading]="
+    enrollmentsResource.isLoading()
+  " (pageChange)="changePage($event)">
+  </app-pagination>
   }
 </div>
