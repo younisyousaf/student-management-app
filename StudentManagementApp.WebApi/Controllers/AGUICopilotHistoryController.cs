@@ -4,6 +4,7 @@ using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.AI;
 using Microsoft.Extensions.DependencyInjection;
+using StudentManagementApp.WebApi.Services;
 using System.Text.Json;
 
 namespace StudentManagementApp.WebApi.Controllers;
@@ -19,7 +20,10 @@ public sealed record CopilotPendingApprovalResponse(
     string ToolCallId,
     string ToolName,
     string Arguments,
-    string Message);
+    string Message,
+    string DisplayTitle,
+    IReadOnlyList<CopilotApprovalDisplayItem> DisplayDetails,
+    string? Warning);
 
 
 [ApiController]
@@ -32,11 +36,14 @@ public sealed class AGUICopilotHistoryController
         "student-management-copilot";
 
     private readonly IServiceProvider _serviceProvider;
+    private readonly CopilotApprovalPresenter _approvalPresenter;
 
     public AGUICopilotHistoryController(
-        IServiceProvider serviceProvider)
+        IServiceProvider serviceProvider,
+        CopilotApprovalPresenter approvalPresenter)
     {
         _serviceProvider = serviceProvider;
+        _approvalPresenter = approvalPresenter;
     }
 
     [HttpGet("history/{threadId}")]
@@ -87,8 +94,31 @@ public sealed class AGUICopilotHistoryController
         var response =
             storedMessages
                 .Where(message =>
-                    message.Role == ChatRole.User ||
-                    message.Role == ChatRole.Assistant)
+                {
+                    if (message.Role == ChatRole.User)
+                    {
+                        return true;
+                    }
+
+                    if (message.Role != ChatRole.Assistant)
+                    {
+                        return false;
+                    }
+
+                    var containsToolCall =
+                        message.Contents
+                            .OfType<FunctionCallContent>()
+                            .Any();
+
+                    var containsApprovalRequest =
+                        message.Contents
+                            .OfType<ToolApprovalRequestContent>()
+                            .Any();
+
+                    return
+                        !containsToolCall &&
+                        !containsApprovalRequest;
+                })
                 .Select(
                     (message, index) =>
                         new CopilotHistoryMessageResponse(
@@ -204,6 +234,10 @@ public sealed class AGUICopilotHistoryController
                 ? "{}"
                 : JsonSerializer.Serialize(
                     functionCall.Arguments);
+        var presentation =
+        _approvalPresenter.Present(
+            functionCall.Name,
+            functionCall.Arguments);
 
         var response =
             new CopilotPendingApprovalResponse(
@@ -220,7 +254,16 @@ public sealed class AGUICopilotHistoryController
                     arguments,
 
                 Message:
-                    $"Approval required for tool call: {functionCall.Name}");
+                    $"Approval required for tool call: {functionCall.Name}",
+
+                DisplayTitle:
+                    presentation.Title,
+
+                DisplayDetails:
+                    presentation.Details,
+
+                Warning:
+                    presentation.Warning);
 
         return Ok(response);
     }

@@ -4,17 +4,41 @@ using StudentManagement.Core.Models;
 
 namespace StudentManagement.AI.Tools;
 
-public record FeeSummary(int Id, int StudentId, int CourseId, decimal AmountDue, decimal AmountPaid, decimal RemainingBalance, string Status, DateTime? PaymentDate);
+public record FeeSummary(
+    int Id,
+    int StudentId,
+    string StudentName,
+    string RollNumber,
+    int CourseId,
+    string CourseName,
+    string CourseCode,
+    decimal AmountDue,
+    decimal AmountPaid,
+    decimal RemainingBalance,
+    string Status,
+    DateTime? PaymentDate);
 
 public record FeeLookupResult(bool Found, FeeSummary? Fee, string? Message);
 
 public class FeeTools
 {
     private readonly IFeeService _feeService;
+    private readonly IStudentService _studentService;
+    private readonly ICourseService _courseService;
 
-    public FeeTools(IFeeService feeService)
+    public FeeTools(
+        IFeeService feeService,
+        IStudentService studentService,
+        ICourseService courseService)
     {
-        _feeService = feeService;
+        _feeService =
+            feeService;
+
+        _studentService =
+            studentService;
+
+        _courseService =
+            courseService;
     }
 
     [Description("Get a fee record by its ID. Always check the Found field first — if Found is false, no fee record with that ID exists.")]
@@ -82,16 +106,74 @@ public class FeeTools
     [Description("Optional payment remarks.")]
     string? remarks = null)
     {
+        var student =
+         _studentService.GetStudentById(
+             studentId);
+
+        var course =
+            _courseService.GetCourseById(
+                courseId);
+
         _feeService.ProcessStudentPayment(
             studentId,
             courseId,
             amount,
             remarks);
 
-        return $"Payment of {amount:C} was successfully recorded " +
-               $"for student ID {studentId} in course ID {courseId}.";
+        return
+            $"A payment of {amount:N2} was successfully recorded " +
+            $"for {student?.FullName ?? "the student"} " +
+            $"for {course?.Name ?? "the course"}.";
     }
 
-    private static FeeSummary ToSummary(Fee fee) =>
-        new(fee.Id, fee.StudentId, fee.CourseId, fee.AmountDue, fee.AmountPaid, fee.RemainingBalance, fee.Status.ToString(), fee.PaymentDate);
+    private FeeSummary ToSummary(Fee fee)
+    {
+        var student =
+            _studentService.GetStudentById(fee.StudentId);
+
+        var course =
+            _courseService.GetCourseById(fee.CourseId);
+
+        return new FeeSummary(
+            Id:
+                fee.Id,
+
+            StudentId:
+                fee.StudentId,
+
+            StudentName:
+                student?.FullName ??
+                "Unknown student",
+
+            RollNumber:
+                student?.RollNumber ??
+                string.Empty,
+
+            CourseId:
+                fee.CourseId,
+
+            CourseName:
+                course?.Name ??
+                "Unknown course",
+
+            CourseCode:
+                course?.Code ??
+                string.Empty,
+
+            AmountDue:
+                fee.AmountDue,
+
+            AmountPaid:
+                fee.AmountPaid,
+
+            RemainingBalance:
+                fee.RemainingBalance,
+
+            Status:
+                fee.Status.ToString(),
+
+            PaymentDate:
+                fee.PaymentDate);
+    }
+
 }

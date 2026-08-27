@@ -4,17 +4,38 @@ using StudentManagement.Core.Models;
 
 namespace StudentManagement.AI.Tools;
 
-public record EnrollmentSummary(int Id, int StudentId, int CourseId, DateTime EnrollDate, string Status);
+public record EnrollmentSummary(
+    int Id,
+    int StudentId,
+    string StudentName,
+    string RollNumber,
+    int CourseId,
+    string CourseName,
+    string CourseCode,
+    DateTime EnrollDate,
+    string Status);
 
 public record EnrollmentLookupResult(bool Found, EnrollmentSummary? Enrollment, string? Message);
 
 public class EnrollmentTools
 {
     private readonly IEnrollmentService _enrollmentService;
+    private readonly IStudentService _studentService;
+    private readonly ICourseService _courseService;
 
-    public EnrollmentTools(IEnrollmentService enrollmentService)
+    public EnrollmentTools(
+        IEnrollmentService enrollmentService,
+        IStudentService studentService,
+        ICourseService courseService)
     {
-        _enrollmentService = enrollmentService;
+        _enrollmentService =
+            enrollmentService;
+
+        _studentService =
+            studentService;
+
+        _courseService =
+            courseService;
     }
 
     [Description("Get all enrollments (active, dropped, or completed) for a specific student, by the student's internal ID (not roll number). " +
@@ -112,10 +133,31 @@ public class EnrollmentTools
     [Description("The exact internal student ID.")] int studentId,
     [Description("The exact internal course ID.")] int courseId)
     {
-        _enrollmentService.EnrollStudent(studentId, courseId);
+        var student =
+       _studentService.GetStudentById(
+           studentId);
 
-        return $"Student {studentId} was successfully enrolled in course {courseId}.";
+        var course =
+            _courseService.GetCourseById(
+                courseId);
+
+        _enrollmentService.EnrollStudent(
+            studentId,
+            courseId);
+
+        var studentName =
+            student?.FullName ??
+            "The student";
+
+        var courseName =
+            course?.Name ??
+            "the course";
+
+        return
+            $"{studentName} was successfully enrolled " +
+            $"in {courseName}.";
     }
+    
 
     [Description(
     "Drop an existing enrollment. " +
@@ -125,9 +167,31 @@ public class EnrollmentTools
     [Description("The exact enrollment record ID.")]
     int enrollmentId)
     {
-        _enrollmentService.DropCourse(enrollmentId);
+        var enrollment =
+        _enrollmentService.GetEnrollmentById(
+            enrollmentId);
 
-        return $"Enrollment ID {enrollmentId} was successfully dropped.";
+        if (enrollment is null)
+        {
+            return
+                "The enrollment could not be found.";
+        }
+
+        var student =
+            _studentService.GetStudentById(
+                enrollment.StudentId);
+
+        var course =
+            _courseService.GetCourseById(
+                enrollment.CourseId);
+
+        _enrollmentService.DropCourse(
+            enrollmentId);
+
+        return
+            $"{student?.FullName ?? "The student"} " +
+            $"was successfully dropped from " +
+            $"{course?.Name ?? "the course"}.";
     }
 
     [Description(
@@ -138,11 +202,73 @@ public class EnrollmentTools
         [Description("The exact enrollment record ID.")]
     int enrollmentId)
     {
-        _enrollmentService.CompleteCourse(enrollmentId);
+        var enrollment =
+        _enrollmentService.GetEnrollmentById(
+            enrollmentId);
 
-        return $"Enrollment ID {enrollmentId} was successfully marked as completed.";
+        if (enrollment is null)
+        {
+            return
+                "The enrollment could not be found.";
+        }
+
+        var student =
+            _studentService.GetStudentById(
+                enrollment.StudentId);
+
+        var course =
+            _courseService.GetCourseById(
+                enrollment.CourseId);
+
+        _enrollmentService.CompleteCourse(
+            enrollmentId);
+
+        return
+            $"{student?.FullName ?? "The student"} " +
+            $"successfully completed " +
+            $"{course?.Name ?? "the course"}.";
     }
 
-    private static EnrollmentSummary ToSummary(Enrollment enrollment) =>
-        new(enrollment.Id, enrollment.StudentId, enrollment.CourseId, enrollment.EnrollDate, enrollment.Status);
+    private EnrollmentSummary ToSummary(Enrollment enrollment)
+    {
+        var student =
+            _studentService.GetStudentById(
+                enrollment.StudentId);
+
+        var course =
+            _courseService.GetCourseById(
+                enrollment.CourseId);
+
+        return new EnrollmentSummary(
+            Id:
+                enrollment.Id,
+
+            StudentId:
+                enrollment.StudentId,
+
+            StudentName:
+                student?.FullName ??
+                "Unknown student",
+
+            RollNumber:
+                student?.RollNumber ??
+                string.Empty,
+
+            CourseId:
+                enrollment.CourseId,
+
+            CourseName:
+                course?.Name ??
+                "Unknown course",
+
+            CourseCode:
+                course?.Code ??
+                string.Empty,
+
+            EnrollDate:
+                enrollment.EnrollDate,
+
+            Status:
+                enrollment.Status);
+    }
 }

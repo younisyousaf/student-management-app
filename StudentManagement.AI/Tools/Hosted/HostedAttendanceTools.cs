@@ -66,7 +66,7 @@ public sealed class HostedAttendanceTools
     [Description(
         "Get a student's calculated attendance summary. " +
         "Always check Success and Found before interpreting the data.")]
-    public ToolResult<AttendanceSummary>
+    public ToolResult<AttendanceSummaryView>
         GetAttendanceSummaryForStudent(
             [Description("The student's internal numeric ID.")]
             int studentId,
@@ -77,7 +77,7 @@ public sealed class HostedAttendanceTools
     {
         return _executor.Execute<
             AttendanceTools,
-            ToolResult<AttendanceSummary>>(
+            ToolResult<AttendanceSummaryView>>(
                 tools =>
                     tools.GetAttendanceSummaryForStudent(
                         studentId,

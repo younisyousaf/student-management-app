@@ -30,8 +30,9 @@ public static class HostedStudentManagementToolFactory
             services.GetRequiredService<HostedKnowledgeTools>();
 
         var logger =
-            services.GetRequiredService<
-                ILogger<TimedAIFunction>>();
+            services.GetRequiredService<ILogger<TimedAIFunction>>();
+        var reportingTools =
+            services.GetRequiredService<HostedReportingTools>();
 
         AIFunction Timed(
             AIFunction function)
@@ -263,6 +264,37 @@ public static class HostedStudentManagementToolFactory
             Timed(
                 AIFunctionFactory.Create(
                     feeTools.GetFeesForStudent)),
+
+            // Reporting
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsBelowAttendanceThreshold)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithOutstandingFees)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetCourseAttendanceSummary)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithNoAttendanceRecords)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithNoActiveEnrollment)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetInstitutionFeeSummary)),
 
             // RAG
             Timed(

@@ -112,6 +112,8 @@ builder.Services.AddSingleton<
 builder.Services.AddScoped<
     CopilotConversationStore>();
 builder.Services.AddScoped<
+    CopilotApprovalPresenter>();
+builder.Services.AddScoped<
     ManagementPaginationStore>();
 builder.Services.AddStudentManagementAI(
     builder.Configuration);

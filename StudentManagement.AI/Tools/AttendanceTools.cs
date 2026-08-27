@@ -11,7 +11,11 @@ namespace StudentManagement.AI.Tools;
 public record AttendanceRecord(
     int Id,
     int StudentId,
+    string StudentName,
+    string RollNumber,
     int CourseId,
+    string CourseName,
+    string CourseCode,
     DateTime Date,
     string Status,
     string? Remarks);
@@ -26,19 +30,37 @@ public record AttendanceSummaryResult(
     AttendanceSummary? Summary,
     string? Message);
 
+public record AttendanceSummaryView(
+    int StudentId,
+    string StudentName,
+    string RollNumber,
+    int? CourseId,
+    string? CourseName,
+    string? CourseCode,
+    int TotalRecords,
+    int PresentCount,
+    int AbsentCount,
+    int LateCount,
+    int ExcusedCount,
+    double AttendancePercentage);
+
+
 public class AttendanceTools
 {
     private readonly IAttendanceService _attendanceService;
     private readonly IStudentService _studentService;
+    private readonly ICourseService _courseService;
     private readonly IApplicationDateTime _applicationDateTime;
 
     public AttendanceTools(
-        IAttendanceService attendanceService,
-        IStudentService studentService,
-        IApplicationDateTime applicationDateTime)
+    IAttendanceService attendanceService,
+    IStudentService studentService,
+    ICourseService courseService,
+    IApplicationDateTime applicationDateTime)
     {
         _attendanceService = attendanceService;
         _studentService = studentService;
+        _courseService = courseService;
         _applicationDateTime = applicationDateTime;
     }
 
@@ -98,8 +120,10 @@ public class AttendanceTools
         "Always check Success first. If Success is false, the attendance data could not be retrieved. " +
         "If Success is true, check Found. If Found is false, no student exists with that ID. " +
         "If Success and Found are true but TotalRecords is 0, the student exists but has no attendance records.")]
-    public ToolResult<AttendanceSummary> GetAttendanceSummaryForStudent(
-        [Description("The student's internal numeric ID.")]
+    public ToolResult<AttendanceSummaryView>
+    GetAttendanceSummaryForStudent(
+        [Description(
+            "The student's internal numeric ID.")]
         int studentId,
 
         [Description(
@@ -110,32 +134,78 @@ public class AttendanceTools
         try
         {
             var student =
-                _studentService.GetStudentById(studentId);
+                _studentService.GetStudentById(
+                    studentId);
 
             if (student is null)
             {
-                return new ToolResult<AttendanceSummary>(
+                return new ToolResult<AttendanceSummaryView>(
                     Success: true,
                     Found: false,
                     Data: null,
                     Message:
-                        $"No student exists with ID {studentId}.");
+                        "The requested student was not found.");
             }
 
             var summary =
-                _attendanceService.GetAttendanceSummary(
-                    studentId,
-                    courseId);
+                _attendanceService
+                    .GetAttendanceSummary(
+                        studentId,
+                        courseId);
 
-            return new ToolResult<AttendanceSummary>(
+            var course =
+                courseId.HasValue
+                    ? _courseService.GetCourseById(
+                        courseId.Value)
+                    : null;
+
+            var view =
+                new AttendanceSummaryView(
+                    StudentId:
+                        summary.StudentId,
+
+                    StudentName:
+                        student.FullName,
+
+                    RollNumber:
+                        student.RollNumber,
+
+                    CourseId:
+                        summary.CourseId,
+
+                    CourseName:
+                        course?.Name,
+
+                    CourseCode:
+                        course?.Code,
+
+                    TotalRecords:
+                        summary.TotalRecords,
+
+                    PresentCount:
+                        summary.PresentCount,
+
+                    AbsentCount:
+                        summary.AbsentCount,
+
+                    LateCount:
+                        summary.LateCount,
+
+                    ExcusedCount:
+                        summary.ExcusedCount,
+
+                    AttendancePercentage:
+                        summary.AttendancePercentage);
+
+            return new ToolResult<AttendanceSummaryView>(
                 Success: true,
                 Found: true,
-                Data: summary,
+                Data: view,
                 Message: null);
         }
         catch (ApplicationDataUnavailableException)
         {
-            return new ToolResult<AttendanceSummary>(
+            return new ToolResult<AttendanceSummaryView>(
                 Success: false,
                 Found: false,
                 Data: null,
@@ -163,6 +233,14 @@ public class AttendanceTools
         [Description("Optional remarks for the attendance record.")]
         string? remarks = null)
     {
+        var student =
+       _studentService.GetStudentById(
+           studentId);
+
+        var course =
+            _courseService.GetCourseById(
+                courseId);
+
         _attendanceService.MarkAttendance(
             studentId,
             courseId,
@@ -171,8 +249,9 @@ public class AttendanceTools
             remarks);
 
         return
-            $"Attendance successfully marked for student ID {studentId} " +
-            $"in course ID {courseId}.";
+            $"Attendance for {student?.FullName ?? "the student"} " +
+            $"in {course?.Name ?? "the course"} " +
+            $"was marked as {status} for {date:yyyy-MM-dd}.";
     }
 
     [Description(
@@ -192,7 +271,16 @@ public class AttendanceTools
         [Description("Optional remarks.")]
         string? remarks = null)
     {
-        DateTime date = _applicationDateTime.Today;
+        DateTime date =
+            _applicationDateTime.Today;
+
+        var student =
+            _studentService.GetStudentById(
+                studentId);
+
+        var course =
+            _courseService.GetCourseById(
+                courseId);
 
         _attendanceService.MarkAttendance(
             studentId,
@@ -202,8 +290,10 @@ public class AttendanceTools
             remarks);
 
         return
-            $"Attendance marked as {status} for student ID {studentId} " +
-            $"in course ID {courseId} for {date:yyyy-MM-dd}.";
+            $"Today's attendance for " +
+            $"{student?.FullName ?? "the student"} " +
+            $"in {course?.Name ?? "the course"} " +
+            $"was marked as {status}.";
     }
 
     [Description(
@@ -221,21 +311,80 @@ public class AttendanceTools
         [Description("Optional updated remarks.")]
         string? remarks = null)
     {
+        var attendance =
+        _attendanceService.GetAttendanceById(
+            attendanceId);
+
+        if (attendance is null)
+        {
+            return
+                "The attendance record could not be found.";
+        }
+
+        var student =
+            _studentService.GetStudentById(
+                attendance.StudentId);
+
+        var course =
+            _courseService.GetCourseById(
+                attendance.CourseId);
+
         _attendanceService.UpdateAttendance(
             attendanceId,
             status,
             remarks);
 
         return
-            $"Attendance record ID {attendanceId} was successfully updated to {status}.";
+            $"Attendance for {student?.FullName ?? "the student"} " +
+            $"in {course?.Name ?? "the course"} " +
+            $"on {attendance.Date:yyyy-MM-dd} " +
+            $"was updated to {status}.";
     }
 
-    private static AttendanceRecord ToRecord(Attendance attendance) =>
-        new(
-            attendance.Id,
-            attendance.StudentId,
-            attendance.CourseId,
-            attendance.Date,
-            attendance.Status.ToString(),
-            attendance.Remarks);
+    private AttendanceRecord ToRecord(
+    Attendance attendance)
+    {
+        var student =
+            _studentService.GetStudentById(
+                attendance.StudentId);
+
+        var course =
+            _courseService.GetCourseById(
+                attendance.CourseId);
+
+        return new AttendanceRecord(
+            Id:
+                attendance.Id,
+
+            StudentId:
+                attendance.StudentId,
+
+            StudentName:
+                student?.FullName ??
+                "Unknown student",
+
+            RollNumber:
+                student?.RollNumber ??
+                string.Empty,
+
+            CourseId:
+                attendance.CourseId,
+
+            CourseName:
+                course?.Name ??
+                "Unknown course",
+
+            CourseCode:
+                course?.Code ??
+                string.Empty,
+
+            Date:
+                attendance.Date,
+
+            Status:
+                attendance.Status.ToString(),
+
+            Remarks:
+                attendance.Remarks);
+    }
 }

@@ -33,6 +33,8 @@ public static class StudentManagementToolFactory
         var toolLogger =
             sp.GetRequiredService<
                 ILogger<TimedAIFunction>>();
+        var reportingTools =
+            sp.GetRequiredService<ReportingTools>();
 
         AIFunction Timed(
             AIFunction function) =>
@@ -291,7 +293,37 @@ public static class StudentManagementToolFactory
             Timed(
                 AIFunctionFactory.Create(
                     knowledgeTools
-                        .SearchInstitutionalKnowledge))
+                        .SearchInstitutionalKnowledge)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsBelowAttendanceThreshold)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithOutstandingFees)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetCourseAttendanceSummary)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithNoAttendanceRecords)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetStudentsWithNoActiveEnrollment)),
+
+            Timed(
+                AIFunctionFactory.Create(
+                    reportingTools
+                        .GetInstitutionFeeSummary)),
         ];
     }
 }

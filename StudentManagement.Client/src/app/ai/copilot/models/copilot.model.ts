@@ -21,12 +21,20 @@ export interface CopilotHistoryMessage {
   content: string;
   createdAt: string | null;
 }
+export interface CopilotApprovalDisplayItem {
+  label: string;
+  value: string;
+}
+
 export interface CopilotApprovalRequest {
   interruptId: string;
   toolCallId: string;
   toolName: string;
   arguments: string;
   message?: string;
+  displayTitle?: string;
+  displayDetails?: CopilotApprovalDisplayItem[];
+  warning?: string | null;
 }
 export interface CopilotConversation {
   threadId: string;
@@ -34,4 +42,17 @@ export interface CopilotConversation {
   lastRunId: string | null;
   createdAt: string;
   updatedAt: string;
+}
+
+export type CopilotActivityStatus =
+  | 'running'
+  | 'completed'
+  | 'waiting'
+  | 'rejected'
+  | 'failed';
+
+export interface CopilotActivity {
+  id: string;
+  toolName: string;
+  status: CopilotActivityStatus;
 }

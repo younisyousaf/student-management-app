@@ -72,6 +72,7 @@ public static class AgentServiceCollectionExtensions
         services.AddScoped<EnrollmentTools>();
         services.AddScoped<AttendanceTools>();
         services.AddScoped<FeeTools>();
+        services.AddScoped<ReportingTools>();
         services.AddSingleton<AuthenticatedUserContextProvider>();
         services.AddScoped<IApplicationDateTime, ApplicationDateTime>();
         services.AddSingleton<QdrantKnowledgeStore>();
@@ -96,6 +97,7 @@ public static class AgentServiceCollectionExtensions
         services.AddSingleton<HostedAttendanceTools>();
         services.AddSingleton<HostedFeeTools>();
         services.AddSingleton<HostedKnowledgeTools>();
+        services.AddSingleton<HostedReportingTools>();
 
 
         services.AddScoped<AIAgent>(sp =>
