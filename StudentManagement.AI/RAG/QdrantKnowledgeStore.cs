@@ -191,6 +191,25 @@ public sealed class QdrantKnowledgeStore
             return mappedResults;
         }
         catch (RpcException ex)
+        when (
+        ex.StatusCode == StatusCode.Cancelled &&
+        cancellationToken.IsCancellationRequested)
+        {
+            throw new OperationCanceledException(
+                "The institutional knowledge search was cancelled.",
+                ex,
+                cancellationToken);
+        }
+        catch (RpcException ex)
+            when (ex.StatusCode is
+                StatusCode.Unavailable or
+                StatusCode.DeadlineExceeded)
+        {
+            throw new KnowledgeStoreUnavailableException(
+                "The institutional knowledge store is temporarily unavailable.",
+                ex);
+        }
+        catch (RpcException ex)
             when (ex.StatusCode is
                 StatusCode.Unavailable or
                 StatusCode.DeadlineExceeded)

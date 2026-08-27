@@ -1,0 +1,91 @@
+.activity-panel {
+  margin: 0 0 0.9rem;
+}
+
+.activity-summary {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--color-text-muted);
+  cursor: pointer;
+}
+
+.activity-summary__status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.activity-summary__status.completed {
+  color: var(--color-text-muted);
+}
+
+.activity-chevron {
+  width: 6px;
+  height: 6px;
+  display: inline-block;
+  margin-left: 0.5rem;
+  border-right: 1.5px solid currentColor;
+  border-bottom: 1.5px solid currentColor;
+  transform: rotate(45deg);
+  transition: transform 0.15s ease;
+}
+
+.activity-chevron.expanded {
+  transform: rotate(225deg);
+}
+
+.activity-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  margin-top: 0.4rem;
+  padding-left: 0.2rem;
+}
+
+.activity-item {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+
+.activity-status {
+  width: 16px;
+  text-align: center;
+}
+
+.activity-item.running {
+  color: var(--color-text);
+}
+
+.activity-item.waiting {
+  color: #92400e;
+}
+
+.activity-item.failed {
+  color: var(--color-danger);
+}
+
+.activity-spinner {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--color-border);
+  border-top-color: var(--color-primary);
+  border-radius: 50%;
+  animation: activity-spin 0.8s linear infinite;
+}
+
+.activity-summary__status.stopped,
+.activity-item.stopped {
+  color: var(--color-text-muted);
+}
+
+@keyframes activity-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}

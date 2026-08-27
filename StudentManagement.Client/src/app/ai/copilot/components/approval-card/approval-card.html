@@ -1,0 +1,42 @@
+<div class="approval-card">
+  <div class="approval-card__header">
+    <div>
+      <span class="approval-label">Approval Required</span>
+      <h3>{{ approval().displayTitle || 'Confirm Action' }}</h3>
+    </div>
+  </div>
+  <p class="approval-description">
+    Review the details below before allowing the Copilot to continue.
+  </p>
+  @if (approval().displayDetails?.length) {
+    <div class="approval-details">
+      @for (detail of approval().displayDetails; track detail.label) {
+        <div class="approval-detail">
+          <span class="approval-detail__label">{{ detail.label }}</span>
+          <span class="approval-detail__value">{{ detail.value }}</span>
+        </div>
+      }
+    </div>
+  }
+  @if (approval().warning) {
+    <div class="approval-warning">
+      {{ approval().warning }}
+    </div>
+  }
+  <div class="approval-actions">
+    <button
+      type="button"
+      class="approval-reject"
+      (click)="reject.emit()"
+      [disabled]="isSending()">
+      Reject
+    </button>
+    <button
+      type="button"
+      class="approval-confirm"
+      (click)="approve.emit()"
+      [disabled]="isSending()">
+      Approve
+    </button>
+  </div>
+</div>

@@ -1,0 +1,63 @@
+@if (activities().length > 0) {
+  <div class="activity-panel">
+
+    <button
+      type="button"
+      class="activity-summary"
+      (click)="toggle.emit()">
+
+      @if (isSending()) {
+        <span class="activity-summary__status">
+          <span class="activity-spinner"></span>
+          Working...
+        </span>
+      } @else if (stopped()) {
+        <span class="activity-summary__status stopped">
+          ■ Stopped
+        </span>
+      } @else {
+        <span class="activity-summary__status completed">
+          ✓ Completed {{ activities().length }}
+          {{ activities().length === 1 ? 'step' : 'steps' }}
+        </span>
+      }
+
+      <span
+        class="activity-chevron"
+        [class.expanded]="expanded()">
+      </span>
+    </button>
+
+    @if (expanded()) {
+      <div class="activity-list">
+
+        @for (
+          activity of activities();
+          track activity.id
+        ) {
+          <div
+            class="activity-item"
+            [class.running]="activity.status === 'running'"
+            [class.waiting]="activity.status === 'waiting'"
+            [class.stopped]="activity.status === 'stopped'"
+            [class.failed]="
+              activity.status === 'failed' ||
+              activity.status === 'rejected'
+            ">
+
+            <span class="activity-status">
+              {{ activityStatusSymbol(activity.status) }}
+            </span>
+
+            <span>
+              {{ activityText(activity) }}
+            </span>
+
+          </div>
+        }
+
+      </div>
+    }
+
+  </div>
+}

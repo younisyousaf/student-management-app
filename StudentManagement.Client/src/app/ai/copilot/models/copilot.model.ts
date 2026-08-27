@@ -25,7 +25,6 @@ export interface CopilotApprovalDisplayItem {
   label: string;
   value: string;
 }
-
 export interface CopilotApprovalRequest {
   interruptId: string;
   toolCallId: string;
@@ -43,14 +42,13 @@ export interface CopilotConversation {
   createdAt: string;
   updatedAt: string;
 }
-
 export type CopilotActivityStatus =
   | 'running'
   | 'completed'
   | 'waiting'
   | 'rejected'
+  | 'stopped'
   | 'failed';
-
 export interface CopilotActivity {
   id: string;
   toolName: string;

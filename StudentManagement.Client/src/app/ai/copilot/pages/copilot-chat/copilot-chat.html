@@ -1,357 +1,214 @@
 <div class="copilot-layout">
-  <!-- =====================================
-       Conversation Sidebar
-       ===================================== -->
-  <aside class="conversation-sidebar">
-    <button
-      type="button"
-      class="new-conversation-button"
-      (click)="startNewConversation()"
-      [disabled]="isSending() || isLoadingHistory()">
-      + New Conversation
-    </button>
-
-    <h3>Previous Conversations</h3>
-
-    @if (isLoadingConversations()) {
-      <p class="conversation-status">Loading conversations...</p>
-    } @else if (conversations().length === 0) {
-      <p class="conversation-status">No previous conversations.</p>
-    } @else {
-      <div class="conversation-list">
-        @for (conversation of conversations(); track conversation.threadId) {
-          <div
-            class="conversation-row"
-            [class.active]="conversation.threadId === currentThreadId()">
-
-            <!-- Rename Mode -->
-            @if (renamingConversationThreadId() === conversation.threadId) {
-              <div class="conversation-rename">
-                <input
-                  type="text"
-                  [value]="renameConversationTitle()"
-                  (input)="onRenameConversationInput($event)"
-                  (click)="$event.stopPropagation()"
-                  (keydown.enter)="saveRenameConversation(conversation, $event)"
-                  (keydown.escape)="cancelRenameConversation($event)"
-                  maxlength="80"
-                  autofocus>
-
-                <div class="conversation-rename-actions">
-                  <button
-                    type="button"
-                    (click)="saveRenameConversation(conversation, $event)"
-                    [disabled]="!renameConversationTitle().trim() || managingConversationThreadId() === conversation.threadId">
-                    Save
-                  </button>
-
-                  <button
-                    type="button"
-                    (click)="cancelRenameConversation($event)">
-                    Cancel
-                  </button>
-                </div>
-              </div>
-            } @else {
-              <!-- Conversation Title -->
-              <button
-                type="button"
-                class="conversation-title-button"
-                (click)="openConversation(conversation)"
-                [disabled]="isSending() || isLoadingHistory() || managingConversationThreadId() === conversation.threadId"
-                [title]="conversation.title">
-                {{ conversation.title }}
-              </button>
-
-              <!-- Conversation Actions -->
-              <div class="conversation-menu-wrapper">
-                <button
-                  type="button"
-                  class="conversation-menu-button"
-                  aria-label="Conversation actions"
-                  (click)="toggleConversationMenu(conversation.threadId, $event)"
-                  [disabled]="managingConversationThreadId() === conversation.threadId">
-                  ⋯
-                </button>
-
-                @if (openConversationMenuThreadId() === conversation.threadId) {
-                  <div class="conversation-menu">
-                    <button
-                      type="button"
-                      (click)="beginRenameConversation(conversation, $event)">
-                      Rename
-                    </button>
-
-                    <button
-                      type="button"
-                      class="delete-action"
-                      (click)="requestDeleteConversation(conversation, $event)">
-                      Delete
-                    </button>
-                  </div>
-                }
-              </div>
-            }
-          </div>
-        }
-      </div>
-
-      <!-- Conversation Pagination -->
-      @if (conversationTotalPages() > 0) {
-        <div class="conversation-pagination">
-          <button
-            type="button"
-            class="pagination-arrow previous"
-            (click)="previousConversationPage()"
-            [disabled]="isLoadingConversations() || !conversationHasPreviousPage()"
-            aria-label="Previous conversation page">
-          </button>
-
-          <span>
-            Page {{ conversationPageNumber() }} of {{ conversationTotalPages() }}
-          </span>
-
-          <button
-            type="button"
-            class="pagination-arrow next"
-            (click)="nextConversationPage()"
-            [disabled]="isLoadingConversations() || !conversationHasNextPage()"
-            aria-label="Next conversation page">
-          </button>
-        </div>
-
-        <p class="conversation-count">
-          {{ conversationTotalCount() }}
-          {{ conversationTotalCount() === 1 ? 'conversation' : 'conversations' }}
-        </p>
-      }
-    }
-  </aside>
-
-  <!-- =====================================
-       Main Copilot Area
-       ===================================== -->
+  <!-- Conversation Sidebar -->
+  <app-conversation-sidebar
+    [conversations]="conversations()"
+    [currentThreadId]="currentThreadId()"
+    [isSending]="isSending()"
+    [isLoadingHistory]="isLoadingHistory()"
+    [isLoadingConversations]="isLoadingConversations()"
+    [pageNumber]="conversationPageNumber()"
+    [totalCount]="conversationTotalCount()"
+    [totalPages]="conversationTotalPages()"
+    [hasPreviousPage]="conversationHasPreviousPage()"
+    [hasNextPage]="conversationHasNextPage()"
+    [openMenuThreadId]="openConversationMenuThreadId()"
+    [renamingThreadId]="renamingConversationThreadId()"
+    [renameTitle]="renameConversationTitle()"
+    [managingThreadId]="managingConversationThreadId()"
+    (newConversation)="startNewConversation()"
+    (openConversation)="openConversation($event)"
+    (toggleMenu)="toggleConversationMenu($event.threadId, $event.event)"
+    (beginRename)="beginRenameConversation($event.conversation, $event.event)"
+    (renameInput)="onRenameConversationInput($event)"
+    (saveRename)="saveRenameConversation($event.conversation, $event.event)"
+    (cancelRename)="cancelRenameConversation($event)"
+    (deleteRequest)="requestDeleteConversation($event.conversation, $event.event)"
+    (previousPage)="previousConversationPage()"
+    (nextPage)="nextConversationPage()">
+  </app-conversation-sidebar>
+  <!-- Main Copilot Area -->
   <section class="copilot-page">
-    <h1>AI Copilot</h1>
-
-    <div class="messages">
+    <h1>SmartCampus Copilot</h1>
+    <div
+      #messagesContainer
+      class="messages"
+      (scroll)="onMessagesScroll($event)">
       <!-- Loading Conversation -->
       @if (isLoadingHistory()) {
         <div class="chat-empty-state">
           <h3>Loading conversation</h3>
-          <p>Restoring your previous messages...</p>
+          <p>
+            Restoring your previous messages...
+          </p>
         </div>
       } @else if (messages().length === 0) {
         <!-- Empty Conversation -->
         <div class="chat-empty-state">
           <h3>How can I help?</h3>
           <p>
-            Ask the Copilot about students, courses, enrollments, attendance,
-            fees, or other supported student-management tasks.
+            Ask SmartCampus about students, courses,
+            enrollments, attendance, fees, institutional
+            knowledge, reports, or other supported
+            academic operations.
           </p>
         </div>
       }
-
       <!-- Messages -->
-    <!-- Messages -->
-@for (message of messages(); track message.id; let isLast = $last) {
-  @if (message.role === 'user') {
-    <div class="user-turn">
-      <div class="user-message">
-        {{ message.content }}
-      </div>
-    </div>
-  } @else {
-    <article class="assistant-turn">
-      <div class="assistant-header">
-        <span class="assistant-avatar">AI</span>
-        <strong>Copilot</strong>
-      </div>
-
-      @if (isLast && activities().length > 0) {
-        <div class="activity-panel">
-  <button
-    type="button"
-    class="activity-summary"
-    (click)="toggleActivity()">
-
-    @if (isSending()) {
-      <span class="activity-summary__status">
-        <span class="activity-spinner"></span>
-        Working...
-      </span>
-    } @else {
-      <span class="activity-summary__status completed">
-        ✓ Completed {{ activities().length }}
-        {{ activities().length === 1 ? 'step' : 'steps' }}
-      </span>
-    }
-
-    <span
-      class="activity-chevron"
-      [class.expanded]="activityExpanded()">
-    </span>
-  </button>
-
-  @if (activityExpanded()) {
-    <div class="activity-list">
-      @for (activity of activities(); track activity.id) {
-        <div
-          class="activity-item"
-          [class.running]="activity.status === 'running'"
-          [class.waiting]="activity.status === 'waiting'"
-          [class.failed]="activity.status === 'failed' || activity.status === 'rejected'">
-
-          <span class="activity-status">
-            {{ activityStatusSymbol(activity.status) }}
-          </span>
-
-          <span>{{ activityText(activity) }}</span>
-        </div>
+      @for (
+        message of messages();
+        track message.id;
+        let isLast = $last
+      ) {
+        @if (message.role === 'user') {
+          <div class="user-turn">
+            <div class="user-message">
+              {{ message.content }}
+            </div>
+          </div>
+        } @else {
+          <article class="assistant-turn">
+            <div class="assistant-header">
+              <span class="assistant-avatar">
+                AI
+              </span>
+              <strong>Copilot</strong>
+            </div>
+            <!-- Tool Activity -->
+            @if (
+              isLast &&
+              activities().length > 0
+            ) {
+              <app-activity-timeline
+  [activities]="activities()"
+  [expanded]="activityExpanded()"
+  [isSending]="isSending()"
+  [stopped]="runStopped()"
+  (toggle)="toggleActivity()">
+</app-activity-timeline>
+            }
+            <!-- Assistant Content -->
+            @if (message.content) {
+              <div
+                class="markdown-content"
+                [innerHTML]="message.content | markdown">
+              </div>
+            } @else if (
+              isLast &&
+              isSending() &&
+              activities().length === 0
+            ) {
+              <div class="assistant-thinking">
+                <span class="thinking-spinner">
+                </span>
+                Thinking...
+              </div>
+            }
+          </article>
+        }
       }
-    </div>
-  }
-</div>
-      }
-
-      @if (message.content) {
-        <div class="markdown-content" [innerHTML]="message.content | markdown"></div>
-      } @else if (isSending() && activities().length === 0) {
-        <div class="assistant-thinking">
-          <span class="activity-spinner"></span>
-          Thinking...
-        </div>
-      }
-    </article>
-  }
-}
-
       <!-- Chat Error -->
       @if (errorMessage()) {
-        <p class="error" role="alert">{{ errorMessage() }}</p>
+        <p
+          class="error"
+          role="alert">
+          {{ errorMessage() }}
+        </p>
       }
     </div>
-
-    <!-- =====================================
-         Human-in-the-loop Approval
-         ===================================== -->
-        @if (pendingApproval(); as approval) {
-        <div class="approval-card">
-          <div class="approval-card__header">
-            <div>
-              <span class="approval-label">Approval Required</span>
-              <h3>{{ approval.displayTitle || 'Confirm Action' }}</h3>
-            </div>
-          </div>
-
-          <p class="approval-description">
-            Review the details below before allowing the Copilot to continue.
-          </p>
-
-          @if (approval.displayDetails?.length) {
-            <div class="approval-details">
-              @for (detail of approval.displayDetails; track detail.label) {
-                <div class="approval-detail">
-                  <span class="approval-detail__label">{{ detail.label }}</span>
-                  <span class="approval-detail__value">{{ detail.value }}</span>
-                </div>
-              }
-            </div>
-          }
-
-          @if (approval.warning) {
-            <div class="approval-warning">
-              {{ approval.warning }}
-            </div>
-          }
-
-          <div class="approval-actions">
-            <button
-              type="button"
-              class="approval-reject"
-              (click)="respondToApproval(false)"
-              [disabled]="isSending()">
-              Reject
-            </button>
-
-            <button
-              type="button"
-              class="approval-confirm"
-              (click)="respondToApproval(true)"
-              [disabled]="isSending()">
-              Approve
-            </button>
-          </div>
-        </div>
-      }
-
-    <!-- =====================================
-         Message Composer
-         ===================================== -->
+    <!-- Human-in-the-loop Approval -->
+    @if (
+      pendingApproval();
+      as approval
+    ) {
+      <app-approval-card
+        [approval]="approval"
+        [isSending]="isSending()"
+        (approve)="respondToApproval(true)"
+        (reject)="respondToApproval(false)">
+      </app-approval-card>
+    }
+    <!-- Message Composer -->
     <div class="composer">
       <textarea
         rows="3"
-        placeholder="Ask the student management copilot..."
+        placeholder="Ask SmartCampus..."
         [value]="message()"
         (input)="onMessageInput($event)">
       </textarea>
-
       <button
         type="button"
-        (click)="sendMessage()"
-        [disabled]="isSending() || isLoadingHistory() || !message().trim()">
+        (click)="
+          isSending()
+            ? stopGeneration()
+            : sendMessage()
+        "
+        [disabled]="
+          isLoadingHistory() ||
+          (
+            !isSending() &&
+            !message().trim()
+          )
+        ">
         {{
           isLoadingHistory()
             ? 'Loading...'
             : isSending()
-              ? 'Sending...'
+              ? '■ Stop'
               : 'Send'
         }}
       </button>
     </div>
   </section>
 </div>
-
-<!-- =====================================
-     Delete Conversation Modal
-     ===================================== -->
-@if (conversationPendingDelete(); as conversation) {
-  <div class="modal-backdrop" (click)="cancelDeleteConversation()">
+<!-- Delete Conversation Modal -->
+@if (
+  conversationPendingDelete();
+  as conversation
+) {
+  <div
+    class="modal-backdrop"
+    (click)="cancelDeleteConversation()">
     <div
       class="delete-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-conversation-title"
       (click)="$event.stopPropagation()">
-
       <div class="delete-modal__content">
-        <h3 id="delete-conversation-title">Delete conversation?</h3>
-
+        <h3 id="delete-conversation-title">
+          Delete conversation?
+        </h3>
         <p>
           Are you sure you want to delete
-          <strong>"{{ conversation.title }}"</strong>?
+          <strong>
+            "{{ conversation.title }}"
+          </strong>?
         </p>
-
         <p class="delete-modal__warning">
           This conversation cannot be recovered.
         </p>
       </div>
-
       <div class="delete-modal__actions">
         <button
           type="button"
           (click)="cancelDeleteConversation()"
-          [disabled]="managingConversationThreadId() === conversation.threadId">
+          [disabled]="
+            managingConversationThreadId() ===
+            conversation.threadId
+          ">
           Cancel
         </button>
-
         <button
           type="button"
           class="delete-modal__confirm"
           (click)="deleteConversation()"
-          [disabled]="managingConversationThreadId() === conversation.threadId">
+          [disabled]="
+            managingConversationThreadId() ===
+            conversation.threadId
+          ">
           {{
-            managingConversationThreadId() === conversation.threadId
+            managingConversationThreadId() ===
+              conversation.threadId
               ? 'Deleting...'
               : 'Delete'
           }}

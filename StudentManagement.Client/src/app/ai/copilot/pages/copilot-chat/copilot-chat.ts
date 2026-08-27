@@ -1,28 +1,39 @@
-import { Component, DestroyRef, inject, signal } from '@angular/core';
+import { Component, DestroyRef, ElementRef, ViewChild, inject, signal } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BaseEvent, EventType } from '@ag-ui/core';
-import { forkJoin } from 'rxjs';
+import { forkJoin, Subscription } from 'rxjs';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotApprovalRequest, CopilotConversation, CopilotMessage, CopilotActivity, CopilotActivityStatus } from '../../models/copilot.model';
+import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotConversation, CopilotMessage } from '../../models/copilot.model';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
+import { ActivityTimeline } from '../../components/activity-timeline/activity-timeline';
+import { ApprovalCard } from '../../components/approval-card/approval-card';
+import { ConversationSidebar } from '../../components/conversation-sidebar/conversation-sidebar';
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
-  imports: [MarkdownPipe],
+  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar],
   templateUrl: './copilot-chat.html',
   styleUrl: './copilot-chat.scss'
 })
 export class CopilotChat {
   private readonly copilotService = inject(AgUiCopilotService);
   private readonly destroyRef = inject(DestroyRef);
-
+  @ViewChild('messagesContainer')
+  private messagesContainer?: ElementRef<HTMLDivElement>;
+  private shouldAutoScroll = true;
+  private scrollFrameId: number | null = null;
+  private readonly autoScrollThreshold = 80;
+  private activeRunSubscription: Subscription | null = null;
+  private activeAssistantMessageId: string | null = null;
   readonly message = signal('');
   readonly messages = signal<CopilotMessage[]>([]);
   readonly isLoadingHistory = signal(false);
   readonly isSending = signal(false);
+  readonly runStopped = signal(false);
   readonly errorMessage = signal('');
-  readonly pendingApproval = signal<CopilotApprovalRequest | null>(null);
-
+  readonly pendingApproval = signal<CopilotApprovalRequest | null>(
+    null
+  );
   // Conversation history
   readonly conversations = signal<CopilotConversation[]>([]);
   readonly conversationPageNumber = signal(1);
@@ -33,52 +44,66 @@ export class CopilotChat {
   readonly conversationPageSize = 10;
   readonly isLoadingConversations = signal(false);
   readonly currentThreadId = signal('');
-
   // Conversation menu / rename
   readonly openConversationMenuThreadId = signal<string | null>(null);
   readonly renamingConversationThreadId = signal<string | null>(null);
   readonly renameConversationTitle = signal('');
   readonly managingConversationThreadId = signal<string | null>(null);
-
-  // Delete confirmation modal
-  readonly conversationPendingDelete = signal<CopilotConversation | null>(null);
-
+  // Delete confirmation
+  readonly conversationPendingDelete = signal<CopilotConversation | null>(
+    null
+  );
+  // Tool activity
   readonly activities = signal<CopilotActivity[]>([]);
   readonly activityExpanded = signal(false);
-
-  private readonly toolCalls =
-    new Map<
-      string,
-      {
-        name: string;
-        arguments: string;
-      }
-    >();
-
+  private readonly toolCalls = new Map<
+    string,
+    {
+      name: string;
+      arguments: string;
+    }
+  >();
   constructor() {
-    this.copilotService.ensureSession();
-    this.currentThreadId.set(this.copilotService.threadId);
-    this.copilotService.conversationSaved$.pipe(
-      takeUntilDestroyed(
-        this.destroyRef
-      ))
+    this.destroyRef.onDestroy(
+      () => {
+        if (
+          this.scrollFrameId !==
+          null
+        ) {
+          cancelAnimationFrame(
+            this.scrollFrameId
+          );
+        }
+        this.activeRunSubscription
+          ?.unsubscribe();
+        this.activeRunSubscription =
+          null;
+      }
+    );
+    this.copilotService
+      .ensureSession();
+    this.currentThreadId.set(
+      this.copilotService.threadId
+    );
+    this.copilotService
+      .conversationSaved$
+      .pipe(
+        takeUntilDestroyed(
+          this.destroyRef
+        )
+      )
       .subscribe(() => {
-        /*
-         * A completed Copilot run changes
-         * UpdatedAt, so reload page 1
-         * from the server.
-         */
         this.loadConversations(1);
       });
     this.loadConversations();
     this.loadConversationState();
   }
-
   private refreshPendingApproval(
     fallback: CopilotApprovalRequest
   ): void {
-    this.pendingApproval.set(fallback);
-
+    this.pendingApproval.set(
+      fallback
+    );
     this.copilotService
       .getPendingApproval()
       .subscribe({
@@ -97,17 +122,24 @@ export class CopilotChat {
         }
       });
   }
-
-  private startActivity(toolCallId: string, toolName: string): void {
-    const existing = this.activities().some(
-      activity => activity.id === toolCallId
-    );
-
+  private startActivity(
+    toolCallId: string,
+    toolName: string
+  ): void {
+    const existing =
+      this.activities().some(
+        activity =>
+          activity.id ===
+          toolCallId
+      );
     if (existing) {
-      this.setActivityStatus(toolCallId, 'running');
+      this.setActivityStatus(
+        toolCallId,
+        'running'
+      );
+      this.scheduleScrollToBottom();
       return;
     }
-
     this.activities.update(
       activities => [
         ...activities,
@@ -118,8 +150,8 @@ export class CopilotChat {
         }
       ]
     );
+    this.scheduleScrollToBottom();
   }
-
   private setActivityStatus(
     toolCallId: string,
     status: CopilotActivityStatus
@@ -128,7 +160,8 @@ export class CopilotChat {
       activities =>
         activities.map(
           activity =>
-            activity.id === toolCallId
+            activity.id ===
+              toolCallId
               ? {
                 ...activity,
                 status
@@ -137,13 +170,13 @@ export class CopilotChat {
         )
     );
   }
-
   private failRunningActivities(): void {
     this.activities.update(
       activities =>
         activities.map(
           activity =>
-            activity.status === 'running'
+            activity.status ===
+              'running'
               ? {
                 ...activity,
                 status: 'failed'
@@ -152,38 +185,71 @@ export class CopilotChat {
         )
     );
   }
-
+  private stopRunningActivities(): void {
+    this.activities.update(
+      activities =>
+        activities.map(
+          activity =>
+            activity.status ===
+              'running'
+              ? {
+                ...activity,
+                status: 'stopped'
+              }
+              : activity
+        )
+    );
+  }
   private loadConversationState(): void {
-    const threadId = this.copilotService.threadId;
-    this.isLoadingHistory.set(true);
+    const threadId =
+      this.copilotService.threadId;
+    this.isLoadingHistory.set(
+      true
+    );
     this.errorMessage.set('');
     forkJoin({
       history:
-        this.copilotService.getHistory(),
+        this.copilotService
+          .getHistory(),
       pendingApproval:
-        this.copilotService.getPendingApproval()
+        this.copilotService
+          .getPendingApproval()
     })
       .subscribe({
         next: result => {
-          /*
-           * Ignore stale responses if
-           * the user switched conversation
-           * while this request was running.
-           */
-          if (this.currentThreadId() !== threadId) {
+          if (
+            this.currentThreadId() !==
+            threadId
+          ) {
             return;
           }
-          const messages: CopilotMessage[] =
+          const messages:
+            CopilotMessage[] =
             result.history.map(
               message => ({
                 id: message.id,
                 role: message.role,
-                content: message.content,
-                createdAt: message.createdAt ? new Date(message.createdAt) : null
+                content:
+                  message.content,
+                createdAt:
+                  message.createdAt
+                    ? new Date(
+                      message.createdAt
+                    )
+                    : null
               })
             );
-          this.messages.set(messages);
-          this.pendingApproval.set(result.pendingApproval);
+          this.messages.set(
+            messages
+          );
+          this.shouldAutoScroll =
+            true;
+          this.scheduleScrollToBottom(
+            true
+          );
+          this.pendingApproval.set(
+            result.pendingApproval
+          );
         },
         error: error => {
           console.error(
@@ -229,12 +295,24 @@ export class CopilotChat {
       )
       .subscribe({
         next: result => {
-          this.conversations.set(result.items);
-          this.conversationPageNumber.set(result.pageNumber);
-          this.conversationTotalCount.set(result.totalCount);
-          this.conversationTotalPages.set(result.totalPages);
-          this.conversationHasPreviousPage.set(result.hasPreviousPage);
-          this.conversationHasNextPage.set(result.hasNextPage);
+          this.conversations.set(
+            result.items
+          );
+          this.conversationPageNumber.set(
+            result.pageNumber
+          );
+          this.conversationTotalCount.set(
+            result.totalCount
+          );
+          this.conversationTotalPages.set(
+            result.totalPages
+          );
+          this.conversationHasPreviousPage.set(
+            result.hasPreviousPage
+          );
+          this.conversationHasNextPage.set(
+            result.hasNextPage
+          );
         },
         error: error => {
           console.error(
@@ -252,57 +330,204 @@ export class CopilotChat {
         }
       });
   }
+  stopGeneration(): void {
+    if (!this.isSending()) {
+      return;
+    }
 
+    this.activeRunSubscription
+      ?.unsubscribe();
+
+    this.activeRunSubscription = null;
+
+    /*
+     * The whole agent run has been manually stopped.
+     * This is independent of individual tool states.
+     */
+    this.runStopped.set(true);
+
+    /*
+     * If a tool is still running, mark that
+     * particular tool as stopped as well.
+     */
+    this.stopRunningActivities();
+
+    this.copilotService
+      .stopCurrentRun();
+
+    if (
+      this.activeAssistantMessageId &&
+      this.activities().length === 0
+    ) {
+      this.removeEmptyAssistantMessage(
+        this.activeAssistantMessageId
+      );
+    }
+
+    this.activeAssistantMessageId = null;
+
+    this.isSending.set(false);
+    this.errorMessage.set('');
+    this.activityExpanded.set(true);
+
+    this.shouldAutoScroll = true;
+
+    this.scheduleScrollToBottom(true);
+  }
   toggleActivity(): void {
     this.activityExpanded.update(
       expanded => !expanded
     );
+    this.scheduleScrollToBottom();
   }
-
   startNewConversation(): void {
-    if (this.isSending() || this.isLoadingHistory()) {
+    if (
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
       return;
     }
-    const threadId = this.copilotService.startNewConversation();
-    this.currentThreadId.set(threadId);
+    const threadId =
+      this.copilotService
+        .startNewConversation();
+    this.activeRunSubscription =
+      null;
+    this.activeAssistantMessageId =
+      null;
+    this.currentThreadId.set(
+      threadId
+    );
     this.messages.set([]);
-    this.pendingApproval.set(null);
-    this.toolCalls.clear();
-    this.message.set('');
-    this.errorMessage.set('');
-    this.closeConversationMenu();
-    this.cancelRenameConversation();
-    this.conversationPendingDelete.set(null);
-    this.isLoadingHistory.set(false);
+    this.shouldAutoScroll =
+      true;
+    this.pendingApproval.set(
+      null
+    );
     this.activities.set([]);
-    this.activityExpanded.set(false);
+    this.activityExpanded.set(
+      false
+    );
+    this.runStopped.set(false);
+    this.toolCalls.clear();
+    this.message.set('');
+    this.errorMessage.set('');
+    this.closeConversationMenu();
+    this.cancelRenameConversation();
+    this.conversationPendingDelete.set(
+      null
+    );
+    this.isLoadingHistory.set(
+      false
+    );
   }
-  openConversation(conversation: CopilotConversation): void {
-    if (this.isSending() || this.isLoadingHistory()) {
+  openConversation(
+    conversation:
+      CopilotConversation
+  ): void {
+    if (
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
       return;
     }
-    if (conversation.threadId === this.currentThreadId()) {
+    if (
+      conversation.threadId ===
+      this.currentThreadId()
+    ) {
       return;
     }
     this.closeConversationMenu();
     this.cancelRenameConversation();
-    this.conversationPendingDelete.set(null);
-    this.copilotService.openConversation(conversation);
-    this.currentThreadId.set(conversation.threadId);
+    this.conversationPendingDelete.set(
+      null
+    );
+    this.activeRunSubscription =
+      null;
+    this.activeAssistantMessageId =
+      null;
+    this.copilotService
+      .openConversation(
+        conversation
+      );
+    this.currentThreadId.set(
+      conversation.threadId
+    );
     this.messages.set([]);
-    this.pendingApproval.set(null);
+    this.pendingApproval.set(
+      null
+    );
+    this.activities.set([]);
+    this.activityExpanded.set(
+      false
+    );
+    this.runStopped.set(false);
     this.toolCalls.clear();
     this.message.set('');
     this.errorMessage.set('');
+    this.shouldAutoScroll =
+      true;
     this.loadConversationState();
-    this.activities.set([]);
-    this.activityExpanded.set(false);
   }
-  onMessageInput(event: Event): void {
-    const input = event.target as HTMLTextAreaElement;
-    this.message.set(input.value);
+  onMessagesScroll(
+    event: Event
+  ): void {
+    const container =
+      event.target as
+      HTMLDivElement;
+    const distanceFromBottom =
+      container.scrollHeight -
+      container.scrollTop -
+      container.clientHeight;
+    this.shouldAutoScroll =
+      distanceFromBottom <=
+      this.autoScrollThreshold;
   }
-  private isInterruptOutcome(outcome: unknown): outcome is {
+  onMessageInput(
+    event: Event
+  ): void {
+    const input =
+      event.target as
+      HTMLTextAreaElement;
+    this.message.set(
+      input.value
+    );
+  }
+  private scheduleScrollToBottom(
+    force = false
+  ): void {
+    if (
+      !force &&
+      !this.shouldAutoScroll
+    ) {
+      return;
+    }
+    if (
+      this.scrollFrameId !==
+      null
+    ) {
+      cancelAnimationFrame(
+        this.scrollFrameId
+      );
+    }
+    this.scrollFrameId =
+      requestAnimationFrame(
+        () => {
+          this.scrollFrameId =
+            null;
+          const container =
+            this.messagesContainer
+              ?.nativeElement;
+          if (!container) {
+            return;
+          }
+          container.scrollTop =
+            container.scrollHeight;
+        }
+      );
+  }
+  private isInterruptOutcome(
+    outcome: unknown
+  ): outcome is {
     type: 'interrupt';
     interrupts:
     Array<{
@@ -312,7 +537,11 @@ export class CopilotChat {
       toolCallId?: string;
     }>;
   } {
-    if (typeof outcome !== 'object' || outcome === null) {
+    if (
+      typeof outcome !==
+      'object' ||
+      outcome === null
+    ) {
       return false;
     }
     const value =
@@ -321,7 +550,8 @@ export class CopilotChat {
         interrupts?: unknown;
       };
     return (
-      value.type === 'interrupt' &&
+      value.type ===
+      'interrupt' &&
       Array.isArray(
         value.interrupts
       )
@@ -332,7 +562,7 @@ export class CopilotChat {
     assistantMessageId: string
   ): void {
     /*
-     * Streaming assistant text
+     * Streaming assistant response
      */
     if (
       event.type ===
@@ -341,7 +571,8 @@ export class CopilotChat {
       const delta =
         event['delta'];
       if (
-        typeof delta === 'string'
+        typeof delta ===
+        'string'
       ) {
         this.messages.update(
           messages =>
@@ -358,10 +589,11 @@ export class CopilotChat {
                   : message
             )
         );
+        this.scheduleScrollToBottom();
       }
     }
     /*
-     * Tool call starts
+     * Tool execution starts
      */
     if (
       event.type ===
@@ -377,19 +609,30 @@ export class CopilotChat {
         typeof toolCallName ===
         'string'
       ) {
-        this.toolCalls.set(toolCallId,
+        this.toolCalls.set(
+          toolCallId,
           {
-            name: toolCallName,
+            name:
+              toolCallName,
             arguments: ''
           }
         );
-        this.startActivity(toolCallId, toolCallName);
+        this.startActivity(
+          toolCallId,
+          toolCallName
+        );
       }
+      /*
+       * Remove temporary narration such as
+       * "I'll look that up..." once a real
+       * tool call begins.
+       */
       this.messages.update(
         messages =>
           messages.map(
             message =>
-              message.id === assistantMessageId
+              message.id ===
+                assistantMessageId
                 ? {
                   ...message,
                   content: ''
@@ -401,7 +644,10 @@ export class CopilotChat {
     /*
      * Tool arguments stream
      */
-    if (event.type === EventType.TOOL_CALL_ARGS) {
+    if (
+      event.type ===
+      EventType.TOOL_CALL_ARGS
+    ) {
       const toolCallId =
         event['toolCallId'];
       const delta =
@@ -423,12 +669,14 @@ export class CopilotChat {
       }
     }
     /*
- * Tool execution completed
- */
-    if (event.type === EventType.TOOL_CALL_RESULT) {
+     * Tool execution completed
+     */
+    if (
+      event.type ===
+      EventType.TOOL_CALL_RESULT
+    ) {
       const toolCallId =
         event['toolCallId'];
-
       if (
         typeof toolCallId ===
         'string'
@@ -440,7 +688,7 @@ export class CopilotChat {
       }
     }
     /*
-     * Run completed / interrupted
+     * Run completed or interrupted
      */
     if (
       event.type ===
@@ -459,18 +707,28 @@ export class CopilotChat {
         this.pendingApproval.set(
           null
         );
+        this.activityExpanded.set(
+          false
+        );
         return;
       }
-      if (this.isInterruptOutcome(outcome)) {
+      if (
+        this.isInterruptOutcome(
+          outcome
+        )
+      ) {
         const interrupt =
           outcome.interrupts[0];
         if (
-          !interrupt?.toolCallId
+          !interrupt
+            ?.toolCallId
         ) {
           return;
         }
-        const toolCall = this.toolCalls.get(interrupt.toolCallId);
-        this.setActivityStatus(interrupt.toolCallId, 'waiting');
+        const toolCall =
+          this.toolCalls.get(
+            interrupt.toolCallId
+          );
         if (!toolCall) {
           return;
         }
@@ -478,300 +736,77 @@ export class CopilotChat {
           interrupt.toolCallId,
           'waiting'
         );
-
-        this.activityExpanded.set(true);
-
+        /*
+         * Keep activity visible while
+         * waiting for approval.
+         */
+        this.activityExpanded.set(
+          true
+        );
         const fallbackApproval:
           CopilotApprovalRequest = {
-          interruptId: interrupt.id,
-          toolCallId: interrupt.toolCallId,
-          toolName: toolCall.name,
-          arguments: toolCall.arguments,
-          message: interrupt.message,
-          displayTitle: this.humanizeToolName(
-            toolCall.name
-          ),
+          interruptId:
+            interrupt.id,
+          toolCallId:
+            interrupt.toolCallId,
+          toolName:
+            toolCall.name,
+          arguments:
+            toolCall.arguments,
+          message:
+            interrupt.message,
+          displayTitle:
+            this.humanizeToolName(
+              toolCall.name
+            ),
           displayDetails: [],
           warning: null
         };
-
         this.refreshPendingApproval(
           fallbackApproval
         );
+        this.scheduleScrollToBottom();
+        return;
       }
-      this.activityExpanded.set(false);
+      this.activityExpanded.set(
+        false
+      );
     }
   }
-
-  activityText(
-    activity: CopilotActivity
-  ): string {
-    const labels: Record<
-      string,
-      {
-        running: string;
-        completed: string;
-      }
-    > = {
-      GetStudentById: {
-        running: 'Looking up student...',
-        completed: 'Student lookup completed'
-      },
-      GetStudentByRollNumber: {
-        running: 'Looking up student...',
-        completed: 'Student lookup completed'
-      },
-      SearchStudentsByName: {
-        running: 'Searching student records...',
-        completed: 'Student search completed'
-      },
-      GetCourseById: {
-        running: 'Looking up course...',
-        completed: 'Course lookup completed'
-      },
-      GetCourseByCode: {
-        running: 'Looking up course...',
-        completed: 'Course lookup completed'
-      },
-      SearchCoursesByName: {
-        running: 'Searching courses...',
-        completed: 'Course search completed'
-      },
-      GetAllCourses: {
-        running: 'Retrieving courses...',
-        completed: 'Courses retrieved'
-      },
-      GetEnrollmentById: {
-        running: 'Looking up enrollment...',
-        completed: 'Enrollment lookup completed'
-      },
-      GetEnrollmentsByStudent: {
-        running: 'Checking student enrollments...',
-        completed: 'Student enrollments checked'
-      },
-      GetEnrollmentForStudentCourse: {
-        running: 'Checking existing enrollment...',
-        completed: 'Existing enrollment checked'
-      },
-      GetEnrollmentsByCourse: {
-        running: 'Retrieving course enrollments...',
-        completed: 'Course enrollments retrieved'
-      },
-      GetAttendanceById: {
-        running: 'Looking up attendance record...',
-        completed: 'Attendance record retrieved'
-      },
-      GetAttendanceForStudent: {
-        running: 'Reviewing student attendance...',
-        completed: 'Student attendance retrieved'
-      },
-      GetAttendanceForCourseOnDate: {
-        running: 'Checking course attendance...',
-        completed: 'Course attendance retrieved'
-      },
-      GetAttendanceSummaryForStudent: {
-        running: 'Calculating attendance summary...',
-        completed: 'Attendance summary calculated'
-      },
-      GetFeeById: {
-        running: 'Looking up fee record...',
-        completed: 'Fee record retrieved'
-      },
-      GetFeeStatement: {
-        running: 'Checking fee statement...',
-        completed: 'Fee statement retrieved'
-      },
-      GetFeesForStudent: {
-        running: 'Reviewing student fees...',
-        completed: 'Student fees retrieved'
-      },
-      SearchInstitutionalKnowledge: {
-        running: 'Searching institutional knowledge...',
-        completed: 'Institutional knowledge searched'
-      },
-      load_skill: {
-        running: 'Loading task guidance...',
-        completed: 'Task guidance loaded'
-      },
-      read_skill_resource: {
-        running: 'Reading skill resource...',
-        completed: 'Skill resource read'
-      },
-      run_skill_script: {
-        running: 'Running skill...',
-        completed: 'Skill completed'
-      },
-      create_student: {
-        running: 'Creating student...',
-        completed: 'Student created'
-      },
-      create_course: {
-        running: 'Creating course...',
-        completed: 'Course created'
-      },
-      enroll_student: {
-        running: 'Enrolling student...',
-        completed: 'Student enrolled'
-      },
-      drop_course: {
-        running: 'Dropping enrollment...',
-        completed: 'Enrollment dropped'
-      },
-      complete_course: {
-        running: 'Completing enrollment...',
-        completed: 'Enrollment completed'
-      },
-      mark_attendance: {
-        running: 'Recording attendance...',
-        completed: 'Attendance recorded'
-      },
-      mark_attendance_today: {
-        running: 'Recording today\'s attendance...',
-        completed: 'Today\'s attendance recorded'
-      },
-      update_attendance: {
-        running: 'Updating attendance...',
-        completed: 'Attendance updated'
-      },
-      process_student_payment: {
-        running: 'Processing payment...',
-        completed: 'Payment recorded'
-      },
-      update_student_profile: {
-        running: 'Updating student profile...',
-        completed: 'Student profile updated'
-      },
-      remove_student: {
-        running: 'Removing student...',
-        completed: 'Student removed'
-      },
-      update_course_details: {
-        running: 'Updating course...',
-        completed: 'Course updated'
-      },
-      update_course_pricing: {
-        running: 'Updating course pricing...',
-        completed: 'Course pricing updated'
-      },
-      remove_course: {
-        running: 'Removing course...',
-        completed: 'Course removed'
-      },
-      GetStudentsBelowAttendanceThreshold: {
-        running: 'Finding students with low attendance...',
-        completed: 'Low-attendance report completed'
-      },
-
-      GetStudentsWithOutstandingFees: {
-        running: 'Checking outstanding student fees...',
-        completed: 'Outstanding-fee report completed'
-      },
-
-      GetCourseAttendanceSummary: {
-        running: 'Calculating course attendance...',
-        completed: 'Course attendance summary calculated'
-      },
-      GetStudentsWithNoAttendanceRecords: {
-        running: 'Finding students without attendance records...',
-        completed: 'No-attendance report completed'
-      },
-
-      GetStudentsWithNoActiveEnrollment: {
-        running: 'Checking active student enrollments...',
-        completed: 'Enrollment-status report completed'
-      },
-
-      GetInstitutionFeeSummary: {
-        running: 'Calculating institution fee summary...',
-        completed: 'Institution fee summary calculated'
-      },
-    };
-
-    const label =
-      labels[activity.toolName];
-
-    if (
-      activity.status ===
-      'running'
-    ) {
-      return label?.running ??
-        `Running ${this.humanizeToolName(
-          activity.toolName
-        )}...`;
-    }
-
-    if (
-      activity.status ===
-      'completed'
-    ) {
-      return label?.completed ??
-        `${this.humanizeToolName(
-          activity.toolName
-        )} completed`;
-    }
-
-    if (
-      activity.status ===
-      'waiting'
-    ) {
-      return `Waiting for approval: ${this.humanizeToolName(
-        activity.toolName
-      )
-        }`;
-    }
-
-    if (
-      activity.status ===
-      'rejected'
-    ) {
-      return `${this.humanizeToolName(
-        activity.toolName
-      )
-        } was rejected`;
-    }
-
-    return `${this.humanizeToolName(
-      activity.toolName
-    )
-      } failed`;
-  }
-
   private humanizeToolName(
     toolName: string
   ): string {
     const value =
       toolName
-        .replace(/_/g, ' ')
+        .replace(
+          /_/g,
+          ' '
+        )
         .replace(
           /([a-z])([A-Z])/g,
           '$1 $2'
         )
         .toLowerCase();
-
-    return value.charAt(0)
-      .toUpperCase() +
-      value.slice(1);
+    return (
+      value.charAt(0).toUpperCase() +
+      value.slice(1)
+    );
   }
-
-  activityStatusSymbol(
-    status: CopilotActivityStatus
-  ): string {
-    switch (status) {
-      case 'completed': return '✓';
-      case 'waiting': return '○';
-      case 'rejected': return '×';
-      case 'failed': return '!';
-      default: return '●';
-    }
-  }
-
   sendMessage(): void {
-    const text = this.message().trim();
-    if (!text || this.isSending() || this.isLoadingHistory()) {
+    const text =
+      this.message().trim();
+    if (
+      !text ||
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
       return;
     }
     this.activities.set([]);
-    this.activityExpanded.set(true);
+    this.activityExpanded.set(
+      true
+    );
+    this.runStopped.set(false);
     const userMessage:
       CopilotMessage = {
       id: crypto.randomUUID(),
@@ -784,9 +819,10 @@ export class CopilotChat {
       id: crypto.randomUUID(),
       role: 'assistant',
       content: '',
-      createdAt:
-        new Date()
+      createdAt: new Date()
     };
+    this.shouldAutoScroll =
+      true;
     this.messages.update(
       messages => [
         ...messages,
@@ -794,45 +830,91 @@ export class CopilotChat {
         assistantMessage
       ]
     );
-    this.pendingApproval.set(null);
+    this.scheduleScrollToBottom(
+      true
+    );
+    this.pendingApproval.set(
+      null
+    );
     this.toolCalls.clear();
     this.message.set('');
     this.errorMessage.set('');
     this.closeConversationMenu();
-    this.isSending.set(true);
-    this.copilotService.sendMessage(text).subscribe({
-      next: event => {
-        this.handleAgUiEvent(
-          event,
-          assistantMessage.id
-        );
-      },
-      error: error => {
-        console.error(
-          'AG-UI error:',
-          error
-        );
-        this.failRunningActivities();
-        this.removeEmptyAssistantMessage(assistantMessage.id);
-        this.errorMessage.set('Something went wrong while contacting the assistant.');
-        this.isSending.set(false);
-      },
-      complete: () => {
-        this.removeEmptyAssistantMessage(assistantMessage.id);
-        this.isSending.set(false);
-      }
-    });
+    this.isSending.set(
+      true
+    );
+    this.activeAssistantMessageId =
+      assistantMessage.id;
+    this.activeRunSubscription =
+      this.copilotService
+        .sendMessage(
+          text
+        )
+        .subscribe({
+          next: event => {
+            this.handleAgUiEvent(
+              event,
+              assistantMessage.id
+            );
+          },
+          error: error => {
+            console.error(
+              'AG-UI error:',
+              error
+            );
+            this.failRunningActivities();
+            this.removeEmptyAssistantMessage(
+              assistantMessage.id
+            );
+            this.errorMessage.set(
+              'Something went wrong while contacting the assistant.'
+            );
+            this.activeRunSubscription =
+              null;
+            this.activeAssistantMessageId =
+              null;
+            this.isSending.set(
+              false
+            );
+          },
+          complete: () => {
+            this.removeEmptyAssistantMessage(
+              assistantMessage.id
+            );
+            this.activeRunSubscription =
+              null;
+            this.activeAssistantMessageId =
+              null;
+            this.isSending.set(
+              false
+            );
+          }
+        });
   }
   respondToApproval(
     approved: boolean
   ): void {
-    const approval = this.pendingApproval();
-    if (!approval || this.isSending()) {
+    const approval =
+      this.pendingApproval();
+    if (
+      !approval ||
+      this.isSending()
+    ) {
       return;
     }
-    this.activityExpanded.set(true);
-    this.pendingApproval.set(null);
-    this.setActivityStatus(approval.toolCallId, approved ? 'running' : 'rejected');
+    this.activityExpanded.set(
+      true
+    );
+    this.pendingApproval.set(
+      null
+    );
+    this.runStopped.set(false);
+    this.setActivityStatus(
+      approval.toolCallId,
+      approved
+        ? 'running'
+        : 'rejected'
+    );
     this.toolCalls.clear();
     const assistantMessage:
       CopilotMessage = {
@@ -841,44 +923,76 @@ export class CopilotChat {
       content: '',
       createdAt: new Date()
     };
+    this.shouldAutoScroll =
+      true;
     this.messages.update(
       messages => [
         ...messages,
         assistantMessage
       ]
     );
+    this.scheduleScrollToBottom(
+      true
+    );
     this.errorMessage.set('');
-    this.isSending.set(true);
-    this.copilotService.resumeApproval(approval, approved)
-      .subscribe({
-        next: event => {
-          this.handleAgUiEvent(
-            event,
-            assistantMessage.id
-          );
-        },
-        error: error => {
-          console.error(
-            'AG-UI approval resume error:',
-            error
-          );
-          this.setActivityStatus(approval.toolCallId, 'waiting');
-          this.removeEmptyAssistantMessage(assistantMessage.id);
-          this.pendingApproval.set(approval);
-          this.errorMessage.set('Something went wrong while processing the approval.');
-          this.isSending.set(false);
-        },
-        complete: () => {
-          this.removeEmptyAssistantMessage(
-            assistantMessage.id
-          );
-          this.isSending.set(
-            false
-          );
-        }
-      });
+    this.isSending.set(
+      true
+    );
+    this.activeAssistantMessageId =
+      assistantMessage.id;
+    this.activeRunSubscription =
+      this.copilotService
+        .resumeApproval(
+          approval,
+          approved
+        )
+        .subscribe({
+          next: event => {
+            this.handleAgUiEvent(
+              event,
+              assistantMessage.id
+            );
+          },
+          error: error => {
+            console.error(
+              'AG-UI approval resume error:',
+              error
+            );
+            this.setActivityStatus(
+              approval.toolCallId,
+              'waiting'
+            );
+            this.removeEmptyAssistantMessage(
+              assistantMessage.id
+            );
+            this.pendingApproval.set(
+              approval
+            );
+            this.errorMessage.set(
+              'Something went wrong while processing the approval.'
+            );
+            this.activeRunSubscription =
+              null;
+            this.activeAssistantMessageId =
+              null;
+            this.isSending.set(
+              false
+            );
+          },
+          complete: () => {
+            this.removeEmptyAssistantMessage(
+              assistantMessage.id
+            );
+            this.activeRunSubscription =
+              null;
+            this.activeAssistantMessageId =
+              null;
+            this.isSending.set(
+              false
+            );
+          }
+        });
   }
-
   toggleConversationMenu(
     threadId: string,
     event: Event
@@ -887,7 +1001,8 @@ export class CopilotChat {
     this.openConversationMenuThreadId
       .update(
         current =>
-          current === threadId
+          current ===
+            threadId
             ? null
             : threadId
       );
@@ -968,7 +1083,8 @@ export class CopilotChat {
                 conversations.map(
                   item =>
                     item.threadId ===
-                      updatedConversation.threadId
+                      updatedConversation
+                        .threadId
                       ? updatedConversation
                       : item
                 )
@@ -994,9 +1110,6 @@ export class CopilotChat {
         }
       });
   }
-  /*
-   * Open custom delete modal.
-   */
   requestDeleteConversation(
     conversation:
       CopilotConversation,
@@ -1008,9 +1121,6 @@ export class CopilotChat {
       conversation
     );
   }
-  /*
-   * Close custom delete modal.
-   */
   cancelDeleteConversation(): void {
     const conversation =
       this.conversationPendingDelete();
@@ -1025,10 +1135,6 @@ export class CopilotChat {
       null
     );
   }
-  /*
-   * Performs the actual deletion after
-   * the user confirms through our modal.
-   */
   deleteConversation(): void {
     const conversation =
       this.conversationPendingDelete();
@@ -1051,27 +1157,34 @@ export class CopilotChat {
       )
       .subscribe({
         next: () => {
-          /*
-           * If the current conversation
-           * was deleted, create a fresh
-           * blank conversation.
-           */
           if (
             conversation.threadId ===
             this.currentThreadId()
           ) {
-            const threadId = this.copilotService.startNewConversation();
-            this.currentThreadId.set(threadId);
+            const threadId =
+              this.copilotService
+                .startNewConversation();
+            this.activeRunSubscription =
+              null;
+            this.activeAssistantMessageId =
+              null;
+            this.currentThreadId.set(
+              threadId
+            );
             this.messages.set([]);
-            this.pendingApproval.set(null);
+            this.pendingApproval.set(
+              null
+            );
+            this.activities.set([]);
+            this.activityExpanded.set(
+              false
+            );
             this.toolCalls.clear();
             this.message.set('');
             this.errorMessage.set('');
+            this.shouldAutoScroll =
+              true;
           }
-          /*
-           * Work out which page is still
-           * valid after the deletion.
-           */
           const remainingCount =
             Math.max(
               0,
@@ -1093,9 +1206,6 @@ export class CopilotChat {
                 remainingPages
               )
             );
-          /*
-           * Close modal after success.
-           */
           this.conversationPendingDelete.set(
             null
           );

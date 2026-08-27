@@ -1,0 +1,156 @@
+<aside class="conversation-sidebar">
+  <button
+    type="button"
+    class="new-conversation-button"
+    (click)="newConversation.emit()"
+    [disabled]="isSending() || isLoadingHistory()">
+    + New Conversation
+  </button>
+  <h3>Previous Conversations</h3>
+  @if (isLoadingConversations()) {
+    <p class="conversation-status">
+      Loading conversations...
+    </p>
+  } @else if (conversations().length === 0) {
+    <p class="conversation-status">
+      No previous conversations.
+    </p>
+  } @else {
+    <div class="conversation-list">
+      @for (
+        conversation of conversations();
+        track conversation.threadId
+      ) {
+        <div
+          class="conversation-row"
+          [class.active]="conversation.threadId === currentThreadId()">
+          @if (
+            renamingThreadId() ===
+            conversation.threadId
+          ) {
+            <div class="conversation-rename">
+              <input
+                type="text"
+                [value]="renameTitle()"
+                (input)="renameInput.emit($event)"
+                (click)="$event.stopPropagation()"
+                (keydown.enter)="saveRename.emit({
+                  conversation,
+                  event: $event
+                })"
+                (keydown.escape)="cancelRename.emit($event)"
+                maxlength="80"
+                autofocus>
+              <div class="conversation-rename-actions">
+                <button
+                  type="button"
+                  (click)="saveRename.emit({
+                    conversation,
+                    event: $event
+                  })"
+                  [disabled]="
+                    !renameTitle().trim() ||
+                    managingThreadId() === conversation.threadId
+                  ">
+                  Save
+                </button>
+                <button
+                  type="button"
+                  (click)="cancelRename.emit($event)">
+                  Cancel
+                </button>
+              </div>
+            </div>
+          } @else {
+            <button
+              type="button"
+              class="conversation-title-button"
+              (click)="openConversation.emit(conversation)"
+              [disabled]="
+                isSending() ||
+                isLoadingHistory() ||
+                managingThreadId() === conversation.threadId
+              "
+              [title]="conversation.title">
+              {{ conversation.title }}
+            </button>
+            <div class="conversation-menu-wrapper">
+              <button
+                type="button"
+                class="conversation-menu-button"
+                aria-label="Conversation actions"
+                (click)="toggleMenu.emit({
+                  threadId: conversation.threadId,
+                  event: $event
+                })"
+                [disabled]="
+                  managingThreadId() === conversation.threadId
+                ">
+                ⋯
+              </button>
+              @if (
+                openMenuThreadId() ===
+                conversation.threadId
+              ) {
+                <div class="conversation-menu">
+                  <button
+                    type="button"
+                    (click)="beginRename.emit({
+                      conversation,
+                      event: $event
+                    })">
+                    Rename
+                  </button>
+                  <button
+                    type="button"
+                    class="delete-action"
+                    (click)="deleteRequest.emit({
+                      conversation,
+                      event: $event
+                    })">
+                    Delete
+                  </button>
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+    @if (totalPages() > 0) {
+      <div class="conversation-pagination">
+        <button
+          type="button"
+          class="pagination-arrow previous"
+          (click)="previousPage.emit()"
+          [disabled]="
+            isLoadingConversations() ||
+            !hasPreviousPage()
+          "
+          aria-label="Previous conversation page">
+        </button>
+        <span>
+          Page {{ pageNumber() }} of {{ totalPages() }}
+        </span>
+        <button
+          type="button"
+          class="pagination-arrow next"
+          (click)="nextPage.emit()"
+          [disabled]="
+            isLoadingConversations() ||
+            !hasNextPage()
+          "
+          aria-label="Next conversation page">
+        </button>
+      </div>
+      <p class="conversation-count">
+        {{ totalCount() }}
+        {{
+          totalCount() === 1
+            ? 'conversation'
+            : 'conversations'
+        }}
+      </p>
+    }
+  }
+</aside>

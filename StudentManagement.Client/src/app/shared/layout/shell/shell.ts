@@ -50,7 +50,7 @@ export class Shell {
     },
     {
       path: '/copilot',
-      label: 'AI Copilot'
+      label: 'SmartCampus Copilot'
     }
   ];
   toggleMobileNav(): void {

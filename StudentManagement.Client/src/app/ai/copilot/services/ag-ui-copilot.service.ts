@@ -199,6 +199,21 @@ export class AgUiCopilotService {
         })
       );
   }
+  stopCurrentRun(): void {
+    this.ensureSession();
+    const threadId =
+      this.agent.threadId;
+    this.agent.abortRun();
+    /*
+     * We call HttpAgent.run(...) directly.
+     * The aborted agent must not be reused
+     * because its AbortController is now aborted.
+     */
+    this.agent =
+      this.createAgent(
+        threadId
+      );
+  }
   private createAgent(
     threadId: string
   ): HttpAgent {
