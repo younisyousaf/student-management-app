@@ -17,7 +17,9 @@ export interface CopilotMessage {
   activities?: CopilotActivity[];
   turnStopped?: boolean;
   activityExpanded?: boolean;
+  turnUserMessageId?: string;
 }
+
 export interface CopilotHistoryMessage {
   id: string;
   role: CopilotMessageRole;

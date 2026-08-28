@@ -378,4 +378,40 @@ export class AgUiCopilotService {
     );
   }
 
+  retryTurn(userMessageId: string): Observable<CopilotTurn> {
+    this.ensureSession();
+
+    const threadId = encodeURIComponent(this.agent.threadId);
+
+    return this.http.post<CopilotTurn>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/retry-turn`,
+      {
+        userMessageId
+      },
+      {
+        withCredentials: true
+      }
+    );
+  }
+
+  editTurn(
+    userMessageId: string,
+    message: string
+  ): Observable<CopilotTurn> {
+    this.ensureSession();
+
+    const threadId = encodeURIComponent(this.agent.threadId);
+
+    return this.http.post<CopilotTurn>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/edit-turn`,
+      {
+        userMessageId,
+        message
+      },
+      {
+        withCredentials: true
+      }
+    );
+  }
+
 }

@@ -8,11 +8,13 @@ import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ActivityTimeline } from '../../components/activity-timeline/activity-timeline';
 import { ApprovalCard } from '../../components/approval-card/approval-card';
 import { ConversationSidebar } from '../../components/conversation-sidebar/conversation-sidebar';
+import { InterruptedTurnActions } from '../../components/interrupted-turn-actions/interrupted-turn-actions';
+import { PromptEditor } from '../../components/prompt-editor/prompt-editor';
 
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
-  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar],
+  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor],
   templateUrl: './copilot-chat.html',
   styleUrl: './copilot-chat.scss'
 })
@@ -54,6 +56,9 @@ export class CopilotChat {
   readonly renamingConversationThreadId = signal<string | null>(null);
   readonly renameConversationTitle = signal('');
   readonly managingConversationThreadId = signal<string | null>(null);
+
+  readonly editingUserMessageId = signal<string | null>(null);
+  readonly editedPrompt = signal('');
 
   // Delete confirmation
   readonly conversationPendingDelete = signal<CopilotConversation | null>(null);
@@ -239,7 +244,8 @@ export class CopilotChat {
             createdAt: new Date(stoppedTurn.updatedAt),
             activities: stoppedTurn.activities,
             turnStopped: true,
-            activityExpanded: true
+            activityExpanded: true,
+            turnUserMessageId: stoppedTurn.userMessageId
           });
         }
 
@@ -314,7 +320,8 @@ export class CopilotChat {
               ...message,
               activities: stoppedActivities,
               turnStopped: true,
-              activityExpanded: true
+              activityExpanded: true,
+              turnUserMessageId: userMessageId ?? undefined
             }
             : message
         )
@@ -369,6 +376,8 @@ export class CopilotChat {
     this.cancelRenameConversation();
     this.conversationPendingDelete.set(null);
     this.isLoadingHistory.set(false);
+    this.editingUserMessageId.set(null);
+    this.editedPrompt.set('');
   }
 
   openConversation(conversation: CopilotConversation): void {
@@ -399,6 +408,8 @@ export class CopilotChat {
     this.message.set('');
     this.errorMessage.set('');
     this.shouldAutoScroll = true;
+    this.editingUserMessageId.set(null);
+    this.editedPrompt.set('');
 
     this.loadConversationState();
   }
@@ -967,6 +978,320 @@ export class CopilotChat {
     this.closeConversationMenu();
     this.cancelRenameConversation();
     this.loadConversations(this.conversationPageNumber() + 1);
+  }
+
+  canRetryStoppedTurn(userMessageId?: string): boolean {
+    if (!userMessageId) {
+      return false;
+    }
+
+    const latestUserMessage = [...this.messages()]
+      .reverse()
+      .find(message => message.role === 'user');
+
+    return latestUserMessage?.id === userMessageId;
+  }
+
+  retryStoppedTurn(message: CopilotMessage): void {
+    const userMessageId = message.turnUserMessageId;
+
+    if (
+      !userMessageId ||
+      !message.turnStopped ||
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
+      return;
+    }
+
+    if (!this.canRetryStoppedTurn(userMessageId)) {
+      this.errorMessage.set('Only the latest interrupted request can be retried.');
+      return;
+    }
+
+    const originalUserMessage = this.messages().find(
+      item =>
+        item.id === userMessageId &&
+        item.role === 'user'
+    );
+
+    if (!originalUserMessage) {
+      this.errorMessage.set('The original message for this retry could not be found.');
+      return;
+    }
+
+    this.errorMessage.set('');
+    this.pendingApproval.set(null);
+    this.activities.set([]);
+    this.activityExpanded.set(true);
+    this.runStopped.set(false);
+    this.toolCalls.clear();
+    this.isSending.set(true);
+
+    this.activeUserMessageId = userMessageId;
+    this.activeAssistantMessageId = message.id;
+
+    this.copilotService.retryTurn(userMessageId)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          /*
+           * The user could press Stop while the retry
+           * preparation request was still executing.
+           */
+          if (this.runStopped()) {
+            this.persistStoppedTurn(
+              userMessageId,
+              this.getMessageActivities(message.id)
+            );
+            return;
+          }
+
+          /*
+           * Convert the persisted stopped assistant
+           * placeholder back into a live assistant turn.
+           */
+          this.messages.update(messages =>
+            messages.map(item =>
+              item.id === message.id
+                ? {
+                  ...item,
+                  content: '',
+                  activities: [],
+                  turnStopped: false,
+                  activityExpanded: true
+                }
+                : item
+            )
+          );
+
+          this.shouldAutoScroll = true;
+          this.scheduleScrollToBottom(true);
+
+          /*
+           * The backend retained the original user
+           * message and removed only the stopped marker.
+           * Therefore run with messages: [].
+           */
+          this.activeRunSubscription = this.copilotService.runPreparedTurn().subscribe({
+            next: event => {
+              this.handleAgUiEvent(event, message.id);
+            },
+            error: error => {
+              console.error('AG-UI retry error:', error);
+
+              this.failRunningActivities();
+              this.errorMessage.set('Something went wrong while retrying the response.');
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            },
+            complete: () => {
+              this.removeEmptyAssistantMessage(message.id);
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            }
+          });
+        },
+        error: error => {
+          console.error('Failed to prepare Copilot retry:', error);
+
+          this.errorMessage.set(
+            error?.status === 409
+              ? 'Only the latest interrupted request can be retried.'
+              : 'The interrupted response could not be retried.'
+          );
+
+          this.activeAssistantMessageId = null;
+          this.activeUserMessageId = null;
+          this.isSending.set(false);
+        }
+      });
+  }
+
+  beginEditStoppedPrompt(message: CopilotMessage): void {
+    const userMessageId = message.turnUserMessageId;
+
+    if (
+      !userMessageId ||
+      !message.turnStopped ||
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
+      return;
+    }
+
+    if (!this.canRetryStoppedTurn(userMessageId)) {
+      this.errorMessage.set('Only the latest interrupted request can be edited.');
+      return;
+    }
+
+    const userMessage = this.messages().find(
+      item =>
+        item.id === userMessageId &&
+        item.role === 'user'
+    );
+
+    if (!userMessage) {
+      this.errorMessage.set('The original message could not be found.');
+      return;
+    }
+
+    this.errorMessage.set('');
+    this.editingUserMessageId.set(userMessageId);
+    this.editedPrompt.set(userMessage.content);
+  }
+
+  onEditedPromptChange(value: string): void {
+    this.editedPrompt.set(value);
+  }
+
+  cancelEditPrompt(): void {
+    if (this.isSending()) {
+      return;
+    }
+
+    this.editingUserMessageId.set(null);
+    this.editedPrompt.set('');
+  }
+
+  submitEditedPrompt(): void {
+    const userMessageId = this.editingUserMessageId();
+    const editedText = this.editedPrompt().trim();
+
+    if (
+      !userMessageId ||
+      !editedText ||
+      this.isSending() ||
+      this.isLoadingHistory()
+    ) {
+      return;
+    }
+
+    const stoppedAssistantMessage = this.messages().find(
+      message =>
+        message.role === 'assistant' &&
+        message.turnStopped &&
+        message.turnUserMessageId === userMessageId
+    );
+
+    if (!stoppedAssistantMessage) {
+      this.errorMessage.set('The interrupted response could not be found.');
+      return;
+    }
+
+    if (!this.canRetryStoppedTurn(userMessageId)) {
+      this.errorMessage.set('Only the latest interrupted request can be edited.');
+      return;
+    }
+
+    this.errorMessage.set('');
+    this.pendingApproval.set(null);
+    this.activities.set([]);
+    this.activityExpanded.set(true);
+    this.runStopped.set(false);
+    this.toolCalls.clear();
+
+    this.isSending.set(true);
+    this.activeUserMessageId = userMessageId;
+    this.activeAssistantMessageId = stoppedAssistantMessage.id;
+
+    this.copilotService.editTurn(userMessageId, editedText)
+      .pipe(takeUntilDestroyed(this.destroyRef))
+      .subscribe({
+        next: () => {
+          /*
+           * Stop may have been clicked while edit-turn
+           * was being persisted.
+           */
+          if (this.runStopped()) {
+            this.persistStoppedTurn(
+              userMessageId,
+              this.getMessageActivities(stoppedAssistantMessage.id)
+            );
+
+            this.editingUserMessageId.set(null);
+            this.editedPrompt.set('');
+            return;
+          }
+
+          /*
+           * Update the existing user bubble.
+           * The same MessageId is retained.
+           */
+          this.messages.update(messages =>
+            messages.map(message => {
+              if (message.id === userMessageId) {
+                return {
+                  ...message,
+                  content: editedText
+                };
+              }
+
+              if (message.id === stoppedAssistantMessage.id) {
+                return {
+                  ...message,
+                  content: '',
+                  activities: [],
+                  turnStopped: false,
+                  activityExpanded: true
+                };
+              }
+
+              return message;
+            })
+          );
+
+          this.editingUserMessageId.set(null);
+          this.editedPrompt.set('');
+
+          this.shouldAutoScroll = true;
+          this.scheduleScrollToBottom(true);
+
+          /*
+           * The backend edited the existing MAF user
+           * message and removed its stopped marker.
+           */
+          this.activeRunSubscription = this.copilotService.runPreparedTurn().subscribe({
+            next: event => {
+              this.handleAgUiEvent(event, stoppedAssistantMessage.id);
+            },
+            error: error => {
+              console.error('AG-UI edited prompt error:', error);
+
+              this.failRunningActivities();
+              this.errorMessage.set('Something went wrong while processing the edited prompt.');
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            },
+            complete: () => {
+              this.removeEmptyAssistantMessage(stoppedAssistantMessage.id);
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            }
+          });
+        },
+        error: error => {
+          console.error('Failed to edit Copilot turn:', error);
+
+          this.errorMessage.set(
+            error?.status === 409
+              ? 'Only the latest interrupted request can be edited.'
+              : 'The interrupted prompt could not be edited.'
+          );
+
+          this.activeAssistantMessageId = null;
+          this.activeUserMessageId = null;
+          this.isSending.set(false);
+        }
+      });
   }
 
   private removeEmptyAssistantMessage(assistantMessageId: string): void {

@@ -55,11 +55,21 @@
         track message.id;
         let isLast = $last
       ) {
-        @if (message.role === 'user') {
+                @if (message.role === 'user') {
           <div class="user-turn">
-            <div class="user-message">
-              {{ message.content }}
-            </div>
+            @if (editingUserMessageId() === message.id) {
+              <app-prompt-editor
+                [value]="editedPrompt()"
+                [disabled]="isSending()"
+                (valueChange)="onEditedPromptChange($event)"
+                (cancel)="cancelEditPrompt()"
+                (submit)="submitEditedPrompt()">
+              </app-prompt-editor>
+            } @else {
+              <div class="user-message">
+                {{ message.content }}
+              </div>
+            }
           </div>
         } @else {
           <article class="assistant-turn">
@@ -77,11 +87,18 @@
                 [stopped]="true"
                 (toggle)="toggleMessageActivity(message.id)">
               </app-activity-timeline>
+
+              <app-interrupted-turn-actions
+                [disabled]="isSending()"
+                  [canEdit]="canRetryStoppedTurn(message.turnUserMessageId)"
+                  [canRetry]="canRetryStoppedTurn(message.turnUserMessageId)"
+                  (editPrompt)="beginEditStoppedPrompt(message)"
+                  (tryAgain)="retryStoppedTurn(message)">
+              </app-interrupted-turn-actions>
             } @else if (
               isLast &&
               activities().length > 0
             ) {
-              <!-- Live Tool Activity -->
               <app-activity-timeline
                 [activities]="activities()"
                 [expanded]="activityExpanded()"

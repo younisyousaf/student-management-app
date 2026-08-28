@@ -1,0 +1,25 @@
+<div class="prompt-editor">
+  <textarea
+    rows="3"
+    [value]="value()"
+    [disabled]="disabled()"
+    (input)="onInput($event)">
+  </textarea>
+
+  <div class="prompt-editor__actions">
+    <button
+      type="button"
+      [disabled]="disabled()"
+      (click)="cancel.emit()">
+      Cancel
+    </button>
+
+    <button
+      type="button"
+      class="prompt-editor__submit"
+      [disabled]="disabled() || !value().trim()"
+      (click)="submit.emit()">
+      {{ disabled() ? 'Sending...' : 'Send' }}
+    </button>
+  </div>
+</div>

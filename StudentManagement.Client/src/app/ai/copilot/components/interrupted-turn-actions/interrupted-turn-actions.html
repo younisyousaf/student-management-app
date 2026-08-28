@@ -1,0 +1,22 @@
+<div class="interrupted-actions">
+  <div class="interrupted-actions__message">
+    <span class="interrupted-actions__icon">ⓘ</span>
+    <span>SmartCampus response was interrupted.</span>
+  </div>
+
+  <div class="interrupted-actions__buttons">
+    <button
+      type="button"
+      [disabled]="disabled() || !canEdit()"
+      (click)="editPrompt.emit()">
+      Edit prompt
+    </button>
+
+    <button
+      type="button"
+      [disabled]="disabled() || !canRetry()"
+      (click)="tryAgain.emit()">
+      Try again
+    </button>
+  </div>
+</div>

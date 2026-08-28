@@ -55,6 +55,13 @@ public sealed record CopilotTurnResponse(
 public sealed record CompleteCopilotTurnRequest(
     string UserMessageId);
 
+public sealed record RetryCopilotTurnRequest(
+    string UserMessageId);
+
+public sealed record EditCopilotTurnRequest(
+    string UserMessageId,
+    string Message);
+
 
 [ApiController]
 [Route("api/ag-ui/copilot/conversations")]
@@ -393,6 +400,284 @@ public sealed class AGUICopilotConversationsController
                 turn.UserMessageId,
                 turn.Status.ToString(),
                 activities,
+                turn.CreatedAt,
+                turn.UpdatedAt));
+    }
+
+    [HttpPost("{threadId}/retry-turn")]
+    public async Task<ActionResult<CopilotTurnResponse>> RetryTurn(
+    string threadId,
+    RetryCopilotTurnRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "User message ID is required."
+            });
+        }
+
+        var session = await _sessionStore.GetSessionAsync(
+            _agent,
+            threadId,
+            cancellationToken);
+
+        var historyProvider = _agent.GetService<InMemoryChatHistoryProvider>();
+
+        if (historyProvider is null)
+        {
+            return Problem(
+                title: "Copilot history is unavailable.",
+                detail: "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+        }
+
+        var storedMessages = historyProvider.GetMessages(session);
+
+        int userMessageIndex = storedMessages.FindIndex(message =>
+            string.Equals(
+                message.MessageId,
+                request.UserMessageId,
+                StringComparison.Ordinal));
+
+        if (userMessageIndex < 0)
+        {
+            return NotFound(new
+            {
+                Message = "The original user message was not found."
+            });
+        }
+
+        var userMessage = storedMessages[userMessageIndex];
+
+        if (userMessage.Role != ChatRole.User)
+        {
+            return Conflict(new
+            {
+                Message = "The retry target is not a user message."
+            });
+        }
+
+        bool hasNewerUserMessage = storedMessages
+            .Skip(userMessageIndex + 1)
+            .Any(message => message.Role == ChatRole.User);
+
+        if (hasNewerUserMessage)
+        {
+            return Conflict(new
+            {
+                Message = "Only the latest stopped request can be retried."
+            });
+        }
+
+        string stopMarkerId = CopilotSessionMarkers.CreateStoppedMessageId(
+            request.UserMessageId);
+
+        int removedMarkers = storedMessages.RemoveAll(message =>
+            string.Equals(
+                message.MessageId,
+                stopMarkerId,
+                StringComparison.Ordinal));
+
+        if (removedMarkers == 0)
+        {
+            return Conflict(new
+            {
+                Message = "The stopped marker for this request was not found."
+            });
+        }
+
+        var turn = await _turnStore.MarkPreparedForRerunAsync(
+            threadId,
+            request.UserMessageId,
+            cancellationToken);
+
+        if (turn is null)
+        {
+            return Conflict(new
+            {
+                Message = "Only the latest stopped Copilot turn can be retried."
+            });
+        }
+
+        /*
+         * The original user message remains in history.
+         * We remove only the internal Assistant stopped marker.
+         *
+         * The next AG-UI run therefore sees the session ending with
+         * the original User message and can answer it again.
+         */
+        historyProvider.SetMessages(
+            session,
+            storedMessages);
+
+        await _sessionStore.SaveSessionAsync(
+            _agent,
+            threadId,
+            session,
+            cancellationToken);
+
+        return Ok(
+            new CopilotTurnResponse(
+                turn.UserMessageId,
+                turn.Status.ToString(),
+                [],
+                turn.CreatedAt,
+                turn.UpdatedAt));
+    }
+
+    [HttpPost("{threadId}/edit-turn")]
+    public async Task<ActionResult<CopilotTurnResponse>> EditTurn(
+    string threadId,
+    EditCopilotTurnRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "User message ID is required."
+            });
+        }
+
+        string editedMessage = request.Message.Trim();
+
+        if (string.IsNullOrWhiteSpace(editedMessage))
+        {
+            return BadRequest(new
+            {
+                Message = "Edited message is required."
+            });
+        }
+
+        var session = await _sessionStore.GetSessionAsync(
+            _agent,
+            threadId,
+            cancellationToken);
+
+        var historyProvider = _agent.GetService<InMemoryChatHistoryProvider>();
+
+        if (historyProvider is null)
+        {
+            return Problem(
+                title: "Copilot history is unavailable.",
+                detail: "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+        }
+
+        var storedMessages = historyProvider.GetMessages(session);
+
+        int userMessageIndex = storedMessages.FindIndex(message =>
+            string.Equals(
+                message.MessageId,
+                request.UserMessageId,
+                StringComparison.Ordinal));
+
+        if (userMessageIndex < 0)
+        {
+            return NotFound(new
+            {
+                Message = "The original user message was not found."
+            });
+        }
+
+        var userMessage = storedMessages[userMessageIndex];
+
+        if (userMessage.Role != ChatRole.User)
+        {
+            return Conflict(new
+            {
+                Message = "The edit target is not a user message."
+            });
+        }
+
+        bool hasNewerUserMessage = storedMessages
+            .Skip(userMessageIndex + 1)
+            .Any(message => message.Role == ChatRole.User);
+
+        if (hasNewerUserMessage)
+        {
+            return Conflict(new
+            {
+                Message = "Only the latest interrupted request can be edited."
+            });
+        }
+
+        string stopMarkerId = CopilotSessionMarkers.CreateStoppedMessageId(
+            request.UserMessageId);
+
+        int stopMarkerIndex = storedMessages.FindIndex(message =>
+            string.Equals(
+                message.MessageId,
+                stopMarkerId,
+                StringComparison.Ordinal));
+
+        if (stopMarkerIndex < 0)
+        {
+            return Conflict(new
+            {
+                Message = "The stopped marker for this request was not found."
+            });
+        }
+
+        var turn = await _turnStore.MarkPreparedForRerunAsync(
+            threadId,
+            request.UserMessageId,
+            cancellationToken);
+
+        if (turn is null)
+        {
+            return Conflict(new
+            {
+                Message = "Only the latest interrupted Copilot turn can be edited."
+            });
+        }
+
+        /*
+         * Keep the same user MessageId because this is an edit
+         * of the existing turn, not a new conversation turn.
+         */
+        userMessage.Contents =
+        [
+            new TextContent(editedMessage)
+        ];
+
+        /*
+         * The stopped request is being reopened, so remove
+         * the internal assistant marker that closed it.
+         */
+        storedMessages.RemoveAt(stopMarkerIndex);
+
+        historyProvider.SetMessages(
+            session,
+            storedMessages);
+
+        await _sessionStore.SaveSessionAsync(
+            _agent,
+            threadId,
+            session,
+            cancellationToken);
+
+        return Ok(
+            new CopilotTurnResponse(
+                turn.UserMessageId,
+                turn.Status.ToString(),
+                [],
                 turn.CreatedAt,
                 turn.UpdatedAt));
     }

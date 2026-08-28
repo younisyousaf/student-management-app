@@ -130,6 +130,39 @@ public sealed class CopilotTurnStore
         return turn;
     }
 
+    public async Task<CopilotTurnRecord?> MarkPreparedForRerunAsync(
+    string threadId,
+    string userMessageId,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = GetRequiredUserId();
+
+        var latestTurn = await _dbContext.CopilotTurns
+            .Where(x =>
+                x.UserId == userId &&
+                x.ThreadId == threadId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        if (
+            latestTurn is null ||
+            latestTurn.UserMessageId != userMessageId ||
+            latestTurn.Status != CopilotTurnStatus.Stopped
+        )
+        {
+            return null;
+        }
+
+        latestTurn.Status = CopilotTurnStatus.Prepared;
+        latestTurn.ActivitiesJson = "[]";
+        latestTurn.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return latestTurn;
+    }
+
     public async Task DeleteByThreadAsync(
         string threadId,
         CancellationToken cancellationToken = default)
