@@ -209,15 +209,6 @@ public sealed class QdrantKnowledgeStore
                 "The institutional knowledge store is temporarily unavailable.",
                 ex);
         }
-        catch (RpcException ex)
-            when (ex.StatusCode is
-                StatusCode.Unavailable or
-                StatusCode.DeadlineExceeded)
-        {
-            throw new KnowledgeStoreUnavailableException(
-                "The institutional knowledge store is temporarily unavailable.",
-                ex);
-        }
     }
 
     public async Task IngestDocumentAsync(

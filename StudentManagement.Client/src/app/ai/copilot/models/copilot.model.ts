@@ -14,6 +14,9 @@ export interface CopilotMessage {
   role: CopilotMessageRole;
   content: string;
   createdAt: Date | null;
+  activities?: CopilotActivity[];
+  turnStopped?: boolean;
+  activityExpanded?: boolean;
 }
 export interface CopilotHistoryMessage {
   id: string;
@@ -53,4 +56,12 @@ export interface CopilotActivity {
   id: string;
   toolName: string;
   status: CopilotActivityStatus;
+}
+
+export interface CopilotTurn {
+  userMessageId: string;
+  status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+  activities: CopilotActivity[];
+  createdAt: string;
+  updatedAt: string;
 }

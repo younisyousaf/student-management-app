@@ -70,6 +70,91 @@ public sealed class CopilotConversationStore
     }
 
     public async Task<CopilotConversationRecord>
+    EnsureConversationAsync(
+        string threadId,
+        string? titleCandidate,
+        CancellationToken cancellationToken = default)
+    {
+        int userId =
+            GetRequiredUserId();
+
+        var conversation =
+            await _dbContext
+                .CopilotConversations
+                .SingleOrDefaultAsync(
+                    conversation =>
+                        conversation.UserId == userId &&
+                        conversation.ThreadId == threadId,
+                    cancellationToken);
+
+        DateTime now =
+            DateTime.UtcNow;
+
+        if (conversation is null)
+        {
+            conversation =
+                new CopilotConversationRecord
+                {
+                    UserId = userId,
+
+                    ThreadId =
+                        threadId,
+
+                    Title =
+                        CreateTitle(
+                            titleCandidate),
+
+                    /*
+                     * No run has completed yet.
+                     */
+                    LastRunId = null,
+
+                    CreatedAt =
+                        now,
+
+                    UpdatedAt =
+                        now
+                };
+
+            _dbContext
+                .CopilotConversations
+                .Add(conversation);
+        }
+        else
+        {
+            /*
+             * The user has started another turn,
+             * so move this conversation to the top
+             * even if the AI run is later stopped.
+             */
+            conversation.UpdatedAt =
+                now;
+
+            /*
+             * Do NOT change LastRunId here.
+             * It represents the latest completed run.
+             */
+            if (
+                conversation.Title ==
+                    DefaultTitle &&
+                !string.IsNullOrWhiteSpace(
+                    titleCandidate)
+            )
+            {
+                conversation.Title =
+                    CreateTitle(
+                        titleCandidate);
+            }
+        }
+
+        await _dbContext
+            .SaveChangesAsync(
+                cancellationToken);
+
+        return conversation;
+    }
+
+    public async Task<CopilotConversationRecord>
         SaveRunAsync(
             string threadId,
             string runId,

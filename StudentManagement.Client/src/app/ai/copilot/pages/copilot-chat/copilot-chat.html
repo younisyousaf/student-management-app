@@ -26,33 +26,29 @@
     (previousPage)="previousConversationPage()"
     (nextPage)="nextConversationPage()">
   </app-conversation-sidebar>
+
   <!-- Main Copilot Area -->
   <section class="copilot-page">
     <h1>SmartCampus Copilot</h1>
-    <div
-      #messagesContainer
-      class="messages"
-      (scroll)="onMessagesScroll($event)">
+
+    <div #messagesContainer class="messages" (scroll)="onMessagesScroll($event)">
       <!-- Loading Conversation -->
       @if (isLoadingHistory()) {
         <div class="chat-empty-state">
           <h3>Loading conversation</h3>
-          <p>
-            Restoring your previous messages...
-          </p>
+          <p>Restoring your previous messages...</p>
         </div>
       } @else if (messages().length === 0) {
         <!-- Empty Conversation -->
         <div class="chat-empty-state">
           <h3>How can I help?</h3>
           <p>
-            Ask SmartCampus about students, courses,
-            enrollments, attendance, fees, institutional
-            knowledge, reports, or other supported
-            academic operations.
+            Ask SmartCampus about students, courses, enrollments, attendance,
+            fees, institutional knowledge, reports, or other supported academic operations.
           </p>
         </div>
       }
+
       <!-- Messages -->
       @for (
         message of messages();
@@ -68,53 +64,60 @@
         } @else {
           <article class="assistant-turn">
             <div class="assistant-header">
-              <span class="assistant-avatar">
-                AI
-              </span>
+              <span class="assistant-avatar">AI</span>
               <strong>Copilot</strong>
             </div>
-            <!-- Tool Activity -->
-            @if (
+
+            <!-- Persisted Stopped Activity -->
+            @if (message.turnStopped) {
+              <app-activity-timeline
+                [activities]="message.activities ?? []"
+                [expanded]="message.activityExpanded ?? true"
+                [isSending]="false"
+                [stopped]="true"
+                (toggle)="toggleMessageActivity(message.id)">
+              </app-activity-timeline>
+            } @else if (
               isLast &&
               activities().length > 0
             ) {
+              <!-- Live Tool Activity -->
               <app-activity-timeline
-  [activities]="activities()"
-  [expanded]="activityExpanded()"
-  [isSending]="isSending()"
-  [stopped]="runStopped()"
-  (toggle)="toggleActivity()">
-</app-activity-timeline>
+                [activities]="activities()"
+                [expanded]="activityExpanded()"
+                [isSending]="isSending()"
+                [stopped]="runStopped()"
+                (toggle)="toggleActivity()">
+              </app-activity-timeline>
             }
+
             <!-- Assistant Content -->
             @if (message.content) {
-              <div
-                class="markdown-content"
-                [innerHTML]="message.content | markdown">
+              <div class="markdown-content" [innerHTML]="message.content | markdown">
               </div>
             } @else if (
+              !message.turnStopped &&
               isLast &&
               isSending() &&
               activities().length === 0
             ) {
               <div class="assistant-thinking">
-                <span class="thinking-spinner">
-                </span>
+                <span class="thinking-spinner"></span>
                 Thinking...
               </div>
             }
           </article>
         }
       }
+
       <!-- Chat Error -->
       @if (errorMessage()) {
-        <p
-          class="error"
-          role="alert">
+        <p class="error" role="alert">
           {{ errorMessage() }}
         </p>
       }
     </div>
+
     <!-- Human-in-the-loop Approval -->
     @if (
       pendingApproval();
@@ -127,6 +130,7 @@
         (reject)="respondToApproval(false)">
       </app-approval-card>
     }
+
     <!-- Message Composer -->
     <div class="composer">
       <textarea
@@ -135,20 +139,11 @@
         [value]="message()"
         (input)="onMessageInput($event)">
       </textarea>
+
       <button
         type="button"
-        (click)="
-          isSending()
-            ? stopGeneration()
-            : sendMessage()
-        "
-        [disabled]="
-          isLoadingHistory() ||
-          (
-            !isSending() &&
-            !message().trim()
-          )
-        ">
+        (click)="isSending() ? stopGeneration() : sendMessage()"
+        [disabled]="isLoadingHistory() || (!isSending() && !message().trim())">
         {{
           isLoadingHistory()
             ? 'Loading...'
@@ -160,55 +155,50 @@
     </div>
   </section>
 </div>
+
 <!-- Delete Conversation Modal -->
 @if (
   conversationPendingDelete();
   as conversation
 ) {
-  <div
-    class="modal-backdrop"
-    (click)="cancelDeleteConversation()">
+  <div class="modal-backdrop" (click)="cancelDeleteConversation()">
     <div
       class="delete-modal"
       role="dialog"
       aria-modal="true"
       aria-labelledby="delete-conversation-title"
       (click)="$event.stopPropagation()">
+
       <div class="delete-modal__content">
         <h3 id="delete-conversation-title">
           Delete conversation?
         </h3>
+
         <p>
           Are you sure you want to delete
-          <strong>
-            "{{ conversation.title }}"
-          </strong>?
+          <strong>"{{ conversation.title }}"</strong>?
         </p>
+
         <p class="delete-modal__warning">
           This conversation cannot be recovered.
         </p>
       </div>
+
       <div class="delete-modal__actions">
         <button
           type="button"
           (click)="cancelDeleteConversation()"
-          [disabled]="
-            managingConversationThreadId() ===
-            conversation.threadId
-          ">
+          [disabled]="managingConversationThreadId() === conversation.threadId">
           Cancel
         </button>
+
         <button
           type="button"
           class="delete-modal__confirm"
           (click)="deleteConversation()"
-          [disabled]="
-            managingConversationThreadId() ===
-            conversation.threadId
-          ">
+          [disabled]="managingConversationThreadId() === conversation.threadId">
           {{
-            managingConversationThreadId() ===
-              conversation.threadId
+            managingConversationThreadId() === conversation.threadId
               ? 'Deleting...'
               : 'Delete'
           }}

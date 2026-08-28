@@ -259,6 +259,53 @@ namespace StudentManagement.Infrastructure.Hybrid
                             x.UpdatedAt
                         });
                 });
+
+            //copilot turns
+            modelBuilder.Entity<CopilotTurnRecord>(
+                entity =>
+                {
+                    entity.ToTable("CopilotTurns");
+
+                    entity.HasKey(x => x.Id);
+
+                    entity.Property(x => x.ThreadId)
+                        .IsRequired()
+                        .HasMaxLength(100);
+
+                    entity.Property(x => x.UserMessageId)
+                        .IsRequired()
+                        .HasMaxLength(200);
+
+                    entity.Property(x => x.Status)
+                        .HasConversion<string>()
+                        .HasMaxLength(30)
+                        .IsRequired();
+
+                    entity.Property(x => x.ActivitiesJson)
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    entity.Property(x => x.CreatedAt)
+                        .IsRequired();
+
+                    entity.Property(x => x.UpdatedAt)
+                        .IsRequired();
+
+                    entity.HasIndex(x => new
+                    {
+                        x.UserId,
+                        x.ThreadId,
+                        x.UserMessageId
+                    })
+                    .IsUnique();
+
+                    entity.HasIndex(x => new
+                    {
+                        x.UserId,
+                        x.ThreadId,
+                        x.CreatedAt
+                    });
+                });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -278,5 +325,7 @@ namespace StudentManagement.Infrastructure.Hybrid
 
         public DbSet<CopilotConversationRecord> CopilotConversations 
             => Set<CopilotConversationRecord>();
+        public DbSet<CopilotTurnRecord> CopilotTurns
+            => Set<CopilotTurnRecord>();
     }
 }

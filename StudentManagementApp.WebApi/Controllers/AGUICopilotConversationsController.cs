@@ -1,10 +1,13 @@
-﻿using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Hosting;
-using Microsoft.AspNetCore.Authorization;
+﻿using System.Text.Json;
+using Microsoft.Agents.AI;
+using Microsoft.Extensions.AI;
 using Microsoft.AspNetCore.Mvc;
-using StudentManagementApp.WebApi.DTOs;
-using StudentManagementApp.WebApi.Services;
+using Microsoft.Agents.AI.Hosting;
 using StudentManagement.Core.Models;
+using StudentManagementApp.WebApi.AGUI;
+using StudentManagementApp.WebApi.DTOs;
+using Microsoft.AspNetCore.Authorization;
+using StudentManagementApp.WebApi.Services;
 
 namespace StudentManagementApp.WebApi.Controllers;
 
@@ -23,6 +26,36 @@ public sealed record SaveCopilotConversationRunRequest(
 public sealed record RenameCopilotConversationRequest(
     string Title);
 
+public sealed record PrepareCopilotTurnRequest(
+    string ThreadId,
+    string MessageId,
+    string Message);
+
+public sealed record CopilotTurnActivityRequest(
+    string Id,
+    string ToolName,
+    string Status);
+
+public sealed record StopCopilotTurnRequest(
+    string UserMessageId,
+    IReadOnlyList<CopilotTurnActivityRequest> Activities);
+
+public sealed record CopilotTurnActivityResponse(
+    string Id,
+    string ToolName,
+    string Status);
+
+public sealed record CopilotTurnResponse(
+    string UserMessageId,
+    string Status,
+    IReadOnlyList<CopilotTurnActivityResponse> Activities,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
+
+public sealed record CompleteCopilotTurnRequest(
+    string UserMessageId);
+
+
 [ApiController]
 [Route("api/ag-ui/copilot/conversations")]
 [Authorize(Roles = "Admin, User")]
@@ -31,16 +64,12 @@ public sealed class AGUICopilotConversationsController
 {
     private readonly CopilotConversationStore
         _conversationStore;
-    private const string HostedCopilotAgentName =
-    "student-management-copilot";
-
+    private const string HostedCopilotAgentName = "student-management-copilot";
     private readonly AIAgent _agent;
-
-    private readonly AgentSessionStore
-        _sessionStore;
-
+    private readonly AgentSessionStore _sessionStore;
+    private readonly CopilotTurnStore _turnStore;
     public AGUICopilotConversationsController(
-    CopilotConversationStore conversationStore,
+    CopilotConversationStore conversationStore, CopilotTurnStore turnStore,
 
     [FromKeyedServices(
         HostedCopilotAgentName)]
@@ -50,14 +79,10 @@ public sealed class AGUICopilotConversationsController
         HostedCopilotAgentName)]
     AgentSessionStore sessionStore)
     {
-        _conversationStore =
-            conversationStore;
-
-        _agent =
-            agent;
-
-        _sessionStore =
-            sessionStore;
+        _conversationStore = conversationStore;
+        _turnStore = turnStore;
+        _agent = agent;
+        _sessionStore = sessionStore;
     }
 
     [HttpGet]
@@ -94,6 +119,355 @@ public sealed class AGUICopilotConversationsController
                     result.PageNumber,
                     result.PageSize,
                     result.TotalCount);
+
+        return Ok(response);
+    }
+
+    [HttpPost("prepare-turn")]
+    public async Task<ActionResult<
+    CopilotConversationResponse>>
+    PrepareTurn(
+        PrepareCopilotTurnRequest request,
+        CancellationToken cancellationToken)
+    {
+        if (
+            string.IsNullOrWhiteSpace(
+                request.ThreadId)
+        )
+        {
+            return BadRequest(new
+            {
+                Message =
+                    "Thread ID is required."
+            });
+        }
+
+        if (
+            string.IsNullOrWhiteSpace(
+                request.MessageId)
+        )
+        {
+            return BadRequest(new
+            {
+                Message =
+                    "Message ID is required."
+            });
+        }
+
+        if (
+            string.IsNullOrWhiteSpace(
+                request.Message)
+        )
+        {
+            return BadRequest(new
+            {
+                Message =
+                    "Message is required."
+            });
+        }
+
+        /*
+         * Load the persisted MAF session.
+         *
+         * The keyed AgentSessionStore already
+         * applies claims-based user isolation.
+         */
+        var session =
+            await _sessionStore
+                .GetSessionAsync(
+                    _agent,
+                    request.ThreadId,
+                    cancellationToken);
+
+        var historyProvider =
+            _agent.GetService<
+                InMemoryChatHistoryProvider>();
+
+        if (historyProvider is null)
+        {
+            return Problem(
+                title:
+                    "Copilot history is unavailable.",
+                detail:
+                    "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+        }
+
+        var storedMessages =
+            historyProvider.GetMessages(
+                session);
+
+        /*
+         * Make prepare-turn idempotent.
+         *
+         * If the browser retries the same request,
+         * don't persist the same user message twice.
+         */
+        var existingMessage =
+            storedMessages
+                .FirstOrDefault(
+                    message =>
+                        string.Equals(
+                            message.MessageId,
+                            request.MessageId,
+                            StringComparison.Ordinal));
+
+        if (existingMessage is null)
+        {
+            var userMessage =
+                new ChatMessage(
+                    ChatRole.User,
+                    request.Message)
+                {
+                    MessageId =
+                        request.MessageId,
+
+                    CreatedAt =
+                        DateTimeOffset.UtcNow
+                };
+
+            storedMessages.Add(
+                userMessage);
+
+            /*
+             * Persist BEFORE starting AG-UI.
+             *
+             * Therefore Stop Generation cannot
+             * erase this user turn.
+             */
+            await _sessionStore
+                .SaveSessionAsync(
+                    _agent,
+                    request.ThreadId,
+                    session,
+                    cancellationToken);
+        }
+        else if (
+            !string.Equals(
+                existingMessage.Text,
+                request.Message,
+                StringComparison.Ordinal)
+        )
+        {
+            return Conflict(new
+            {
+                Message =
+                    "The message ID already belongs to a different message."
+            });
+        }
+
+        /*
+         * Create/update the sidebar index only
+         * after the MAF session has been saved.
+         */
+        var conversation =
+            await _conversationStore
+                .EnsureConversationAsync(
+                    request.ThreadId,
+                    request.Message,
+                    cancellationToken);
+
+        await _turnStore.EnsurePreparedAsync(
+            request.ThreadId,
+            request.MessageId,
+            cancellationToken);
+
+        return Ok(
+            new CopilotConversationResponse(
+                conversation.ThreadId,
+                conversation.Title,
+                conversation.LastRunId,
+                conversation.CreatedAt,
+                conversation.UpdatedAt));
+    }
+
+    [HttpPost("{threadId}/stop-turn")]
+    public async Task<ActionResult<CopilotTurnResponse>> StopTurn(
+    string threadId,
+    StopCopilotTurnRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "User message ID is required."
+            });
+        }
+
+        var activities = request.Activities
+            .Select(activity =>
+                new CopilotTurnActivityResponse(
+                    activity.Id,
+                    activity.ToolName,
+                    activity.Status == "running"
+                        ? "stopped"
+                        : activity.Status))
+            .ToList();
+
+        string activitiesJson = JsonSerializer.Serialize(activities);
+
+        /*
+         * Load the authoritative persisted MAF session.
+         */
+        var session = await _sessionStore.GetSessionAsync(
+            _agent,
+            threadId,
+            cancellationToken);
+
+        var historyProvider = _agent.GetService<InMemoryChatHistoryProvider>();
+
+        if (historyProvider is null)
+        {
+            return Problem(
+                title: "Copilot history is unavailable.",
+                detail: "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+        }
+
+        var storedMessages = historyProvider.GetMessages(session);
+
+        /*
+         * Close the stopped user turn semantically.
+         *
+         * Without this marker MAF sees:
+         *
+         * User: previous request
+         * User: next request
+         *
+         * and may try to finish the unanswered request.
+         */
+        string stopMarkerId = CopilotSessionMarkers.CreateStoppedMessageId(
+            request.UserMessageId);
+
+        bool markerExists = storedMessages.Any(message =>
+            string.Equals(
+                message.MessageId,
+                stopMarkerId,
+                StringComparison.Ordinal));
+
+        if (!markerExists)
+        {
+            var stoppedMessage = new ChatMessage(
+                ChatRole.Assistant,
+                CopilotSessionMarkers.StoppedMessageText)
+            {
+                MessageId = stopMarkerId,
+                CreatedAt = DateTimeOffset.UtcNow
+            };
+
+            storedMessages.Add(stoppedMessage);
+
+            await _sessionStore.SaveSessionAsync(
+                _agent,
+                threadId,
+                session,
+                cancellationToken);
+        }
+
+        /*
+         * Persist the UI/runtime representation separately.
+         */
+        var turn = await _turnStore.MarkStoppedAsync(
+            threadId,
+            request.UserMessageId,
+            activitiesJson,
+            cancellationToken);
+
+        if (turn is null)
+        {
+            return NotFound(new
+            {
+                Message = "Copilot turn was not found."
+            });
+        }
+
+        return Ok(
+            new CopilotTurnResponse(
+                turn.UserMessageId,
+                turn.Status.ToString(),
+                activities,
+                turn.CreatedAt,
+                turn.UpdatedAt));
+    }
+
+    [HttpPost("{threadId}/complete-turn")]
+    public async Task<IActionResult> CompleteTurn(
+    string threadId,
+    CompleteCopilotTurnRequest request,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.UserMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "User message ID is required."
+            });
+        }
+
+        var turn = await _turnStore.MarkCompletedAsync(
+            threadId,
+            request.UserMessageId,
+            cancellationToken);
+
+        if (turn is null)
+        {
+            return NotFound(new
+            {
+                Message = "Copilot turn was not found."
+            });
+        }
+
+        return NoContent();
+    }
+
+    [HttpGet("{threadId}/turns")]
+    public async Task<ActionResult<IReadOnlyList<CopilotTurnResponse>>> GetTurns(
+    string threadId,
+    CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        var turns = await _turnStore.GetByThreadAsync(
+            threadId,
+            cancellationToken);
+
+        var response = turns
+            .Select(turn =>
+            {
+                var activities =
+                    JsonSerializer.Deserialize<List<CopilotTurnActivityResponse>>(
+                        turn.ActivitiesJson)
+                    ?? [];
+
+                return new CopilotTurnResponse(
+                    turn.UserMessageId,
+                    turn.Status.ToString(),
+                    activities,
+                    turn.CreatedAt,
+                    turn.UpdatedAt);
+            })
+            .ToList();
 
         return Ok(response);
     }
@@ -235,16 +609,19 @@ public sealed class AGUICopilotConversationsController
          * The keyed AgentSessionStore already
          * applies claims-based user isolation.
          */
-        await _sessionStore
-            .DeleteSessionAsync(
-                _agent,
-                threadId,
-                cancellationToken);
+        await _sessionStore.DeleteSessionAsync(
+            _agent,
+            threadId,
+            cancellationToken);
 
-        await _conversationStore
-            .DeleteAsync(
-                threadId,
-                cancellationToken);
+        await _turnStore.DeleteByThreadAsync(
+            threadId,
+            cancellationToken);
+
+        await _conversationStore.DeleteAsync(
+            threadId,
+            cancellationToken);
+
 
         return NoContent();
     }

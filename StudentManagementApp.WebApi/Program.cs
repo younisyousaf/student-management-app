@@ -113,6 +113,7 @@ builder.Services.AddScoped<
     CopilotConversationStore>();
 builder.Services.AddScoped<
     CopilotApprovalPresenter>();
+builder.Services.AddScoped<CopilotTurnStore>();
 builder.Services.AddScoped<
     ManagementPaginationStore>();
 builder.Services.AddStudentManagementAI(
@@ -395,6 +396,25 @@ var app = builder.Build();
 
 // Centralized Exception Handler
 app.UseExceptionHandler();
+
+app.Use(
+    async (context, next) =>
+    {
+        try
+        {
+            await next();
+        }
+        catch (OperationCanceledException)
+            when (
+                context.RequestAborted
+                    .IsCancellationRequested)
+        {
+            app.Logger.LogInformation(
+                "Request cancelled by client. {Method} {Path}",
+                context.Request.Method,
+                context.Request.Path);
+        }
+    });
 
 // Redirect root to Swagger
 app.MapGet(

@@ -1,11 +1,12 @@
-﻿using Microsoft.Agents.AI;
-using Microsoft.Agents.AI.Hosting;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
+﻿using System.Text.Json;
+using Microsoft.Agents.AI;
 using Microsoft.Extensions.AI;
-using Microsoft.Extensions.DependencyInjection;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.Agents.AI.Hosting;
+using StudentManagementApp.WebApi.AGUI;
+using Microsoft.AspNetCore.Authorization;
 using StudentManagementApp.WebApi.Services;
-using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace StudentManagementApp.WebApi.Controllers;
 
@@ -92,50 +93,59 @@ public sealed class AGUICopilotHistoryController
             historyProvider.GetMessages(session);
 
         var response =
-            storedMessages
-                .Where(message =>
-                {
-                    if (message.Role == ChatRole.User)
-                    {
-                        return true;
-                    }
+        storedMessages
+        .Where(message =>
+        {
+            /*
+                * Internal MAF context marker.
+                * The model should see it, the UI should not.
+                */
+            if (CopilotSessionMarkers.IsStoppedMessage(message))
+            {
+                return false;
+            }
 
-                    if (message.Role != ChatRole.Assistant)
-                    {
-                        return false;
-                    }
+            if (message.Role == ChatRole.User)
+            {
+                return true;
+            }
 
-                    var containsToolCall =
-                        message.Contents
-                            .OfType<FunctionCallContent>()
-                            .Any();
+            if (message.Role != ChatRole.Assistant)
+            {
+                return false;
+            }
 
-                    var containsApprovalRequest =
-                        message.Contents
-                            .OfType<ToolApprovalRequestContent>()
-                            .Any();
+            var containsToolCall =
+                message.Contents
+                    .OfType<FunctionCallContent>()
+                    .Any();
 
-                    return
-                        !containsToolCall &&
-                        !containsApprovalRequest;
-                })
-                .Select(
-                    (message, index) =>
-                        new CopilotHistoryMessageResponse(
-                            message.MessageId
-                                ?? $"history-{index}",
+            var containsApprovalRequest =
+                message.Contents
+                    .OfType<ToolApprovalRequestContent>()
+                    .Any();
 
-                            message.Role == ChatRole.User
-                                ? "user"
-                                : "assistant",
+            return
+                !containsToolCall &&
+                !containsApprovalRequest;
+        })
+        .Select(
+            (message, index) =>
+            new CopilotHistoryMessageResponse(
+                message.MessageId
+                    ?? $"history-{index}",
 
-                            message.Text ?? string.Empty,
+                message.Role == ChatRole.User
+                    ? "user"
+                    : "assistant",
 
-                            message.CreatedAt))
-                .Where(message =>
-                    !string.IsNullOrWhiteSpace(
-                        message.Content))
-                .ToList();
+                message.Text ?? string.Empty,
+
+                message.CreatedAt))
+        .Where(message =>
+            !string.IsNullOrWhiteSpace(
+                message.Content))
+        .ToList();
 
         return Ok(response);
     }
