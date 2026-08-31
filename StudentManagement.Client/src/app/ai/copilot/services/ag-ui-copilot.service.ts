@@ -4,7 +4,7 @@ import { HttpAgent } from '@ag-ui/client';
 import { BaseEvent, EventType, RunAgentInput } from '@ag-ui/core';
 import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment.development';
-import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity, CopilotCompletedTurnEditResponse, CopilotTurnVersion } from '../models/copilot.model';
+import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity, CopilotCompletedTurnEditResponse, CopilotTurnVersion, CopilotBranch } from '../models/copilot.model';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 
 @Injectable({
@@ -442,20 +442,11 @@ export class AgUiCopilotService {
     );
   }
 
-  getTurnVersions(
-    userMessageId: string
-  ): Observable<CopilotTurnVersion[]> {
+  getTurnVersions(userMessageId: string): Observable<CopilotTurnVersion[]> {
     this.ensureSession();
 
-    const threadId =
-      encodeURIComponent(
-        this.agent.threadId
-      );
-
-    const messageId =
-      encodeURIComponent(
-        userMessageId
-      );
+    const threadId = encodeURIComponent(this.agent.threadId);
+    const messageId = encodeURIComponent(userMessageId);
 
     return this.http.get<
       CopilotTurnVersion[]
@@ -464,6 +455,19 @@ export class AgUiCopilotService {
       {
         withCredentials: true
       }
+    );
+  }
+
+  activateBranchForVersion(userMessageId: string, versionNumber: number): Observable<CopilotBranch> {
+    this.ensureSession();
+
+    const threadId = encodeURIComponent(this.agent.threadId);
+    const messageId = encodeURIComponent(userMessageId);
+
+    return this.http.post<CopilotBranch>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/turns/${messageId}/versions/${versionNumber}/activate-branch`,
+      {},
+      { withCredentials: true }
     );
   }
 

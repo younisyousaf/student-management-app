@@ -97,3 +97,22 @@ export interface CopilotTurnVersion {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CopilotBranchTurn {
+  userMessageId: string;
+  versionNumber: number;
+  position: number;
+  userContent: string;
+  assistantMessageId: string | null;
+  assistantContent: string;
+  status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+  activities: CopilotActivity[];
+}
+
+export interface CopilotBranch {
+  branchId: string;
+  parentBranchId: string | null;
+  branchedFromUserMessageId: string | null;
+  branchedFromVersionNumber: number | null;
+  turns: CopilotBranchTurn[];
+}

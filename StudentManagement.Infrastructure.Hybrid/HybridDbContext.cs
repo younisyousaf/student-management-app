@@ -252,6 +252,8 @@ namespace StudentManagement.Infrastructure.Hybrid
                             })
                         .IsUnique();
 
+                    entity.Property(x => x.ActiveBranchId).HasMaxLength(100);
+
                     entity.HasIndex(
                         x => new
                         {
@@ -371,6 +373,62 @@ namespace StudentManagement.Infrastructure.Hybrid
                         x.UserMessageId
                     });
                 });
+
+            modelBuilder.Entity<CopilotConversationBranchRecord>(entity =>
+            {
+                entity.ToTable("CopilotConversationBranches");
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.ThreadId).IsRequired().HasMaxLength(100);
+                entity.Property(x => x.BranchId).IsRequired().HasMaxLength(100);
+                entity.Property(x => x.ParentBranchId).HasMaxLength(100);
+                entity.Property(x => x.BranchedFromUserMessageId).HasMaxLength(200);
+                entity.Property(x => x.CreatedAt).IsRequired();
+                entity.Property(x => x.UpdatedAt).IsRequired();
+
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.ThreadId,
+                    x.BranchId
+                }).IsUnique();
+
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.ThreadId,
+                    x.ParentBranchId
+                });
+            });
+
+            modelBuilder.Entity<CopilotBranchTurnRecord>(entity =>
+            {
+                entity.ToTable("CopilotBranchTurns");
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.ThreadId).IsRequired().HasMaxLength(100);
+                entity.Property(x => x.BranchId).IsRequired().HasMaxLength(100);
+                entity.Property(x => x.UserMessageId).IsRequired().HasMaxLength(200);
+                entity.Property(x => x.VersionNumber).IsRequired();
+                entity.Property(x => x.Position).IsRequired();
+                entity.Property(x => x.CreatedAt).IsRequired();
+
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.ThreadId,
+                    x.BranchId,
+                    x.Position
+                }).IsUnique();
+
+                entity.HasIndex(x => new
+                {
+                    x.UserId,
+                    x.ThreadId,
+                    x.BranchId,
+                    x.UserMessageId
+                }).IsUnique();
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -394,5 +452,9 @@ namespace StudentManagement.Infrastructure.Hybrid
             => Set<CopilotTurnRecord>();
         public DbSet<CopilotTurnVersionRecord> CopilotTurnVersions
             => Set<CopilotTurnVersionRecord>();
+        public DbSet<CopilotConversationBranchRecord> CopilotConversationBranches
+            => Set<CopilotConversationBranchRecord>();
+        public DbSet<CopilotBranchTurnRecord> CopilotBranchTurns
+            => Set<CopilotBranchTurnRecord>();
     }
 }

@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BaseEvent, EventType } from '@ag-ui/core';
 import { forkJoin, Subscription } from 'rxjs';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotConversation, CopilotMessage, CopilotTurn, CopilotTurnVersion } from '../../models/copilot.model';
+import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotBranchTurn, CopilotConversation, CopilotMessage, CopilotTurn} from '../../models/copilot.model';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ActivityTimeline } from '../../components/activity-timeline/activity-timeline';
 import { ApprovalCard } from '../../components/approval-card/approval-card';
@@ -62,7 +62,6 @@ export class CopilotChat {
   readonly editedPrompt = signal('');
   readonly editingCompletedTurn = signal(false);
 
-  private readonly turnVersions = new Map<string, CopilotTurnVersion[]>();
   readonly loadingVersionUserMessageId = signal<string | null>(null);
 
   // Delete confirmation
@@ -468,29 +467,19 @@ export class CopilotChat {
     this.scheduleScrollToBottom();
   }
 
-  showPreviousVersion(
-    assistantMessage: CopilotMessage
-  ): void {
-    const currentVersion =
-      assistantMessage.versionNumber ?? 1;
+ showPreviousVersion(assistantMessage: CopilotMessage): void {
+  this.loadBranchVersion(
+    assistantMessage,
+    (assistantMessage.versionNumber ?? 1) - 1
+  );
+}
 
-    this.loadTurnVersion(
-      assistantMessage,
-      currentVersion - 1
-    );
-  }
-
-  showNextVersion(
-    assistantMessage: CopilotMessage
-  ): void {
-    const currentVersion =
-      assistantMessage.versionNumber ?? 1;
-
-    this.loadTurnVersion(
-      assistantMessage,
-      currentVersion + 1
-    );
-  }
+showNextVersion(assistantMessage: CopilotMessage): void {
+  this.loadBranchVersion(
+    assistantMessage,
+    (assistantMessage.versionNumber ?? 1) + 1
+  );
+}
 
   hasCompletedResponse(
     userMessageId: string
@@ -527,137 +516,86 @@ export class CopilotChat {
       );
   }
 
-  private loadTurnVersion(
-    assistantMessage: CopilotMessage,
-    targetVersionNumber: number
-  ): void {
-    const userMessageId =
-      assistantMessage.turnUserMessageId;
+  private loadBranchVersion(assistantMessage: CopilotMessage, targetVersionNumber: number): void {
+    const userMessageId = assistantMessage.turnUserMessageId;
+    const totalVersions = assistantMessage.totalVersions ?? 1;
 
-    const totalVersions =
-      assistantMessage.totalVersions ?? 1;
-
-    if (
-      !userMessageId ||
-      targetVersionNumber < 1 ||
-      targetVersionNumber > totalVersions ||
-      this.isSending()
-    ) {
-      return;
-    }
-
-    /*
-     * Already loaded?
-     *
-     * Use the cached version without making
-     * another HTTP request.
-     */
-    const cachedVersions =
-      this.turnVersions.get(userMessageId);
-
-    if (cachedVersions) {
-      const version =
-        cachedVersions.find(
-          item =>
-            item.versionNumber ===
-            targetVersionNumber
-        );
-
-      if (version) {
-        this.applyTurnVersion(
-          assistantMessage.id,
-          userMessageId,
-          version,
-          cachedVersions.length
-        );
-      }
-
+    if (!userMessageId || targetVersionNumber < 1 || targetVersionNumber > totalVersions || this.isSending()) {
       return;
     }
 
     this.loadingVersionUserMessageId.set(userMessageId);
     this.errorMessage.set('');
 
-    this.copilotService
-      .getTurnVersions(userMessageId)
-      .pipe(
-        takeUntilDestroyed(this.destroyRef)
-      )
+    this.copilotService.activateBranchForVersion(userMessageId, targetVersionNumber)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: versions => {
-          this.turnVersions.set(
-            userMessageId,
-            versions
-          );
-
-          const version =
-            versions.find(item => item.versionNumber === targetVersionNumber);
-
-          if (!version) {
-            this.errorMessage.set(
-              'The selected response version could not be found.'
-            );
-            return;
-          }
-
-          this.applyTurnVersion(
-            assistantMessage.id,
-            userMessageId,
-            version,
-            versions.length
-          );
+        next: branch => {
+          this.applyBranch(branch.turns, userMessageId, totalVersions);
         },
-
         error: error => {
-          console.error('Failed to load Copilot turn versions:', error);
-          this.errorMessage.set('The response versions could not be loaded.');
+          console.error('Failed to load Copilot branch:', error);
+          this.errorMessage.set('The conversation branch could not be loaded.');
+          this.loadingVersionUserMessageId.set(null);
         },
-
         complete: () => {
           this.loadingVersionUserMessageId.set(null);
         }
       });
   }
 
-  private applyTurnVersion(
-    assistantMessageId: string,
-    userMessageId: string,
-    version: CopilotTurnVersion,
-    totalVersions: number
-  ): void {
-    this.messages.update(messages =>
-      messages.map(message => {
-        /*
-         * Change the visible user prompt.
-         */
-        if (message.id === userMessageId) {
-          return {
-            ...message,
-            content: version.userContent
-          };
-        }
+  private applyBranch(
+  turns: CopilotBranchTurn[],
+  navigatedUserMessageId: string,
+  totalVersions: number
+): void {
+  const currentMessages = this.messages();
 
-        /*
-         * Change the visible assistant response,
-         * Step Block and version indicator.
-         */
-        if (message.id === assistantMessageId) {
-          return {
-            ...message,
-            content: version.assistantContent,
-            activities: version.activities,
-            activityExpanded: false,
-            versionNumber: version.versionNumber,
-            totalVersions,
-            turnUserMessageId: userMessageId
-          };
-        }
-        return message;
-      })
-    );
+  const versionMetadata = new Map<string, { versionNumber: number; totalVersions: number }>();
 
-    this.shouldAutoScroll = false;
+  for (const message of currentMessages) {
+    if (message.role !== 'assistant' || !message.turnUserMessageId) {
+      continue;
+    }
+
+    versionMetadata.set(message.turnUserMessageId, {
+      versionNumber: message.versionNumber ?? 1,
+      totalVersions: message.totalVersions ?? 1
+    });
   }
+
+  const branchMessages: CopilotMessage[] = [];
+
+  for (const turn of turns) {
+    branchMessages.push({
+      id: turn.userMessageId,
+      role: 'user',
+      content: turn.userContent,
+      createdAt: null
+    });
+
+    const existingMetadata = versionMetadata.get(turn.userMessageId);
+    const isNavigatedTurn = turn.userMessageId === navigatedUserMessageId;
+
+    branchMessages.push({
+      id: turn.assistantMessageId ?? `assistant-${turn.userMessageId}-${turn.versionNumber}`,
+      role: 'assistant',
+      content: turn.assistantContent,
+      createdAt: null,
+      activities: turn.activities,
+      activityExpanded: false,
+      turnStopped: turn.status === 'Stopped',
+      turnUserMessageId: turn.userMessageId,
+      versionNumber: turn.versionNumber,
+      totalVersions: isNavigatedTurn
+        ? totalVersions
+        : Math.max(existingMetadata?.totalVersions ?? 1, turn.versionNumber)
+    });
+  }
+
+  this.messages.set(branchMessages);
+  this.shouldAutoScroll = false;
+}
 
   startNewConversation(): void {
     if (this.isSending() || this.isLoadingHistory()) {
@@ -1514,56 +1452,6 @@ export class CopilotChat {
     this.editedPrompt.set('');
   }
 
-  canEditCompletedUserMessage(userMessageId: string): boolean {
-    if (this.isSending() || this.isLoadingHistory()) {
-      return false;
-    }
-
-    const messages = this.messages();
-
-    const userIndex = messages.findIndex(
-      message =>
-        message.id === userMessageId &&
-        message.role === 'user'
-    );
-
-    if (userIndex < 0) {
-      return false;
-    }
-
-    const nextUserIndex = messages.findIndex(
-      (message, index) =>
-        index > userIndex &&
-        message.role === 'user'
-    );
-
-    const endIndex =
-      nextUserIndex >= 0
-        ? nextUserIndex
-        : messages.length;
-
-    const assistantMessage = messages
-      .slice(userIndex + 1, endIndex)
-      .find(message =>
-        message.role === 'assistant' &&
-        !message.turnStopped &&
-        !!message.content
-      );
-
-    if (!assistantMessage) {
-      return false;
-    }
-
-    const latestCompletedAssistant = [...messages]
-      .reverse()
-      .find(message =>
-        message.role === 'assistant' &&
-        !message.turnStopped &&
-        !!message.content
-      );
-
-    return latestCompletedAssistant?.id === assistantMessage.id;
-  }
 
   beginEditCompletedPrompt(
     userMessage: CopilotMessage
@@ -1603,57 +1491,24 @@ export class CopilotChat {
     const userMessageId = this.editingUserMessageId();
     const editedText = this.editedPrompt().trim();
 
-    if (
-      !userMessageId ||
-      !editedText ||
-      this.isSending() ||
-      this.isLoadingHistory()
-    ) {
+    if (!userMessageId || !editedText || this.isSending() || this.isLoadingHistory()) {
       return;
     }
 
     const messages = this.messages();
-
-    const userMessageIndex = messages.findIndex(
-      message =>
-        message.id === userMessageId &&
-        message.role === 'user'
-    );
+    const userMessageIndex = messages.findIndex(message => message.id === userMessageId && message.role === 'user');
 
     if (userMessageIndex < 0) {
-      this.errorMessage.set(
-        'The original user message could not be found.'
-      );
+      this.errorMessage.set('The original user message could not be found.');
       return;
     }
 
     const assistantMessage = messages
       .slice(userMessageIndex + 1)
-      .find(message =>
-        message.role === 'assistant' &&
-        !message.turnStopped &&
-        !!message.content
-      );
+      .find(message => message.role === 'assistant' && !message.turnStopped && !!message.content);
 
     if (!assistantMessage) {
-      this.errorMessage.set(
-        'The completed response could not be found.'
-      );
-      return;
-    }
-
-    const latestCompletedAssistant = [...messages]
-      .reverse()
-      .find(message =>
-        message.role === 'assistant' &&
-        !message.turnStopped &&
-        !!message.content
-      );
-
-    if (latestCompletedAssistant?.id !== assistantMessage.id) {
-      this.errorMessage.set(
-        'Only the latest completed response can be edited.'
-      );
+      this.errorMessage.set('The completed response could not be found.');
       return;
     }
 
@@ -1663,114 +1518,73 @@ export class CopilotChat {
     this.activityExpanded.set(true);
     this.runStopped.set(false);
     this.toolCalls.clear();
-
     this.isSending.set(true);
     this.activeUserMessageId = userMessageId;
     this.activeAssistantMessageId = assistantMessage.id;
 
-    this.copilotService
-      .editCompletedTurn(
-        userMessageId,
-        editedText
-      )
+    this.copilotService.editCompletedTurn(userMessageId, editedText)
       .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe({
-        next: () => {
-          /*
-           * Replace Version 1 visually with the new active
-           * Version 2 while it is being generated.
-           *
-           * Version 1 remains safely stored in SQL.
-           */
-          this.messages.update(currentMessages =>
-            currentMessages.map(message => {
-              if (message.id === userMessageId) {
-                return {
-                  ...message,
-                  content: editedText
-                };
-              }
+        next: editResult => {
+          // this.turnVersions.delete(userMessageId);
 
-              if (message.id === assistantMessage.id) {
-                return {
-                  ...message,
-                  content: '',
-                  activities: [],
-                  turnStopped: false,
-                  activityExpanded: true,
-                  turnUserMessageId: userMessageId
-                };
-              }
+          this.messages.update(currentMessages => {
+            const currentUserIndex = currentMessages.findIndex(
+              message => message.id === userMessageId && message.role === 'user'
+            );
 
-              return message;
-            })
-          );
+            if (currentUserIndex < 0) {
+              return currentMessages;
+            }
+
+            const editedUserMessage: CopilotMessage = {
+              ...currentMessages[currentUserIndex],
+              content: editedText
+            };
+
+            const newAssistantMessage: CopilotMessage = {
+              ...assistantMessage,
+              content: '',
+              activities: [],
+              turnStopped: false,
+              activityExpanded: true,
+              turnUserMessageId: userMessageId,
+              versionNumber: editResult.versionNumber,
+              totalVersions: editResult.versionNumber
+            };
+
+            return [...currentMessages.slice(0, currentUserIndex), editedUserMessage, newAssistantMessage];
+          });
 
           this.editingCompletedTurn.set(false);
           this.editingUserMessageId.set(null);
           this.editedPrompt.set('');
-
           this.shouldAutoScroll = true;
           this.scheduleScrollToBottom(true);
 
-          /*
-           * The backend changed the active MAF branch so that
-           * it now ends with the edited Version 2 user prompt.
-           */
-          this.activeRunSubscription =
-            this.copilotService
-              .runPreparedTurn()
-              .subscribe({
-                next: event => {
-                  this.handleAgUiEvent(
-                    event,
-                    assistantMessage.id
-                  );
-                },
-
-                error: error => {
-                  console.error(
-                    'AG-UI completed edit error:',
-                    error
-                  );
-
-                  this.failRunningActivities();
-
-                  this.errorMessage.set(
-                    'Something went wrong while processing the edited prompt.'
-                  );
-
-                  this.activeRunSubscription = null;
-                  this.activeAssistantMessageId = null;
-                  this.activeUserMessageId = null;
-                  this.isSending.set(false);
-                },
-
-                complete: () => {
-                  this.removeEmptyAssistantMessage(
-                    assistantMessage.id
-                  );
-
-                  this.activeRunSubscription = null;
-                  this.activeAssistantMessageId = null;
-                  this.activeUserMessageId = null;
-                  this.isSending.set(false);
-                }
-              });
+          this.activeRunSubscription = this.copilotService.runPreparedTurn().subscribe({
+            next: event => this.handleAgUiEvent(event, assistantMessage.id),
+            error: error => {
+              console.error('AG-UI completed edit error:', error);
+              this.failRunningActivities();
+              this.errorMessage.set('Something went wrong while processing the edited prompt.');
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            },
+            complete: () => {
+              this.removeEmptyAssistantMessage(assistantMessage.id);
+              this.activeRunSubscription = null;
+              this.activeAssistantMessageId = null;
+              this.activeUserMessageId = null;
+              this.isSending.set(false);
+            }
+          });
         },
-
         error: error => {
-          console.error(
-            'Failed to edit completed Copilot turn:',
-            error
-          );
-
-          this.errorMessage.set(
-            error?.status === 409
-              ? 'Only the latest completed response can be edited.'
-              : 'The completed prompt could not be edited.'
-          );
-
+          console.error('Failed to edit completed Copilot turn:', error);
+          this.errorMessage.set(error?.error?.message ?? 'The completed prompt could not be edited.');
           this.activeAssistantMessageId = null;
           this.activeUserMessageId = null;
           this.isSending.set(false);
