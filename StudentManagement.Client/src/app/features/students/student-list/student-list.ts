@@ -9,11 +9,12 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 import { StudentsService } from '../students.service';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-student-list',
   standalone: true,
-  imports: [RouterLink, Pagination, LucideMail, LucidePencil, LucidePhone, LucidePlus, LucideTrash2, LucideTriangleAlert, LucideUserRound, LucideUsers, LucideX],
+  imports: [RouterLink, Pagination, LucideMail, LucidePencil, LucidePhone, LucidePlus, LucideTrash2, LucideTriangleAlert, LucideUserRound, LucideUsers, ConfirmDialog],
   templateUrl: './student-list.html',
   styleUrl: './student-list.scss'
 })

@@ -10,11 +10,12 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 import { CoursesService } from '../course.service';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-course-list',
   standalone: true,
-  imports: [RouterLink, CurrencyPipe, Pagination, LucideBookOpen, LucideClock3, LucidePencil, LucidePlus, LucideTrash2, LucideTriangleAlert, LucideX],
+  imports: [RouterLink, CurrencyPipe, Pagination, LucideBookOpen, LucideClock3, LucidePencil, LucidePlus, LucideTrash2, LucideTriangleAlert, ConfirmDialog],
   templateUrl: './course-list.html',
   styleUrl: './course-list.scss'
 })

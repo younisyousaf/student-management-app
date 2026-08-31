@@ -1,0 +1,34 @@
+<div class="confirm-backdrop" (click)="!processing() && cancel.emit()">
+  <section class="confirm-dialog" role="alertdialog" aria-modal="true" aria-labelledby="confirm-dialog-title" (click)="$event.stopPropagation()">
+    <div class="confirm-dialog__accent"></div>
+
+    <button type="button" class="confirm-dialog__close" aria-label="Close" [disabled]="processing()" (click)="cancel.emit()">
+      <svg lucideX></svg>
+    </button>
+
+    <header class="confirm-dialog__header">
+      <span class="confirm-dialog__icon"><svg lucideTriangleAlert></svg></span>
+      <div>
+        <span class="confirm-dialog__eyebrow">Confirmation required</span>
+        <h3 id="confirm-dialog-title">{{ title() }}</h3>
+      </div>
+    </header>
+
+    <div class="confirm-dialog__body">
+      <div class="confirm-dialog__subject">{{ subject() }}</div>
+      <p>{{ message() }}</p>
+
+      <div class="confirm-dialog__warning">
+        <svg lucideTriangleAlert></svg>
+        <span>{{ warning() }}</span>
+      </div>
+    </div>
+
+    <footer class="confirm-dialog__actions">
+      <button type="button" class="cancel-button" [disabled]="processing()" (click)="cancel.emit()">Cancel</button>
+      <button type="button" class="danger-button" [disabled]="processing()" (click)="confirm.emit()">
+        {{ processing() ? processingLabel() : confirmLabel() }}
+      </button>
+    </footer>
+  </section>
+</div>

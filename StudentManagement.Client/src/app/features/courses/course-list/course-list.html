@@ -81,17 +81,14 @@
 </div>
 
 @if (coursePendingDelete(); as course) {
-  <div class="delete-backdrop" (click)="cancelDelete()">
-    <section class="delete-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <button type="button" class="delete-dialog__close" (click)="cancelDelete()" [disabled]="isDeleting()" aria-label="Close"><svg lucideX></svg></button>
-      <span class="delete-dialog__icon"><svg lucideTrash2></svg></span>
-      <h3>Delete course?</h3>
-      <p><strong>{{ course.name }}</strong> ({{ course.code }}) will be permanently removed.</p>
-      <div class="delete-dialog__warning"><svg lucideTriangleAlert></svg><span>This action cannot be undone.</span></div>
-      <div class="delete-dialog__actions">
-        <button type="button" (click)="cancelDelete()" [disabled]="isDeleting()">Cancel</button>
-        <button type="button" class="delete-confirm" (click)="deleteCourse()" [disabled]="isDeleting()"><svg lucideTrash2></svg><span>{{ isDeleting() ? 'Deleting...' : 'Delete course' }}</span></button>
-      </div>
-    </section>
-  </div>
+   <app-confirm-dialog
+    title="Delete course?"
+    [subject]="course.name + ' (' + course.code + ')'"
+    message="This course will be permanently removed from SmartCampus."
+    warning="This action cannot be undone."
+    confirmLabel="Delete course"
+    processingLabel="Deleting..."
+    [processing]="isDeleting()"
+    (cancel)="cancelDelete()"
+    (confirm)="deleteCourse()" />
 }

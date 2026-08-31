@@ -12,6 +12,7 @@ import { ToastService } from '../../../core/services/toast.service';
 import { Pagination } from '../../../shared/components/pagination/pagination';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 import { EnrollmentsService } from '../enrollments.service';
+import { ConfirmDialog } from '../../../shared/components/confirm-dialog/confirm-dialog';
 
 interface EnrollmentRow {
   id: number;
@@ -26,7 +27,7 @@ interface EnrollmentRow {
 @Component({
   selector: 'app-enrollment-list',
   standalone: true,
-  imports: [RouterLink, DatePipe, Pagination, LucideBookOpen, LucideCalendarDays, LucideCircleCheck, LucideGraduationCap, LucidePlus, LucideTriangleAlert, LucideUserMinus, LucideUserRound, LucideX],
+  imports: [RouterLink, DatePipe, Pagination, LucideBookOpen, LucideCalendarDays, LucideCircleCheck, LucideGraduationCap, LucidePlus, LucideTriangleAlert, LucideUserMinus, LucideUserRound, ConfirmDialog],
   templateUrl: './enrollment-list.html',
   styleUrl: './enrollment-list.scss'
 })

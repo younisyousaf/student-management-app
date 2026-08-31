@@ -22,7 +22,7 @@ interface FeeRow extends Fee {
 @Component({
   selector: 'app-fee-list',
   standalone: true,
-  imports: [RouterLink, CurrencyPipe, DatePipe, Pagination, LucideBookOpen, LucideCalendarDays, LucideCircleDollarSign, LucideCreditCard, LucideReceiptText, LucideTriangleAlert, LucideUserRound, LucideWalletCards],
+  imports: [RouterLink, CurrencyPipe, Pagination, LucideBookOpen, LucideCircleDollarSign, LucideCreditCard, LucideReceiptText, LucideTriangleAlert, LucideUserRound, LucideWalletCards],
   templateUrl: './fee-list.html',
   styleUrl: './fee-list.scss'
 })

@@ -135,24 +135,14 @@
 
 <!-- Delete Conversation Modal -->
 @if (conversationPendingDelete(); as conversation) {
-  <div class="modal-backdrop" (click)="cancelDeleteConversation()">
-    <section class="delete-modal" role="dialog" aria-modal="true" aria-labelledby="delete-conversation-title" (click)="$event.stopPropagation()">
-      <button type="button" class="delete-modal__close" (click)="cancelDeleteConversation()" [disabled]="managingConversationThreadId() === conversation.threadId" aria-label="Close"><svg lucideX></svg></button>
-
-      <div class="delete-modal__icon"><svg lucideTrash2></svg></div>
-
-      <div class="delete-modal__content">
-        <h3 id="delete-conversation-title">Delete conversation?</h3>
-        <p>You are about to permanently delete <strong>"{{ conversation.title }}"</strong>.</p>
-        <div class="delete-modal__warning"><svg lucideTriangleAlert></svg><span>This action cannot be undone.</span></div>
-      </div>
-
-      <div class="delete-modal__actions">
-        <button type="button" (click)="cancelDeleteConversation()" [disabled]="managingConversationThreadId() === conversation.threadId">Cancel</button>
-        <button type="button" class="delete-modal__confirm" (click)="deleteConversation()" [disabled]="managingConversationThreadId() === conversation.threadId">
-          <svg lucideTrash2></svg><span>{{ managingConversationThreadId() === conversation.threadId ? 'Deleting...' : 'Delete conversation' }}</span>
-        </button>
-      </div>
-    </section>
-  </div>
+ <app-confirm-dialog
+    title="Delete conversation?"
+    [subject]="conversation.title"
+    message="This conversation and its saved history will be permanently removed from SmartCampus."
+    warning="This action cannot be undone."
+    confirmLabel="Delete conversation"
+    processingLabel="Deleting..."
+    [processing]="managingConversationThreadId() === conversation.threadId"
+    (cancel)="cancelDeleteConversation()"
+    (confirm)="deleteConversation()" />
 }

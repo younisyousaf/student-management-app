@@ -99,17 +99,14 @@
 </div>
 
 @if (enrollmentPendingDrop(); as row) {
-  <div class="drop-backdrop" (click)="cancelDrop()">
-    <section class="drop-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <button type="button" class="drop-dialog__close" (click)="cancelDrop()" [disabled]="updatingEnrollmentId() !== null" aria-label="Close"><svg lucideX></svg></button>
-      <span class="drop-dialog__icon"><svg lucideUserMinus></svg></span>
-      <h3>Drop enrollment?</h3>
-      <p><strong>{{ row.studentName }}</strong> will be dropped from <strong>{{ row.courseName }}</strong>.</p>
-      <div class="drop-dialog__warning"><svg lucideTriangleAlert></svg><span>The enrollment status will change to Dropped.</span></div>
-      <div class="drop-dialog__actions">
-        <button type="button" (click)="cancelDrop()" [disabled]="updatingEnrollmentId() !== null">Cancel</button>
-        <button type="button" class="drop-confirm" (click)="dropEnrollment()" [disabled]="updatingEnrollmentId() !== null"><svg lucideUserMinus></svg><span>{{ updatingEnrollmentId() ? 'Dropping...' : 'Drop enrollment' }}</span></button>
-      </div>
-    </section>
-  </div>
+   <app-confirm-dialog
+    title="Drop enrollment?"
+    [subject]="row.studentName + ' → ' + row.courseName"
+    message="This enrollment will be marked as dropped."
+    warning="The student will no longer be active in this course."
+    confirmLabel="Drop enrollment"
+    processingLabel="Dropping..."
+    [processing]="updatingEnrollmentId() === row.id"
+    (cancel)="cancelDrop()"
+    (confirm)="dropEnrollment()" />
 }

@@ -12,13 +12,14 @@ import { InterruptedTurnActions } from '../../components/interrupted-turn-action
 import { PromptEditor } from '../../components/prompt-editor/prompt-editor';
 import { CompletedTurnActions } from '../../components/completed-turn-actions/completed-turn-actions';
 import { TurnVersionNavigator } from '../../components/turn-version-navigator/turn-version-navigator';
-import { LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap, LucideTrash2, LucideTriangleAlert, LucideX } from '@lucide/angular';
+import { LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap} from '@lucide/angular';
 import { ToastService } from '../../../../core/services/toast.service';
+import { ConfirmDialog } from '../../../../shared/components/confirm-dialog/confirm-dialog';
 
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
-  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions, TurnVersionNavigator, LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap, LucideTrash2, LucideTriangleAlert, LucideX],
+  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions, TurnVersionNavigator, LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap, ConfirmDialog],
   templateUrl: './copilot-chat.html',
   styleUrl: './copilot-chat.scss'
 })

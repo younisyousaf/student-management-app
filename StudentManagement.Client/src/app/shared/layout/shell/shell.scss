@@ -46,9 +46,6 @@
     gap: 12px;
   }
 
-  &__mobile-menu {
-    display: none;
-  }
 }
 
 .brand {
@@ -147,6 +144,10 @@
   &:active {
     transform: scale(0.95);
   }
+}
+
+.icon-button.topbar__mobile-menu {
+  display: none;
 }
 
 .app-shell__body {
@@ -311,14 +312,14 @@
   }
 }
 
-@media (max-width: 900px) {
+@media (max-width: 768px) {
   .topbar {
     height: 62px;
     padding: 0 14px;
+  }
 
-    &__mobile-menu {
-      display: grid;
-    }
+  .icon-button.topbar__mobile-menu {
+    display: grid;
   }
 
   .agent-status span:last-child {
@@ -337,11 +338,15 @@
     left: 0;
     width: 260px;
     transform: translateX(-105%);
-    transition: transform 0.25s cubic-bezier(.4, 0, .2, 1);
-    box-shadow: 18px 0 50px rgba(15, 23, 42, 0.14);
+    transition: transform .25s cubic-bezier(.4, 0, .2, 1);
+    box-shadow: 18px 0 50px rgba(15, 23, 42, .14);
 
     &--open {
       transform: translateX(0);
+    }
+
+    &__collapse {
+      display: none;
     }
   }
 
@@ -353,7 +358,7 @@
     padding: 0;
     border: 0;
     border-radius: 0;
-    background: rgba(15, 23, 42, 0.42);
+    background: rgba(15, 23, 42, .42);
     backdrop-filter: blur(2px);
   }
 

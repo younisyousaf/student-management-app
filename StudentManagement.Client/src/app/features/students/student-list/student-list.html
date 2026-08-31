@@ -84,17 +84,14 @@
 </div>
 
 @if (studentPendingDelete(); as student) {
-  <div class="delete-backdrop" (click)="cancelDelete()">
-    <section class="delete-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
-      <button type="button" class="delete-dialog__close" (click)="cancelDelete()" [disabled]="isDeleting()"><svg lucideX></svg></button>
-      <span class="delete-dialog__icon"><svg lucideTrash2></svg></span>
-      <h3>Delete student?</h3>
-      <p><strong>{{ student.fullName }}</strong> will be permanently removed.</p>
-      <div class="delete-dialog__warning"><svg lucideTriangleAlert></svg>This action cannot be undone.</div>
-      <div class="delete-dialog__actions">
-        <button type="button" (click)="cancelDelete()" [disabled]="isDeleting()">Cancel</button>
-        <button type="button" class="delete-confirm" (click)="deleteStudent()" [disabled]="isDeleting()"><svg lucideTrash2></svg>{{ isDeleting() ? 'Deleting...' : 'Delete student' }}</button>
-      </div>
-    </section>
-  </div>
+  <app-confirm-dialog
+    title="Delete student?"
+    [subject]="student.fullName"
+    message="This student will be permanently removed from SmartCampus."
+    warning="This action cannot be undone."
+    confirmLabel="Delete student"
+    processingLabel="Deleting..."
+    [processing]="isDeleting()"
+    (cancel)="cancelDelete()"
+    (confirm)="deleteStudent()" />
 }
