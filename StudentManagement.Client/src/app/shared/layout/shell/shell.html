@@ -1,64 +1,75 @@
-<div class="app-shell">
+<div class="app-shell" [class.app-shell--collapsed]="isSidebarCollapsed()">
   <header class="topbar">
-    <div class="topbar__left">
-      <button
-        type="button"
-        class="topbar__menu"
-        (click)="toggleMobileNav()"
-        [class.topbar__menu--open]="
-          isMobileNavOpen()
-        "
-        [attr.aria-expanded]="
-          isMobileNavOpen()
-        "
-        aria-controls="main-navigation"
-        aria-label="Toggle navigation">
-        <span></span>
-        <span></span>
-        <span></span>
+    <div class="topbar__brand">
+      <button class="icon-button topbar__mobile-menu" type="button" (click)="toggleMobileNav()" aria-label="Toggle navigation">
+        @if (isMobileNavOpen()) { <svg lucideX></svg> } @else { <svg lucideMenu></svg> }
       </button>
-      <div class="topbar__logo">
-        SmartCampus
-      </div>
+
+      <a routerLink="/copilot" class="brand">
+        <span class="brand__icon"><svg lucideSparkles></svg></span>
+        <span class="brand__name">SmartCampus</span>
+        <span class="brand__badge">AI</span>
+      </a>
     </div>
-    <button
-      type="button"
-      class="topbar__logout"
-      (click)="logout()">
-      Log out
-    </button>
+
+    <!-- <button type="button" (click)="testToast()">Test Toast</button> -->
+    <div class="topbar__actions">
+      <div class="agent-status">
+        <span class="agent-status__pulse"></span>
+        <svg lucideBot></svg>
+        <span>Copilot Online</span>
+      </div>
+
+
+      <button class="icon-button" type="button" (click)="logout()" title="Log out" aria-label="Log out">
+        <svg lucideLogOut></svg>
+      </button>
+    </div>
   </header>
+
   <div class="app-shell__body">
     @if (isMobileNavOpen()) {
-      <button
-        type="button"
-        class="sidebar-backdrop"
-        (click)="closeMobileNav()"
-        aria-label="Close navigation">
-      </button>
+      <button class="sidebar-backdrop" type="button" (click)="closeMobileNav()" aria-label="Close navigation"></button>
     }
-    <nav
-      id="main-navigation"
-      class="sidebar"
-      [class.sidebar--open]="
-        isMobileNavOpen()
-      ">
-      <div class="sidebar__heading">
-        Navigation
-      </div>
-      @for (
-        link of navLinks;
-        track link.path
-      ) {
-        <a
-          [routerLink]="link.path"
-          routerLinkActive="sidebar__link--active"
-          class="sidebar__link"
-          (click)="closeMobileNav()">
-          {{ link.label }}
+
+    <aside class="sidebar" [class.sidebar--open]="isMobileNavOpen()">
+      <div class="sidebar__label">Workspace</div>
+
+      <nav class="sidebar__nav">
+        <a routerLink="/students" routerLinkActive="sidebar__link--active" class="sidebar__link" (click)="closeMobileNav()">
+          <svg lucideUsers></svg><span>Students</span>
         </a>
-      }
-    </nav>
+
+        <a routerLink="/courses" routerLinkActive="sidebar__link--active" class="sidebar__link" (click)="closeMobileNav()">
+          <svg lucideBookOpen></svg><span>Courses</span>
+        </a>
+
+        <a routerLink="/enrollments" routerLinkActive="sidebar__link--active" class="sidebar__link" (click)="closeMobileNav()">
+          <svg lucideGraduationCap></svg><span>Enrollments</span>
+        </a>
+
+        <a routerLink="/fees" routerLinkActive="sidebar__link--active" class="sidebar__link" (click)="closeMobileNav()">
+          <svg lucideCreditCard></svg><span>Fees</span>
+        </a>
+
+        <a routerLink="/attendance" routerLinkActive="sidebar__link--active" class="sidebar__link" (click)="closeMobileNav()">
+          <svg lucideCalendarDays></svg><span>Attendance</span>
+        </a>
+
+        <div class="sidebar__divider"></div>
+
+        <a routerLink="/copilot" routerLinkActive="sidebar__link--active" class="sidebar__link sidebar__link--copilot" (click)="closeMobileNav()">
+          <span class="sidebar__copilot-icon"><svg lucideBot></svg></span>
+          <span>AI Copilot</span>
+          <span class="sidebar__ai-badge">AI</span>
+        </a>
+      </nav>
+
+      <button class="sidebar__collapse" type="button" (click)="toggleSidebar()">
+        <svg lucidePanelLeft></svg><span>Collapse sidebar</span>
+      </button>
+    </aside>
+
     <main class="main-content">
       <router-outlet />
     </main>

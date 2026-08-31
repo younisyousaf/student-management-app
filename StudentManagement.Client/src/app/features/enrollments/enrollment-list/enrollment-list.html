@@ -1,70 +1,115 @@
 <div class="enrollments-page">
-  <div class="header-row">
-    <h2>Enrollments</h2>
-    <a routerLink="/enrollments/new">+ Enroll Student</a>
-  </div>
+  <header class="page-header">
+    <div class="page-header__identity">
+      <span class="page-header__icon"><svg lucideGraduationCap></svg></span>
+      <div>
+        <h1>Enrollments</h1>
+        <p>Manage student course enrollment and academic progress.</p>
+      </div>
+    </div>
+    <a routerLink="/enrollments/new" class="primary-action"><svg lucidePlus></svg><span>Enroll student</span></a>
+  </header>
+
   @if (isLoading()) {
-  <div class="loading-state">
-    Loading enrollments...
-  </div>
+    <div class="state-card">
+      <span class="state-loader"></span>
+      <strong>Loading enrollments</strong>
+      <p>Fetching student and course relationships...</p>
+    </div>
+  } @else if (hasError()) {
+    <div class="state-card state-card--error">
+      <svg lucideTriangleAlert></svg>
+      <strong>Unable to load enrollments</strong>
+      <p>Please try again.</p>
+    </div>
   } @else {
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Course</th>
-          <th>Enrolled</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-        <tr>
-          <td>{{ row.studentName }}</td>
-          <td>{{ row.courseName }}</td>
-          <td>{{ row.enrollDate | date:'mediumDate' }}</td>
-          <td>
-            <span class="status-badge" [class.status-badge--success]="row.status === 'Active'"
-              [class.status-badge--info]="row.status === 'Completed'"
-              [class.status-badge--danger]="row.status === 'Dropped'">
-              {{ row.status }}
-            </span>
-          </td>
-          <td class="table-actions-cell">
-            @if (row.status === 'Active') {
-            <div class="table-actions">
-              <button (click)="completeEnrollment(row.id)">
-                Complete
-              </button>
-              <button class="btn-danger" (click)="dropEnrollment(row.id)">
-                Drop
-              </button>
-            </div>
+    <section class="data-card">
+      <div class="data-card__header">
+        <div>
+          <strong>Enrollment records</strong>
+          <span>Students enrolled across academic courses.</span>
+        </div>
+        <span class="record-badge">{{ enrollmentsResource.value()?.data?.totalCount ?? 0 }} total</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Course</th><th>Enrolled</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--student"><svg lucideUserRound></svg></span>
+                    <div><strong>{{ row.studentName }}</strong><span>{{ row.studentRollNumber }}</span></div>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--course"><svg lucideBookOpen></svg></span>
+                    <div><strong>{{ row.courseName }}</strong><span>{{ row.courseCode }}</span></div>
+                  </div>
+                </td>
+
+                <td><span class="date-cell"><svg lucideCalendarDays></svg>{{ row.enrollDate | date:'mediumDate' }}</span></td>
+
+                <td>
+                  <span class="status-badge" [class.status-badge--active]="row.status === 'Active'" [class.status-badge--completed]="row.status === 'Completed'" [class.status-badge--dropped]="row.status === 'Dropped'">
+                    <span></span>{{ row.status }}
+                  </span>
+                </td>
+
+                <td>
+                  @if (row.status === 'Active') {
+                    <div class="row-actions">
+                      <button type="button" class="complete" title="Complete enrollment" [disabled]="updatingEnrollmentId() !== null" (click)="completeEnrollment(row)">
+                        <svg lucideCircleCheck></svg><span>Complete</span>
+                      </button>
+                      <button type="button" class="drop" title="Drop enrollment" [disabled]="updatingEnrollmentId() !== null" (click)="requestDrop(row)">
+                        <svg lucideUserMinus></svg><span>Drop</span>
+                      </button>
+                    </div>
+                  } @else {
+                    <span class="no-actions">No actions</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <span><svg lucideGraduationCap></svg></span>
+                    <strong>No enrollments yet</strong>
+                    <p>Enroll a student in a course to get started.</p>
+                    <a routerLink="/enrollments/new"><svg lucidePlus></svg>Enroll student</a>
+                  </div>
+                </td>
+              </tr>
             }
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="5" class="empty-state-cell">No enrollments yet.</td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <app-pagination [pageNumber]="
-    enrollmentsResource.value()?.data?.pageNumber ??
-    pageNumber()
-  " [totalPages]="
-    enrollmentsResource.value()?.data?.totalPages ??
-    0
-  " [totalCount]="
-    enrollmentsResource.value()?.data?.totalCount ??
-    0
-  " [isLoading]="
-    enrollmentsResource.isLoading()
-  " (pageChange)="changePage($event)">
-  </app-pagination>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <app-pagination [pageNumber]="enrollmentsResource.value()?.data?.pageNumber ?? pageNumber()" [totalPages]="enrollmentsResource.value()?.data?.totalPages ?? 0" [totalCount]="enrollmentsResource.value()?.data?.totalCount ?? 0" [isLoading]="enrollmentsResource.isLoading()" (pageChange)="changePage($event)" />
   }
 </div>
+
+@if (enrollmentPendingDrop(); as row) {
+  <div class="drop-backdrop" (click)="cancelDrop()">
+    <section class="drop-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="drop-dialog__close" (click)="cancelDrop()" [disabled]="updatingEnrollmentId() !== null" aria-label="Close"><svg lucideX></svg></button>
+      <span class="drop-dialog__icon"><svg lucideUserMinus></svg></span>
+      <h3>Drop enrollment?</h3>
+      <p><strong>{{ row.studentName }}</strong> will be dropped from <strong>{{ row.courseName }}</strong>.</p>
+      <div class="drop-dialog__warning"><svg lucideTriangleAlert></svg><span>The enrollment status will change to Dropped.</span></div>
+      <div class="drop-dialog__actions">
+        <button type="button" (click)="cancelDrop()" [disabled]="updatingEnrollmentId() !== null">Cancel</button>
+        <button type="button" class="drop-confirm" (click)="dropEnrollment()" [disabled]="updatingEnrollmentId() !== null"><svg lucideUserMinus></svg><span>{{ updatingEnrollmentId() ? 'Dropping...' : 'Drop enrollment' }}</span></button>
+      </div>
+    </section>
+  </div>
+}

@@ -1,14 +1,20 @@
-import { Component, OnInit, signal } from '@angular/core';
+import { Component, inject, OnInit, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { ActivatedRoute, Router } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { LucideArrowLeft, LucideSave, LucideUserPlus, LucideUserRoundPen } from '@lucide/angular';
+import { ToastService } from '../../../core/services/toast.service';
 import { StudentsService } from '../students.service';
+
 @Component({
   selector: 'app-student-form',
-  standalone: true,
-  imports: [FormsModule],
-  templateUrl: './student-form.html'
+  imports: [FormsModule, RouterLink, LucideArrowLeft, LucideSave, LucideUserPlus, LucideUserRoundPen],
+  templateUrl: './student-form.html',
+  styleUrl: './student-form.scss'
 })
+
 export class StudentForm implements OnInit {
+  private readonly toastService = inject(ToastService);
+
   isEditMode = signal(false);
   studentId = signal<number | null>(null);
   rollNumber = signal('');
@@ -18,7 +24,6 @@ export class StudentForm implements OnInit {
   dateOfBirth = signal('');
   phone = signal('');
   address = signal('');
-  errorMessage = signal<string | null>(null);
   fieldErrors = signal<{ [field: string]: string[] }>({});
   isSaving = signal(false);
   constructor(
@@ -43,11 +48,11 @@ export class StudentForm implements OnInit {
         this.phone.set(s.phone ?? '');
         this.address.set(s.address ?? '');
       },
-      error: () => this.errorMessage.set('Could not load student.')
+      error: () => this.toastService.error('Unable to load student', 'The student record could not be loaded.')
     });
   }
   onSubmit(): void {
-    this.errorMessage.set(null);
+    this.fieldErrors.set({});
     this.isSaving.set(true);
     if (this.isEditMode()) {
       this.studentsService.update(this.studentId()!, {
@@ -57,7 +62,10 @@ export class StudentForm implements OnInit {
         phone: this.phone() || undefined,
         address: this.address() || undefined
       }).subscribe({
-        next: () => this.router.navigate(['/students']),
+        next: () => {
+          this.toastService.success('Student updated', 'Student details were saved successfully.');
+          this.router.navigate(['/students']);
+        },
         error: (err: unknown) => {
           this.handleError(err);
           this.isSaving.set(false);
@@ -73,7 +81,10 @@ export class StudentForm implements OnInit {
         phone: this.phone() || undefined,
         address: this.address() || undefined
       }).subscribe({
-        next: () => this.router.navigate(['/students']),
+        next: () => {
+          this.toastService.success('Student updated', 'Student details were saved successfully.');
+          this.router.navigate(['/students']);
+        },
         error: (err: unknown) => {
           this.handleError(err);
           this.isSaving.set(false);
@@ -81,18 +92,21 @@ export class StudentForm implements OnInit {
       });
     }
   }
+
   fieldError(name: string): string | null {
     const errors = this.fieldErrors();
     const key = Object.keys(errors).find(k => k.toLowerCase() === name.toLowerCase());
     return key ? errors[key].join(' ') : null;
   }
+
   private handleError(err: unknown): void {
     if (err && typeof err === 'object' && 'error' in err) {
       const httpError = (err as { error?: { message?: string; errors?: { [field: string]: string[] } } }).error;
       if (httpError?.errors) this.fieldErrors.set(httpError.errors);
-      this.errorMessage.set(httpError?.message ?? 'Save failed.');
+      this.toastService.error('Save failed', httpError?.message ?? 'The student could not be saved.');
       return;
     }
-    this.errorMessage.set('Save failed.');
+
+    this.toastService.error('Save failed', 'The student could not be saved.');
   }
 }

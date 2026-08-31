@@ -1,55 +1,72 @@
-<div class="form-page">
-  <h2>{{ isEditMode() ? 'Edit Student' : 'Add Student' }}</h2>
-  <form (ngSubmit)="onSubmit()">
-    <label>Roll Number
-      <input type="text" [ngModel]="rollNumber()" (ngModelChange)="rollNumber.set($event)" name="rollNumber"
-        [disabled]="isEditMode()" required />
-    </label>
-    @if (fieldError('rollNumber')) {
-    <p class="field-error">{{ fieldError('rollNumber') }}</p>
-    }
-    <label>First Name
-      <input type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" required />
-    </label>
-    @if (fieldError('firstName')) {
-    <p class="field-error">{{ fieldError('firstName') }}</p>
-    }
-    <label>Last Name
-      <input type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" required />
-    </label>
-    @if (fieldError('lastName')) {
-    <p class="field-error">{{ fieldError('lastName') }}</p>
-    }
-    <label>Email
-      <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" required />
-    </label>
-    @if (fieldError('email')) {
-    <p class="field-error">{{ fieldError('email') }}</p>
-    }
-    <label>Date of Birth
-      <input type="date" [ngModel]="dateOfBirth()" (ngModelChange)="dateOfBirth.set($event)" name="dateOfBirth"
-        required />
-    </label>
-    @if (fieldError('dateOfBirth')) {
-    <p class="field-error">{{ fieldError('dateOfBirth') }}</p>
-    }
-    <label>Phone
-      <input type="text" [ngModel]="phone()" (ngModelChange)="phone.set($event)" name="phone" />
-    </label>
-     @if (fieldError('phone')) {
-    <p class="field-error">{{ fieldError('phone') }}</p>
-    }
-    <label>Address
-      <input type="text" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" />
-    </label>
-     @if (fieldError('address')) {
-    <p class="field-error">{{ fieldError('address') }}</p>
-     }
-    @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-    }
-    <button type="submit" [disabled]="isSaving()">
-      {{ isSaving() ? 'Saving...' : 'Save' }}
-    </button>
+<div class="student-form-page">
+  <a routerLink="/students" class="back-link"><svg lucideArrowLeft></svg><span>Back to students</span></a>
+
+  <header class="form-header">
+    <span class="form-header__icon">
+      @if (isEditMode()) { <svg lucideUserRoundPen></svg> }
+      @else { <svg lucideUserPlus></svg> }
+    </span>
+    <div>
+      <h1>{{ isEditMode() ? 'Edit student' : 'Add student' }}</h1>
+      <p>{{ isEditMode() ? 'Update student profile information.' : 'Create a new student profile in SmartCampus.' }}</p>
+    </div>
+  </header>
+
+  <form class="form-card" (ngSubmit)="onSubmit()">
+    <section class="form-section">
+      <div class="form-section__heading">
+        <strong>Student information</strong>
+        <span>Academic identity and personal details.</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="rollNumber">Roll number</label>
+          <input id="rollNumber" type="text" [ngModel]="rollNumber()" (ngModelChange)="rollNumber.set($event)" name="rollNumber" [disabled]="isEditMode()" placeholder="e.g. STU-001" required>
+          @if (fieldError('rollNumber')) { <span class="field-error">{{ fieldError('rollNumber') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="dateOfBirth">Date of birth</label>
+          <input id="dateOfBirth" type="date" [ngModel]="dateOfBirth()" (ngModelChange)="dateOfBirth.set($event)" name="dateOfBirth" [disabled]="isEditMode()" required>
+          @if (fieldError('dateOfBirth')) { <span class="field-error">{{ fieldError('dateOfBirth') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="firstName">First name</label>
+          <input id="firstName" type="text" [ngModel]="firstName()" (ngModelChange)="firstName.set($event)" name="firstName" placeholder="Enter first name" required>
+          @if (fieldError('firstName')) { <span class="field-error">{{ fieldError('firstName') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="lastName">Last name</label>
+          <input id="lastName" type="text" [ngModel]="lastName()" (ngModelChange)="lastName.set($event)" name="lastName" placeholder="Enter last name" required>
+          @if (fieldError('lastName')) { <span class="field-error">{{ fieldError('lastName') }}</span> }
+        </div>
+
+        <div class="field field--full">
+          <label for="email">Email address</label>
+          <input id="email" type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" placeholder="student@example.com" required>
+          @if (fieldError('email')) { <span class="field-error">{{ fieldError('email') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="phone">Phone <span>Optional</span></label>
+          <input id="phone" type="text" [ngModel]="phone()" (ngModelChange)="phone.set($event)" name="phone" placeholder="Enter phone number">
+          @if (fieldError('phone')) { <span class="field-error">{{ fieldError('phone') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="address">Address <span>Optional</span></label>
+          <input id="address" type="text" [ngModel]="address()" (ngModelChange)="address.set($event)" name="address" placeholder="Enter address">
+          @if (fieldError('address')) { <span class="field-error">{{ fieldError('address') }}</span> }
+        </div>
+      </div>
+    </section>
+
+    <div class="form-actions">
+      <a routerLink="/students">Cancel</a>
+      <button type="submit" [disabled]="isSaving()"><svg lucideSave></svg><span>{{ isSaving() ? 'Saving...' : isEditMode() ? 'Save changes' : 'Add student' }}</span></button>
+    </div>
   </form>
 </div>

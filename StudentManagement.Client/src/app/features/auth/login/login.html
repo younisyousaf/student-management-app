@@ -1,52 +1,54 @@
 <div class="auth-page">
-  <div class="auth-container">
-    <h2>
-      Welcome back
-    </h2>
-    <p class="auth-description">
-      Sign in to Student Management
-    </p>
-    <form (ngSubmit)="onSubmit()">
-      <label>
-        Username
-        <input
-          type="text"
-          [ngModel]="username()"
-          (ngModelChange)="username.set($event)"
-          name="username"
-          autocomplete="username"
-          required />
-      </label>
-      <label>
-        Password
-        <input
-          type="password"
-          [ngModel]="password()"
-          (ngModelChange)="password.set($event)"
-          name="password"
-          autocomplete="current-password"
-          required />
-      </label>
-      @if (errorMessage()) {
-        <p class="error">
-          {{ errorMessage() }}
-        </p>
-      }
-      <button
-        type="submit"
-        [disabled]="isLoading()">
-        {{
-          isLoading()
-            ? 'Signing in...'
-            : 'Sign in'
-        }}
-      </button>
-    </form>
-    <p>
-      No account?
-      <a routerLink="/register">
-        Register
-      </a>
-    </p>
-  </div>
+  <section class="auth-brand">
+    <div class="auth-brand__logo">
+      <span><svg lucideBrainCircuit></svg></span>
+      <div><strong>SmartCampus</strong><small>Academic Operations Platform</small></div>
+    </div>
+
+    <div class="auth-brand__content">
+      <span class="ai-badge"><svg lucideSparkles></svg>AI-powered campus operations</span>
+      <h1>Run your campus smarter.</h1>
+      <p>Manage students, courses, attendance, enrollments, fees and AI-assisted academic operations from one connected workspace.</p>
+    </div>
+
+    <div class="auth-brand__footer"><svg lucideShieldCheck></svg><span>Secure institutional access</span></div>
+  </section>
+
+  <main class="auth-workspace">
+    <div class="auth-container">
+      <div class="auth-container__heading">
+        <h2>Welcome back</h2>
+        <p>Sign in to continue to your SmartCampus workspace.</p>
+      </div>
+
+      <form class="auth-form" (ngSubmit)="onSubmit()">
+        <div class="auth-field">
+          <label for="username">Username</label>
+          <div class="auth-input">
+            <svg lucideUserRound></svg>
+            <input id="username" type="text" [ngModel]="username()" (ngModelChange)="username.set($event)" name="username" autocomplete="username" placeholder="Enter your username" required>
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <div class="auth-input">
+            <svg lucideLockKeyhole></svg>
+            <input id="password" [type]="showPassword() ? 'text' : 'password'" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" autocomplete="current-password" placeholder="Enter your password" required>
+            <button type="button" class="password-toggle" (click)="showPassword.update(value => !value)" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+              @if (showPassword()) { <svg lucideEyeOff></svg> } @else { <svg lucideEye></svg> }
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-submit" [disabled]="isLoading() || !username().trim() || !password()">
+          <span>{{ isLoading() ? 'Signing in...' : 'Sign in' }}</span>
+          @if (!isLoading()) { <svg lucideArrowRight></svg> }
+        </button>
+
+        <p class="auth-switch">New to SmartCampus? <a routerLink="/register">Create an account</a></p>
+        <div class="auth-security"><svg lucideShieldCheck></svg><span>Your session is securely authenticated.</span></div>
+      </form>
+    </div>
+  </main>
 </div>

@@ -1,11 +1,11 @@
 import { Component, input, output } from '@angular/core';
-import {
-  CopilotActivity,
-  CopilotActivityStatus
-} from '../../models/copilot.model';
+import { LucideCheck, LucideChevronDown, LucideCircleDot, LucideClock3, LucideSquare, LucideTriangleAlert, LucideWorkflow, LucideX } from '@lucide/angular';
+import { CopilotActivity } from '../../models/copilot.model';
+
 @Component({
   selector: 'app-activity-timeline',
   standalone: true,
+  imports: [LucideCheck, LucideChevronDown, LucideCircleDot, LucideClock3, LucideSquare, LucideTriangleAlert, LucideWorkflow, LucideX],
   templateUrl: './activity-timeline.html',
   styleUrl: './activity-timeline.scss'
 })
@@ -13,8 +13,8 @@ export class ActivityTimeline {
   readonly activities = input.required<CopilotActivity[]>();
   readonly expanded = input.required<boolean>();
   readonly isSending = input.required<boolean>();
-  readonly toggle = output<void>();
   readonly stopped = input.required<boolean>();
+  readonly toggle = output<void>();
   activityText(activity: CopilotActivity): string {
     const labels: Record<string, { running: string; completed: string }> = {
       GetStudentById: {
@@ -204,22 +204,16 @@ export class ActivityTimeline {
     }
     return `${this.humanizeToolName(activity.toolName)} failed`;
   }
-  activityStatusSymbol(status: CopilotActivityStatus): string {
-    switch (status) {
-      case 'completed':
-        return '✓';
-      case 'waiting':
-        return '○';
-      case 'rejected':
-        return '×';
-      case 'stopped':
-        return '■';
-      case 'failed':
-        return '!';
-      default:
-        return '●';
-    }
+
+  toolLabel(toolName: string): string {
+    const value = toolName.replace(/_/g, ' ').replace(/([a-z])([A-Z])/g, '$1 $2').toLowerCase();
+    return value.charAt(0).toUpperCase() + value.slice(1);
   }
+
+  completedCount(): number {
+    return this.activities().filter(activity => activity.status === 'completed').length;
+  }
+
   private humanizeToolName(toolName: string): string {
     const value = toolName
       .replace(/_/g, ' ')
@@ -233,5 +227,5 @@ export class ActivityTimeline {
   //   activity =>
   //     activity.status === 'stopped'
   // );
-// }
+  // }
 }

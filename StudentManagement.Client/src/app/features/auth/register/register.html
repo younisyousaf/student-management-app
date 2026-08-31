@@ -1,34 +1,71 @@
 <div class="auth-page">
-  <div class="auth-container">
-    <h2>Create account</h2>
-    <p class="auth-description">Create your Student Management account</p>
-    @if (success()) {
-      <p class="success">Registered! Redirecting to login...</p>
-    } @else {
-      <form (ngSubmit)="onSubmit()">
-        <label>
-          Username
-          <input type="text" [ngModel]="username()" (ngModelChange)="username.set($event)" name="username" autocomplete="username" required />
-        </label>
-        <label>
-          Email
-          <input type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" autocomplete="email" required />
-        </label>
-        <label>
-          Password
-          <input type="password" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" autocomplete="new-password" required />
-        </label>
-        @if (errorMessage()) {
-          <p class="error">{{ errorMessage() }}</p>
-        }
-        <button type="submit" [disabled]="isLoading()">
-          {{ isLoading() ? 'Registering...' : 'Register' }}
+  <section class="auth-brand">
+    <div class="auth-brand__logo">
+      <span><svg lucideBrainCircuit></svg></span>
+      <div><strong>SmartCampus</strong><small>Academic Operations Platform</small></div>
+    </div>
+
+    <div class="auth-brand__content">
+      <span class="ai-badge"><svg lucideSparkles></svg>Connected academic intelligence</span>
+      <h1>Build a smarter campus workspace.</h1>
+      <p>Create your account to manage academic operations and work alongside the SmartCampus AI Copilot.</p>
+    </div>
+
+    <div class="auth-brand__footer"><svg lucideShieldCheck></svg><span>Secure institutional access</span></div>
+  </section>
+
+  <main class="auth-workspace">
+    <div class="auth-container">
+      <div class="auth-container__heading">
+        <h2>Create your account</h2>
+        <p>Set up your SmartCampus access credentials.</p>
+      </div>
+
+      <form class="auth-form" (ngSubmit)="onSubmit()">
+        <div class="auth-field">
+          <label for="username">Username</label>
+          <div class="auth-input">
+            <svg lucideUserRound></svg>
+            <input id="username" type="text" [ngModel]="username()" (ngModelChange)="username.set($event)" name="username" autocomplete="username" placeholder="Choose a username" required>
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="email">Email address</label>
+          <div class="auth-input">
+            <svg lucideMail></svg>
+            <input id="email" type="email" [ngModel]="email()" (ngModelChange)="email.set($event)" name="email" autocomplete="email" placeholder="you@example.com" required>
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <div class="auth-input">
+            <svg lucideLockKeyhole></svg>
+            <input id="password" [type]="showPassword() ? 'text' : 'password'" [ngModel]="password()" (ngModelChange)="password.set($event)" name="password" autocomplete="new-password" placeholder="Create a password" required>
+            <button type="button" class="password-toggle" (click)="showPassword.update(value => !value)" [attr.aria-label]="showPassword() ? 'Hide password' : 'Show password'">
+              @if (showPassword()) { <svg lucideEyeOff></svg> } @else { <svg lucideEye></svg> }
+            </button>
+          </div>
+        </div>
+
+        <div class="auth-field">
+          <label for="confirmPassword">Confirm password</label>
+          <div class="auth-input">
+            <svg lucideLockKeyhole></svg>
+            <input id="confirmPassword" [type]="showPassword() ? 'text' : 'password'" [ngModel]="confirmPassword()" (ngModelChange)="confirmPassword.set($event)" name="confirmPassword" autocomplete="new-password" placeholder="Repeat your password" required>
+          </div>
+        </div>
+
+        <button type="submit" class="auth-submit" [disabled]="isLoading() || !username().trim() || !email().trim() || !password() || !confirmPassword()">
+          <svg lucideUserPlus></svg>
+          <span>{{ isLoading() ? 'Creating account...' : 'Create account' }}</span>
+          @if (!isLoading()) { <svg lucideArrowRight></svg> }
         </button>
+
+        <p class="auth-switch">Already have an account? <a routerLink="/login">Sign in</a></p>
+        <div class="auth-security"><svg lucideShieldCheck></svg><span>Your credentials are submitted securely.</span></div>
       </form>
-      <p>
-        Already have an account?
-        <a routerLink="/login">Sign in</a>
-      </p>
-    }
-  </div>
+    </div>
+  </main>
 </div>

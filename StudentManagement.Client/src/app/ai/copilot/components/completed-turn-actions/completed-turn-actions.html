@@ -1,8 +1,3 @@
 <div class="completed-actions">
-  <button
-    type="button"
-    [disabled]="disabled()"
-    (click)="editPrompt.emit()">
-    Edit prompt
-  </button>
+  <button type="button" title="Edit prompt" aria-label="Edit prompt" [disabled]="disabled()" (click)="editPrompt.emit()"><svg lucidePencil></svg><span>Edit</span></button>
 </div>

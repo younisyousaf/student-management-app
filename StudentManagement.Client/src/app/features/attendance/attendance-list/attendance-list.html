@@ -1,67 +1,102 @@
 <div class="attendance-page">
-  <div class="header-row">
-    <h2>Attendance</h2>
-    <a routerLink="/attendance/mark">+ Mark Attendance</a>
-  </div>
+  <header class="page-header">
+    <div class="page-header__identity">
+      <span class="page-header__icon"><svg lucideCalendarCheck></svg></span>
+      <div>
+        <h1>Attendance</h1>
+        <p>Track student attendance across academic courses.</p>
+      </div>
+    </div>
+    <a routerLink="/attendance/mark" class="primary-action"><svg lucidePlus></svg><span>Mark attendance</span></a>
+  </header>
+
   @if (isLoading()) {
-  <div class="loading-state">
-    Loading attendance records...
-  </div>
+    <div class="state-card">
+      <span class="state-loader"></span>
+      <strong>Loading attendance</strong>
+      <p>Fetching attendance records...</p>
+    </div>
+  } @else if (hasError()) {
+    <div class="state-card state-card--error">
+      <svg lucideTriangleAlert></svg>
+      <strong>Unable to load attendance</strong>
+      <p>Please try again.</p>
+    </div>
   } @else {
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Course</th>
-          <th>Date</th>
-          <th>Status</th>
-          <th>Remarks</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-        <tr>
-          <td>{{ row.studentName }}</td>
-          <td>{{ row.courseName }}</td>
-          <td>{{ row.date | date:'mediumDate' }}</td>
-          <td>
-            <span class="status-badge" [class.status-badge--success]="row.status === 0"
-              [class.status-badge--danger]="row.status === 1" [class.status-badge--warning]="row.status === 2"
-              [class.status-badge--info]="row.status === 3">
-              {{ row.statusLabel }}
-            </span>
-          </td>
-          <td>{{ row.remarks || '—' }}</td>
-          <td class="table-actions-cell">
-            <div class="table-actions">
-              <a class="action-link" [routerLink]="['/attendance', row.id,'edit']">
-                Edit
-              </a>
-            </div>
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="6" class="empty-state-cell">No attendance records yet.</td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <app-pagination [pageNumber]="
-    attendanceResource.value()?.data?.pageNumber ??
-    pageNumber()
-  " [totalPages]="
-    attendanceResource.value()?.data?.totalPages ??
-    0
-  " [totalCount]="
-    attendanceResource.value()?.data?.totalCount ??
-    0
-  " [isLoading]="
-    attendanceResource.isLoading()
-  " (pageChange)="changePage($event)">
-  </app-pagination>
+    <section class="data-card">
+      <div class="data-card__header">
+        <div>
+          <strong>Attendance records</strong>
+          <span>Daily student attendance history.</span>
+        </div>
+        <span class="record-badge">{{ attendanceResource.value()?.data?.totalCount ?? 0 }} total</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Course</th><th>Date</th><th>Status</th><th>Remarks</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--student"><svg lucideUserRound></svg></span>
+                    <div><strong>{{ row.studentName }}</strong><span>{{ row.studentRollNumber }}</span></div>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--course"><svg lucideBookOpen></svg></span>
+                    <div><strong>{{ row.courseName }}</strong><span>{{ row.courseCode }}</span></div>
+                  </div>
+                </td>
+
+                <td><span class="date-cell"><svg lucideCalendarDays></svg>{{ row.date | date:'mediumDate' }}</span></td>
+
+                <td>
+                  <span class="status-badge"
+                    [class.status-badge--present]="row.status === 0"
+                    [class.status-badge--absent]="row.status === 1"
+                    [class.status-badge--late]="row.status === 2"
+                    [class.status-badge--excused]="row.status === 3">
+                    <span></span>{{ row.statusLabel }}
+                  </span>
+                </td>
+
+                <td>
+                  @if (row.remarks) {
+                    <span class="remarks">{{ row.remarks }}</span>
+                  } @else {
+                    <span class="muted-value">No remarks</span>
+                  }
+                </td>
+
+                <td>
+                  <div class="row-actions">
+                    <a [routerLink]="['/attendance', row.id, 'edit']" title="Edit attendance" aria-label="Edit attendance"><svg lucidePencil></svg></a>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="6">
+                  <div class="empty-state">
+                    <span><svg lucideCalendarCheck></svg></span>
+                    <strong>No attendance records</strong>
+                    <p>Start by marking student attendance.</p>
+                    <a routerLink="/attendance/mark"><svg lucidePlus></svg>Mark attendance</a>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <app-pagination [pageNumber]="attendanceResource.value()?.data?.pageNumber ?? pageNumber()" [totalPages]="attendanceResource.value()?.data?.totalPages ?? 0" [totalCount]="attendanceResource.value()?.data?.totalCount ?? 0" [isLoading]="attendanceResource.isLoading()" (pageChange)="changePage($event)" />
   }
 </div>

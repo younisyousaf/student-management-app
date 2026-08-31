@@ -1,28 +1,14 @@
-<div
-  class="version-navigator"
-  aria-label="Response version navigator">
-
-  <button
-    type="button"
-    aria-label="Previous version"
-    [disabled]="!canGoPrevious()"
-    (click)="previous.emit()">
-    ‹
-  </button>
+<div class="version-navigator" aria-label="Conversation branch navigator">
+  <span class="version-navigator__branch"><svg lucideGitBranch></svg></span>
+  <button type="button" aria-label="Previous version" [disabled]="!canGoPrevious()" (click)="previous.emit()"><svg lucideChevronLeft></svg></button>
 
   <span class="version-navigator__label">
     @if (loading()) {
-      Loading...
+      <span class="version-loading"></span>
     } @else {
       {{ currentVersion() }} / {{ totalVersions() }}
     }
   </span>
 
-  <button
-    type="button"
-    aria-label="Next version"
-    [disabled]="!canGoNext()"
-    (click)="next.emit()">
-    ›
-  </button>
+  <button type="button" aria-label="Next version" [disabled]="!canGoNext()" (click)="next.emit()"><svg lucideChevronRight></svg></button>
 </div>

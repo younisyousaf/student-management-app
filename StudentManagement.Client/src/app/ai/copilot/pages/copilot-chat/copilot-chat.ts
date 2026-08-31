@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BaseEvent, EventType } from '@ag-ui/core';
 import { forkJoin, Subscription } from 'rxjs';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotBranchTurn, CopilotConversation, CopilotMessage, CopilotTurn} from '../../models/copilot.model';
+import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotBranchTurn, CopilotConversation, CopilotMessage, CopilotTurn } from '../../models/copilot.model';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ActivityTimeline } from '../../components/activity-timeline/activity-timeline';
 import { ApprovalCard } from '../../components/approval-card/approval-card';
@@ -12,16 +12,25 @@ import { InterruptedTurnActions } from '../../components/interrupted-turn-action
 import { PromptEditor } from '../../components/prompt-editor/prompt-editor';
 import { CompletedTurnActions } from '../../components/completed-turn-actions/completed-turn-actions';
 import { TurnVersionNavigator } from '../../components/turn-version-navigator/turn-version-navigator';
+import { LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap, LucideTrash2, LucideTriangleAlert, LucideX } from '@lucide/angular';
+import { ToastService } from '../../../../core/services/toast.service';
+
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
-  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions, TurnVersionNavigator],
+  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions, TurnVersionNavigator, LucideBot, LucideBrainCircuit, LucideSend, LucideSparkles, LucideSquare, LucideZap, LucideTrash2, LucideTriangleAlert, LucideX],
   templateUrl: './copilot-chat.html',
   styleUrl: './copilot-chat.scss'
 })
 export class CopilotChat {
   private readonly copilotService = inject(AgUiCopilotService);
   private readonly destroyRef = inject(DestroyRef);
+  private readonly toastService = inject(ToastService);
+
+  private notifyError(message: string): void {
+    this.errorMessage.set('');
+    this.toastService.error('Copilot error', message);
+  }
 
   @ViewChild('messagesContainer')
   private messagesContainer?: ElementRef<HTMLDivElement>;
@@ -369,10 +378,7 @@ export class CopilotChat {
         );
 
         if (this.currentThreadId() === threadId) {
-          this.errorMessage.set(
-            'The conversation could not be loaded.'
-          );
-
+          this.notifyError('The conversation could not be loaded.');
           this.isLoadingHistory.set(false);
         }
       },
@@ -467,19 +473,19 @@ export class CopilotChat {
     this.scheduleScrollToBottom();
   }
 
- showPreviousVersion(assistantMessage: CopilotMessage): void {
-  this.loadBranchVersion(
-    assistantMessage,
-    (assistantMessage.versionNumber ?? 1) - 1
-  );
-}
+  showPreviousVersion(assistantMessage: CopilotMessage): void {
+    this.loadBranchVersion(
+      assistantMessage,
+      (assistantMessage.versionNumber ?? 1) - 1
+    );
+  }
 
-showNextVersion(assistantMessage: CopilotMessage): void {
-  this.loadBranchVersion(
-    assistantMessage,
-    (assistantMessage.versionNumber ?? 1) + 1
-  );
-}
+  showNextVersion(assistantMessage: CopilotMessage): void {
+    this.loadBranchVersion(
+      assistantMessage,
+      (assistantMessage.versionNumber ?? 1) + 1
+    );
+  }
 
   hasCompletedResponse(
     userMessageId: string
@@ -535,7 +541,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         },
         error: error => {
           console.error('Failed to load Copilot branch:', error);
-          this.errorMessage.set('The conversation branch could not be loaded.');
+          this.notifyError('The conversation branch could not be loaded.');
           this.loadingVersionUserMessageId.set(null);
         },
         complete: () => {
@@ -545,57 +551,57 @@ showNextVersion(assistantMessage: CopilotMessage): void {
   }
 
   private applyBranch(
-  turns: CopilotBranchTurn[],
-  navigatedUserMessageId: string,
-  totalVersions: number
-): void {
-  const currentMessages = this.messages();
+    turns: CopilotBranchTurn[],
+    navigatedUserMessageId: string,
+    totalVersions: number
+  ): void {
+    const currentMessages = this.messages();
 
-  const versionMetadata = new Map<string, { versionNumber: number; totalVersions: number }>();
+    const versionMetadata = new Map<string, { versionNumber: number; totalVersions: number }>();
 
-  for (const message of currentMessages) {
-    if (message.role !== 'assistant' || !message.turnUserMessageId) {
-      continue;
+    for (const message of currentMessages) {
+      if (message.role !== 'assistant' || !message.turnUserMessageId) {
+        continue;
+      }
+
+      versionMetadata.set(message.turnUserMessageId, {
+        versionNumber: message.versionNumber ?? 1,
+        totalVersions: message.totalVersions ?? 1
+      });
     }
 
-    versionMetadata.set(message.turnUserMessageId, {
-      versionNumber: message.versionNumber ?? 1,
-      totalVersions: message.totalVersions ?? 1
-    });
+    const branchMessages: CopilotMessage[] = [];
+
+    for (const turn of turns) {
+      branchMessages.push({
+        id: turn.userMessageId,
+        role: 'user',
+        content: turn.userContent,
+        createdAt: null
+      });
+
+      const existingMetadata = versionMetadata.get(turn.userMessageId);
+      const isNavigatedTurn = turn.userMessageId === navigatedUserMessageId;
+
+      branchMessages.push({
+        id: turn.assistantMessageId ?? `assistant-${turn.userMessageId}-${turn.versionNumber}`,
+        role: 'assistant',
+        content: turn.assistantContent,
+        createdAt: null,
+        activities: turn.activities,
+        activityExpanded: false,
+        turnStopped: turn.status === 'Stopped',
+        turnUserMessageId: turn.userMessageId,
+        versionNumber: turn.versionNumber,
+        totalVersions: isNavigatedTurn
+          ? totalVersions
+          : Math.max(existingMetadata?.totalVersions ?? 1, turn.versionNumber)
+      });
+    }
+
+    this.messages.set(branchMessages);
+    this.shouldAutoScroll = false;
   }
-
-  const branchMessages: CopilotMessage[] = [];
-
-  for (const turn of turns) {
-    branchMessages.push({
-      id: turn.userMessageId,
-      role: 'user',
-      content: turn.userContent,
-      createdAt: null
-    });
-
-    const existingMetadata = versionMetadata.get(turn.userMessageId);
-    const isNavigatedTurn = turn.userMessageId === navigatedUserMessageId;
-
-    branchMessages.push({
-      id: turn.assistantMessageId ?? `assistant-${turn.userMessageId}-${turn.versionNumber}`,
-      role: 'assistant',
-      content: turn.assistantContent,
-      createdAt: null,
-      activities: turn.activities,
-      activityExpanded: false,
-      turnStopped: turn.status === 'Stopped',
-      turnUserMessageId: turn.userMessageId,
-      versionNumber: turn.versionNumber,
-      totalVersions: isNavigatedTurn
-        ? totalVersions
-        : Math.max(existingMetadata?.totalVersions ?? 1, turn.versionNumber)
-    });
-  }
-
-  this.messages.set(branchMessages);
-  this.shouldAutoScroll = false;
-}
 
   startNewConversation(): void {
     if (this.isSending() || this.isLoadingHistory()) {
@@ -1003,7 +1009,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
 
               this.failRunningActivities();
               this.removeEmptyAssistantMessage(assistantMessage.id);
-              this.errorMessage.set('Something went wrong while contacting the assistant.');
+              this.notifyError('Something went wrong while contacting the assistant.');
               this.activeRunSubscription = null;
               this.activeAssistantMessageId = null;
               this.activeUserMessageId = null;
@@ -1024,7 +1030,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
           this.removeEmptyAssistantMessage(assistantMessage.id);
 
           if (this.activeAssistantMessageId === assistantMessage.id) {
-            this.errorMessage.set('The message could not be saved before starting the assistant.');
+            this.notifyError('The message could not be saved before starting the assistant.');
             this.activeAssistantMessageId = null;
             this.activeUserMessageId = null;
             this.isSending.set(false);
@@ -1084,7 +1090,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         this.setActivityStatus(approval.toolCallId, 'waiting');
         this.removeEmptyAssistantMessage(assistantMessage.id);
         this.pendingApproval.set(approval);
-        this.errorMessage.set('Something went wrong while processing the approval.');
+        this.notifyError('Something went wrong while processing the approval.');
         this.activeRunSubscription = null;
         this.activeAssistantMessageId = null;
         this.activeUserMessageId = null;
@@ -1158,10 +1164,11 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         );
 
         this.cancelRenameConversation();
+        this.toastService.success('Conversation renamed', 'The conversation title was updated.');
       },
       error: error => {
         console.error('Failed to rename Copilot conversation:', error);
-        this.errorMessage.set('The conversation could not be renamed.');
+        this.notifyError('The conversation could not be renamed.');
         this.managingConversationThreadId.set(null);
       },
       complete: () => {
@@ -1240,10 +1247,11 @@ showNextVersion(assistantMessage: CopilotMessage): void {
 
         this.conversationPendingDelete.set(null);
         this.loadConversations(pageToLoad);
+        this.toastService.success('Conversation deleted', `"${conversation.title}" was removed.`);
       },
       error: error => {
         console.error('Failed to delete Copilot conversation:', error);
-        this.errorMessage.set('The conversation could not be deleted.');
+        this.notifyError('The conversation could not be deleted.');
         this.managingConversationThreadId.set(null);
       },
       complete: () => {
@@ -1297,7 +1305,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     }
 
     if (!this.canRetryStoppedTurn(userMessageId)) {
-      this.errorMessage.set('Only the latest interrupted request can be retried.');
+      this.notifyError('Only the latest interrupted request can be retried.');
       return;
     }
 
@@ -1308,7 +1316,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     );
 
     if (!originalUserMessage) {
-      this.errorMessage.set('The original message for this retry could not be found.');
+      this.notifyError('The original message for this retry could not be found.');
       return;
     }
 
@@ -1373,7 +1381,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
               console.error('AG-UI retry error:', error);
 
               this.failRunningActivities();
-              this.errorMessage.set('Something went wrong while retrying the response.');
+              this.notifyError('Something went wrong while retrying the response.');
               this.activeRunSubscription = null;
               this.activeAssistantMessageId = null;
               this.activeUserMessageId = null;
@@ -1391,7 +1399,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         error: error => {
           console.error('Failed to prepare Copilot retry:', error);
 
-          this.errorMessage.set(
+          this.notifyError(
             error?.status === 409
               ? 'Only the latest interrupted request can be retried.'
               : 'The interrupted response could not be retried.'
@@ -1417,7 +1425,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     }
 
     if (!this.canRetryStoppedTurn(userMessageId)) {
-      this.errorMessage.set('Only the latest interrupted request can be edited.');
+      this.notifyError('Only the latest interrupted request can be edited.');
       return;
     }
 
@@ -1428,7 +1436,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     );
 
     if (!userMessage) {
-      this.errorMessage.set('The original message could not be found.');
+      this.notifyError('The original message could not be found.');
       return;
     }
 
@@ -1499,7 +1507,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     const userMessageIndex = messages.findIndex(message => message.id === userMessageId && message.role === 'user');
 
     if (userMessageIndex < 0) {
-      this.errorMessage.set('The original user message could not be found.');
+      this.notifyError('The original user message could not be found.');
       return;
     }
 
@@ -1508,7 +1516,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
       .find(message => message.role === 'assistant' && !message.turnStopped && !!message.content);
 
     if (!assistantMessage) {
-      this.errorMessage.set('The completed response could not be found.');
+      this.notifyError('The completed response could not be found.');
       return;
     }
 
@@ -1567,7 +1575,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
             error: error => {
               console.error('AG-UI completed edit error:', error);
               this.failRunningActivities();
-              this.errorMessage.set('Something went wrong while processing the edited prompt.');
+              this.notifyError('Something went wrong while processing the edited prompt.');
               this.activeRunSubscription = null;
               this.activeAssistantMessageId = null;
               this.activeUserMessageId = null;
@@ -1584,7 +1592,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         },
         error: error => {
           console.error('Failed to edit completed Copilot turn:', error);
-          this.errorMessage.set(error?.error?.message ?? 'The completed prompt could not be edited.');
+          this.notifyError(error?.error?.message ?? 'The completed prompt could not be edited.');
           this.activeAssistantMessageId = null;
           this.activeUserMessageId = null;
           this.isSending.set(false);
@@ -1613,12 +1621,12 @@ showNextVersion(assistantMessage: CopilotMessage): void {
     );
 
     if (!stoppedAssistantMessage) {
-      this.errorMessage.set('The interrupted response could not be found.');
+      this.notifyError('The interrupted response could not be found.');
       return;
     }
 
     if (!this.canRetryStoppedTurn(userMessageId)) {
-      this.errorMessage.set('Only the latest interrupted request can be edited.');
+      this.notifyError('Only the latest interrupted request can be edited.');
       return;
     }
 
@@ -1697,7 +1705,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
               console.error('AG-UI edited prompt error:', error);
 
               this.failRunningActivities();
-              this.errorMessage.set('Something went wrong while processing the edited prompt.');
+              this.notifyError('Something went wrong while processing the edited prompt.');
               this.activeRunSubscription = null;
               this.activeAssistantMessageId = null;
               this.activeUserMessageId = null;
@@ -1715,7 +1723,7 @@ showNextVersion(assistantMessage: CopilotMessage): void {
         error: error => {
           console.error('Failed to edit Copilot turn:', error);
 
-          this.errorMessage.set(
+          this.notifyError(
             error?.status === 409
               ? 'Only the latest interrupted request can be edited.'
               : 'The interrupted prompt could not be edited.'

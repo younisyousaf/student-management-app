@@ -1,66 +1,97 @@
 <div class="courses-page">
-  <div class="header-row">
-    <h2>Courses</h2>
-    <a routerLink="/courses/new">+ Add Course</a>
-  </div>
+  <header class="page-header">
+    <div class="page-header__identity">
+      <span class="page-header__icon"><svg lucideBookOpen></svg></span>
+      <div>
+        <h1>Courses</h1>
+        <p>Manage academic courses, durations and fee structures.</p>
+      </div>
+    </div>
+    <a routerLink="/courses/new" class="primary-action"><svg lucidePlus></svg><span>Add course</span></a>
+  </header>
+
   @if (coursesResource.isLoading()) {
-  <div class="loading-state">
-    Loading courses...
-  </div>
+    <div class="state-card">
+      <span class="state-loader"></span>
+      <strong>Loading courses</strong>
+      <p>Fetching course information...</p>
+    </div>
   } @else if (coursesResource.error()) {
-  <p class="error">Could not load courses.</p>
+    <div class="state-card state-card--error">
+      <svg lucideTriangleAlert></svg>
+      <strong>Unable to load courses</strong>
+      <p>Please try again.</p>
+    </div>
   } @else {
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Code</th>
-          <th>Name</th>
-          <th>Duration</th>
-          <th>Fee</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (course of coursesResource.value()?.data?.items ?? []; track course.id) {
-        <tr>
-          <td>{{ course.code }}</td>
-          <td>{{ course.name }}</td>
-          <td>{{ course.durationMonths }} months</td>
-          <td>{{ course.feeAmount | currency }}</td>
-          <td class="table-actions-cell">
-            <div class="table-actions">
-              <a class="action-link" [routerLink]="['/courses', course.id, 'edit']">
-                Edit
-              </a>
-              <button class="btn-danger" (click)="deleteCourse(course.id)">
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="5" class="empty-state-cell">
-            No courses yet.
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <app-pagination [pageNumber]="
-    coursesResource.value()?.data?.pageNumber ??
-    pageNumber()
-  " [totalPages]="
-    coursesResource.value()?.data?.totalPages ??
-    0
-  " [totalCount]="
-    coursesResource.value()?.data?.totalCount ??
-    0
-  " [isLoading]="
-    coursesResource.isLoading()
-  " (pageChange)="changePage($event)">
-  </app-pagination>
+    <section class="data-card">
+      <div class="data-card__header">
+        <div>
+          <strong>Course catalog</strong>
+          <span>Available academic courses</span>
+        </div>
+        <span class="record-badge">{{ coursesResource.value()?.data?.totalCount ?? 0 }} total</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Course</th><th>Code</th><th>Duration</th><th>Fee</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (course of coursesResource.value()?.data?.items ?? []; track course.id) {
+              <tr>
+                <td>
+                  <div class="course-cell">
+                    <span class="course-icon"><svg lucideBookOpen></svg></span>
+                    <div>
+                      <strong>{{ course.name }}</strong>
+                      <span>{{ course.description || 'No description provided' }}</span>
+                    </div>
+                  </div>
+                </td>
+                <td><span class="code-badge">{{ course.code }}</span></td>
+                <td><span class="duration-cell"><svg lucideClock3></svg>{{ course.durationMonths }} months</span></td>
+                <td><strong class="fee-value">{{ course.feeAmount | currency }}</strong></td>
+                <td>
+                  <div class="row-actions">
+                    <a [routerLink]="['/courses', course.id, 'edit']" title="Edit course" aria-label="Edit course"><svg lucidePencil></svg></a>
+                    <button type="button" class="danger" title="Delete course" aria-label="Delete course" (click)="requestDelete(course)"><svg lucideTrash2></svg></button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <span><svg lucideBookOpen></svg></span>
+                    <strong>No courses yet</strong>
+                    <p>Create your first academic course.</p>
+                    <a routerLink="/courses/new"><svg lucidePlus></svg>Add course</a>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <app-pagination [pageNumber]="coursesResource.value()?.data?.pageNumber ?? pageNumber()" [totalPages]="coursesResource.value()?.data?.totalPages ?? 0" [totalCount]="coursesResource.value()?.data?.totalCount ?? 0" [isLoading]="coursesResource.isLoading()" (pageChange)="changePage($event)" />
   }
 </div>
+
+@if (coursePendingDelete(); as course) {
+  <div class="delete-backdrop" (click)="cancelDelete()">
+    <section class="delete-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="delete-dialog__close" (click)="cancelDelete()" [disabled]="isDeleting()" aria-label="Close"><svg lucideX></svg></button>
+      <span class="delete-dialog__icon"><svg lucideTrash2></svg></span>
+      <h3>Delete course?</h3>
+      <p><strong>{{ course.name }}</strong> ({{ course.code }}) will be permanently removed.</p>
+      <div class="delete-dialog__warning"><svg lucideTriangleAlert></svg><span>This action cannot be undone.</span></div>
+      <div class="delete-dialog__actions">
+        <button type="button" (click)="cancelDelete()" [disabled]="isDeleting()">Cancel</button>
+        <button type="button" class="delete-confirm" (click)="deleteCourse()" [disabled]="isDeleting()"><svg lucideTrash2></svg><span>{{ isDeleting() ? 'Deleting...' : 'Delete course' }}</span></button>
+      </div>
+    </section>
+  </div>
+}

@@ -1,72 +1,97 @@
 <div class="fees-page">
-  <div class="header-row">
-    <h2>Fee Ledger</h2>
-  </div>
+  <header class="page-header">
+    <div class="page-header__identity">
+      <span class="page-header__icon"><svg lucideWalletCards></svg></span>
+      <div>
+        <h1>Fee Ledger</h1>
+        <p>Track student fees, payments and outstanding balances.</p>
+      </div>
+    </div>
+  </header>
+
   @if (isLoading()) {
-  <div class="loading-state">
-    Loading fee records...
-  </div>
+    <div class="state-card">
+      <span class="state-loader"></span>
+      <strong>Loading fee ledger</strong>
+      <p>Fetching financial records...</p>
+    </div>
+  } @else if (hasError()) {
+    <div class="state-card state-card--error">
+      <svg lucideTriangleAlert></svg>
+      <strong>Unable to load fee records</strong>
+      <p>Please try again.</p>
+    </div>
   } @else {
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Student</th>
-          <th>Course</th>
-          <th>Due</th>
-          <th>Paid</th>
-          <th>Balance</th>
-          <th>Status</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (row of rows(); track row.id) {
-        <tr>
-          <td>{{ row.studentName }}</td>
-          <td>{{ row.courseName }}</td>
-          <td>{{ row.amountDue | currency }}</td>
-          <td>{{ row.amountPaid | currency }}</td>
-          <td>{{ row.remainingBalance | currency }}</td>
-          <td>
-            <span class="status-badge" [class.status-badge--success]="row.isFullySettled"
-              [class.status-badge--warning]="!row.isFullySettled">
-              {{ row.statusLabel }}
-            </span>
-          </td>
-          <td class="table-actions-cell">
-            @if (!row.isFullySettled) {
-            <div class="table-actions">
-              <a class="action-link" [routerLink]="['/fees/pay']"
-                [queryParams]="{studentId: row.studentId, courseId: row.courseId}">
-                Record Payment
-              </a>
-            </div>
+    <section class="data-card">
+      <div class="data-card__header">
+        <div>
+          <strong>Student fee accounts</strong>
+          <span>Course fees and payment balances.</span>
+        </div>
+        <span class="record-badge">{{ feesResource.value()?.data?.totalCount ?? 0 }} total</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Course</th><th>Fee</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (row of rows(); track row.id) {
+              <tr>
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--student"><svg lucideUserRound></svg></span>
+                    <div><strong>{{ row.studentName }}</strong><span>{{ row.studentRollNumber }}</span></div>
+                  </div>
+                </td>
+
+                <td>
+                  <div class="entity-cell">
+                    <span class="entity-icon entity-icon--course"><svg lucideBookOpen></svg></span>
+                    <div><strong>{{ row.courseName }}</strong><span>{{ row.courseCode }}</span></div>
+                  </div>
+                </td>
+
+                <td><strong class="money-value">{{ row.amountDue | currency }}</strong></td>
+                <td><span class="money-value money-value--paid">{{ row.amountPaid | currency }}</span></td>
+                <td><strong class="money-value" [class.money-value--outstanding]="row.remainingBalance > 0">{{ row.remainingBalance | currency }}</strong></td>
+
+                <td>
+                  <span class="status-badge"
+                    [class.status-badge--paid]="row.status === 2"
+                    [class.status-badge--partial]="row.status === 1"
+                    [class.status-badge--unpaid]="row.status === 0">
+                    <span></span>{{ row.statusLabel }}
+                  </span>
+                </td>
+
+                <td>
+                  @if (!row.isFullySettled) {
+                    <a class="payment-action" [routerLink]="['/fees/pay']" [queryParams]="{ studentId: row.studentId, courseId: row.courseId }">
+                      <svg lucideCreditCard></svg><span>Record payment</span>
+                    </a>
+                  } @else {
+                    <span class="settled-label"><svg lucideCircleDollarSign></svg>Settled</span>
+                  }
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="7">
+                  <div class="empty-state">
+                    <span><svg lucideReceiptText></svg></span>
+                    <strong>No fee records yet</strong>
+                    <p>Fee records will appear when student financial accounts are available.</p>
+                  </div>
+                </td>
+              </tr>
             }
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="7" class="empty-state-cell">
-            No fee records yet.
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <app-pagination [pageNumber]="
-    feesResource.value()?.data?.pageNumber ??
-    pageNumber()
-  " [totalPages]="
-    feesResource.value()?.data?.totalPages ??
-    0
-  " [totalCount]="
-    feesResource.value()?.data?.totalCount ??
-    0
-  " [isLoading]="
-    feesResource.isLoading()
-  " (pageChange)="changePage($event)">
-  </app-pagination>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <app-pagination [pageNumber]="feesResource.value()?.data?.pageNumber ?? pageNumber()" [totalPages]="feesResource.value()?.data?.totalPages ?? 0" [totalCount]="feesResource.value()?.data?.totalCount ?? 0" [isLoading]="feesResource.isLoading()" (pageChange)="changePage($event)" />
   }
 </div>

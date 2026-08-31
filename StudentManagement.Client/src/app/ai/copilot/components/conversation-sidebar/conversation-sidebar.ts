@@ -1,8 +1,11 @@
 import { Component, input, output } from '@angular/core';
+import { LucideCheck, LucideChevronLeft, LucideChevronRight, LucideHistory, LucideMessageSquareText, LucideMoreHorizontal, LucidePencil, LucidePlus, LucideTrash2, LucideX } from '@lucide/angular';
 import { CopilotConversation } from '../../models/copilot.model';
+
 @Component({
   selector: 'app-conversation-sidebar',
   standalone: true,
+  imports: [LucideCheck, LucideChevronLeft, LucideChevronRight, LucideHistory, LucideMessageSquareText, LucideMoreHorizontal, LucidePencil, LucidePlus, LucideTrash2, LucideX],
   templateUrl: './conversation-sidebar.html',
   styleUrl: './conversation-sidebar.scss'
 })
@@ -21,26 +24,15 @@ export class ConversationSidebar {
   readonly renamingThreadId = input.required<string | null>();
   readonly renameTitle = input.required<string>();
   readonly managingThreadId = input.required<string | null>();
+
   readonly newConversation = output<void>();
   readonly openConversation = output<CopilotConversation>();
-  readonly toggleMenu = output<{
-    threadId: string;
-    event: Event;
-  }>();
-  readonly beginRename = output<{
-    conversation: CopilotConversation;
-    event: Event;
-  }>();
+  readonly toggleMenu = output<{ threadId: string; event: Event }>();
+  readonly beginRename = output<{ conversation: CopilotConversation; event: Event }>();
   readonly renameInput = output<Event>();
-  readonly saveRename = output<{
-    conversation: CopilotConversation;
-    event: Event;
-  }>();
+  readonly saveRename = output<{ conversation: CopilotConversation; event: Event }>();
   readonly cancelRename = output<Event | undefined>();
-  readonly deleteRequest = output<{
-    conversation: CopilotConversation;
-    event: Event;
-  }>();
+  readonly deleteRequest = output<{ conversation: CopilotConversation; event: Event }>();
   readonly previousPage = output<void>();
   readonly nextPage = output<void>();
 }

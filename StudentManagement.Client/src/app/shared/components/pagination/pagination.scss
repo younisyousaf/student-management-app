@@ -1,77 +1,63 @@
+.pagination-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 14px;
+}
+
 .pagination {
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 0.75rem;
-  margin-top: 1.25rem;
+  gap: 7px;
+
+  button {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: 10px;
+    background: #fff;
+    color: #64748b;
+    transition: all .18s ease;
+
+    svg {
+      width: 15px;
+      height: 15px;
+    }
+
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      border-color: rgba(99, 91, 255, .35);
+      background: var(--color-primary-soft);
+      color: var(--color-primary);
+    }
+
+    &:disabled {
+      opacity: .35;
+    }
+  }
+
   span {
-    min-width: 100px;
-    text-align: center;
-    font-size: 0.85rem;
-    font-weight: 500;
-    color: var(--color-text-muted);
+    color: #7c8798;
+    font-size: .72rem;
+
+    strong {
+      color: #334155;
+    }
   }
 }
-.pagination-arrow {
-  width: 34px;
-  height: 34px;
-  padding: 0;
-  display: grid;
-  place-items: center;
-  color: var(--color-text);
-  border:
-    1px solid var(--color-border);
-  border-radius:
-    var(--radius);
-  background:
-    var(--color-surface);
-  cursor: pointer;
-  transition:
-    background-color 0.15s ease,
-    border-color 0.15s ease,
-    transform 0.15s ease;
-  &::before {
-    content: '';
-    width: 7px;
-    height: 7px;
-    border-top:
-      1.5px solid currentColor;
-    border-right:
-      1.5px solid currentColor;
-  }
-  &.previous::before {
-    transform:
-      rotate(-135deg);
-  }
-  &.next::before {
-    transform:
-      rotate(45deg);
-  }
-  &:hover:not(:disabled) {
-    background:
-      var(--color-surface-subtle);
-    border-color:
-      var(--color-primary);
-  }
-  &:active:not(:disabled) {
-    transform:
-      translateY(1px);
-  }
-  &:focus-visible {
-    outline: none;
-    box-shadow:
-      0 0 0 3px
-      rgba(79, 70, 229, 0.15);
-  }
-  &:disabled {
-    cursor: not-allowed;
-    opacity: 0.4;
-  }
-}
+
 .pagination-count {
-  margin: 0.5rem 0 0;
-  text-align: center;
-  font-size: 0.78rem;
-  color:
-    var(--color-text-muted);
+  color: #94a3b8;
+  font-size: .7rem;
+}
+
+@media (max-width: 520px) {
+  .pagination-wrapper {
+    align-items: flex-end;
+    flex-direction: column-reverse;
+  }
 }

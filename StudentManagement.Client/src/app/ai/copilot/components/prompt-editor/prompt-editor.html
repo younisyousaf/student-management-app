@@ -1,25 +1,10 @@
 <div class="prompt-editor">
-  <textarea
-    rows="3"
-    [value]="value()"
-    [disabled]="disabled()"
-    (input)="onInput($event)">
-  </textarea>
-
-  <div class="prompt-editor__actions">
-    <button
-      type="button"
-      [disabled]="disabled()"
-      (click)="cancel.emit()">
-      Cancel
-    </button>
-
-    <button
-      type="button"
-      class="prompt-editor__submit"
-      [disabled]="disabled() || !value().trim()"
-      (click)="submit.emit()">
-      {{ disabled() ? 'Sending...' : 'Send' }}
-    </button>
+  <textarea rows="3" [value]="value()" [disabled]="disabled()" (input)="onInput($event)" placeholder="Edit your prompt..."></textarea>
+  <div class="prompt-editor__footer">
+    <span>Editing this prompt creates a new conversation branch.</span>
+    <div class="prompt-editor__actions">
+      <button type="button" class="cancel" [disabled]="disabled()" (click)="cancel.emit()"><svg lucideX></svg><span>Cancel</span></button>
+      <button type="button" class="submit" [disabled]="disabled() || !value().trim()" (click)="submit.emit()"><svg lucideSend></svg><span>{{ disabled() ? 'Sending...' : 'Send' }}</span></button>
+    </div>
   </div>
 </div>

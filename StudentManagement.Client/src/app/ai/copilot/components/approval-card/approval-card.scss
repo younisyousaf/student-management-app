@@ -1,93 +1,158 @@
 .approval-card {
-  margin: 0 0 1rem;
-  padding: 1rem;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius-lg);
-  background: #fffbeb;
+  margin: 0 clamp(18px, 4vw, 52px) 14px;
+  padding: 16px;
+  border: 1px solid rgba(245, 158, 11, .3);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fffdf7, #fffaf0);
+  box-shadow: 0 10px 30px rgba(146, 64, 14, .07);
+  animation: approvalEnter .24s ease-out;
+
+  &__header {
+    display: flex;
+    align-items: flex-start;
+    gap: 11px;
+
+    h3 {
+      margin: 3px 0 0;
+      color: #78350f;
+      font-size: .92rem;
+      font-weight: 720;
+    }
+
+    p {
+      margin: 4px 0 0;
+      color: #8b6b45;
+      font-size: .72rem;
+      line-height: 1.5;
+    }
+  }
+
+  &__icon {
+    width: 36px;
+    height: 36px;
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    border-radius: 11px;
+    background: #fef3c7;
+    color: #d97706;
+
+    svg {
+      width: 18px;
+      height: 18px;
+    }
+  }
 }
-.approval-card__header {
-  display: flex;
-  align-items: flex-start;
-  justify-content: space-between;
-}
-.approval-card__header h3 {
-  margin: 0.2rem 0 0;
-  color: #92400e;
-  font-size: 1rem;
-}
+
 .approval-label {
   color: #b45309;
-  font-size: 0.72rem;
-  font-weight: 600;
+  font-size: .58rem;
+  font-weight: 800;
+  letter-spacing: .08em;
   text-transform: uppercase;
-  letter-spacing: 0.04em;
 }
-.approval-description {
-  margin: 0.75rem 0;
-  color: var(--color-text-muted);
-  font-size: 0.85rem;
-}
+
 .approval-details {
+  margin-top: 13px;
   overflow: hidden;
-  border: 1px solid #fde68a;
-  border-radius: var(--radius);
-  background: var(--color-surface);
+  border: 1px solid #f4e4c5;
+  border-radius: 11px;
+  background: rgba(255, 255, 255, .8);
 }
+
 .approval-detail {
   display: grid;
-  grid-template-columns: minmax(110px, 0.35fr) 1fr;
-  gap: 0.75rem;
-  padding: 0.65rem 0.75rem;
+  grid-template-columns: minmax(110px, .35fr) 1fr;
+  gap: 12px;
+  padding: 9px 11px;
+
+  +.approval-detail {
+    border-top: 1px solid #f2e8d7;
+  }
+
+  span {
+    color: #8b7b68;
+    font-size: .66rem;
+  }
+
+  strong {
+    color: #4b3d2b;
+    font-size: .7rem;
+    font-weight: 620;
+    overflow-wrap: anywhere;
+  }
 }
-.approval-detail + .approval-detail {
-  border-top: 1px solid var(--color-border);
-}
-.approval-detail__label {
-  color: var(--color-text-muted);
-  font-size: 0.78rem;
-  font-weight: 500;
-}
-.approval-detail__value {
-  color: var(--color-text);
-  font-size: 0.85rem;
-  font-weight: 500;
-  overflow-wrap: anywhere;
-}
+
 .approval-warning {
-  margin-top: 0.75rem;
-  padding: 0.65rem 0.75rem;
-  border-radius: var(--radius);
+  display: flex;
+  align-items: flex-start;
+  gap: 7px;
+  margin-top: 11px;
+  padding: 9px 10px;
+  border-radius: 10px;
   background: #fef3c7;
   color: #92400e;
-  font-size: 0.8rem;
+  font-size: .68rem;
+  line-height: 1.45;
+
+  svg {
+    width: 14px;
+    height: 14px;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
 }
+
 .approval-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 0.5rem;
-  margin-top: 1rem;
+  gap: 7px;
+  margin-top: 14px;
+
+  button {
+    min-height: 36px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    padding: 0 12px;
+    border-radius: 10px;
+    font-size: .7rem;
+    font-weight: 650;
+
+    svg {
+      width: 14px;
+      height: 14px;
+    }
+  }
 }
-.approval-actions button {
-  min-width: 90px;
-}
-.approval-confirm {
-  background: var(--color-primary);
-  border-color: var(--color-primary);
-  color: #fff;
-}
-.approval-confirm:hover:not(:disabled) {
-  background: var(--color-primary-hover);
-}
+
 .approval-reject {
   border-color: #fecaca;
-  color: var(--color-danger);
-}
-.approval-reject:hover:not(:disabled) {
-  background: #fef2f2;
-}
-@media (max-width: 700px) {
-  .approval-detail {
-    grid-template-columns: 1fr;
-    gap: 0.2rem;
+  background: #fff;
+  color: #dc2626;
+
+  &:hover:not(:disabled) {
+    background: #fff1f2;
   }
+}
+
+.approval-confirm {
+  border-color: #d97706;
+  background: linear-gradient(135deg, #f59e0b, #d97706);
+  color: #fff;
+  box-shadow: 0 5px 14px rgba(217, 119, 6, .18);
+
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+  }
+}
+
+@keyframes approvalEnter {
+  from { opacity: 0; transform: translateY(6px) scale(.99); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@media (max-width: 700px) {
+  .approval-card { margin-inline: 12px; }
+  .approval-detail { grid-template-columns: 1fr; gap: 2px; }
 }

@@ -1,38 +1,62 @@
-import { Component, signal } from '@angular/core';
+import { Component, inject, signal } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterLink } from '@angular/router';
+import { LucideArrowRight, LucideBrainCircuit, LucideEye, LucideEyeOff, LucideLockKeyhole, LucideMail, LucideShieldCheck, LucideSparkles, LucideUserPlus, LucideUserRound } from '@lucide/angular';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
+
 @Component({
   selector: 'app-register',
   standalone: true,
-  imports: [FormsModule, RouterLink],
-  templateUrl: './register.html'
+  imports: [FormsModule, RouterLink, LucideArrowRight, LucideBrainCircuit, LucideEye, LucideEyeOff, LucideLockKeyhole, LucideMail, LucideShieldCheck, LucideSparkles, LucideUserPlus, LucideUserRound],
+  templateUrl: './register.html',
+  styleUrl: './register.scss'
 })
 export class Register {
-  username = signal('');
-  email = signal('');
-  password = signal('');
-  errorMessage = signal<string | null>(null);
-  isLoading = signal(false);
-  success = signal(false);
-  constructor(private authService: AuthService, private router: Router) {}
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly toastService = inject(ToastService);
+
+  readonly username = signal('');
+  readonly email = signal('');
+  readonly password = signal('');
+  readonly confirmPassword = signal('');
+  readonly showPassword = signal(false);
+  readonly isLoading = signal(false);
+
   onSubmit(): void {
-    this.errorMessage.set(null);
+    if (!this.username().trim() || !this.email().trim() || !this.password() || !this.confirmPassword()) {
+      this.toastService.warning('Details required', 'Complete all account fields.');
+      return;
+    }
+
+    if (this.password() !== this.confirmPassword()) {
+      this.toastService.warning('Passwords do not match', 'Enter the same password in both fields.');
+      return;
+    }
+
     this.isLoading.set(true);
     this.authService.register({
-      username: this.username(),
-      email: this.email(),
+      username: this.username().trim(),
+      email: this.email().trim(),
       password: this.password()
     }).subscribe({
       next: () => {
-        this.success.set(true);
-        this.isLoading.set(false);
-        setTimeout(() => this.router.navigate(['/login']), 1200);
+        this.toastService.success('Account created', 'Your SmartCampus account is ready. Sign in to continue.');
+        this.router.navigate(['/login']);
       },
-      error: (err) => {
-        this.errorMessage.set(err.error?.message ?? 'Registration failed.');
+      error: (err: unknown) => {
         this.isLoading.set(false);
+        this.toastService.error('Registration failed', this.extractErrorMessage(err));
       }
     });
+  }
+
+  private extractErrorMessage(err: unknown): string {
+    if (err && typeof err === 'object' && 'error' in err) {
+      const error = (err as { error?: { message?: string } }).error;
+      if (error?.message) return error.message;
+    }
+    return 'The account could not be created.';
   }
 }

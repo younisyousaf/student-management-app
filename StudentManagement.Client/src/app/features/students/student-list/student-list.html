@@ -1,66 +1,100 @@
 <div class="students-page">
-  <div class="header-row">
-    <h2>Students</h2>
-    <a routerLink="/students/new">+ Add Student</a>
-  </div>
+  <header class="page-header">
+    <div class="page-header__identity">
+      <span class="page-header__icon"><svg lucideUsers></svg></span>
+      <div>
+        <h1>Students</h1>
+        <p>Manage student profiles and academic identities.</p>
+      </div>
+    </div>
+    <a routerLink="/students/new" class="primary-action"><svg lucidePlus></svg><span>Add student</span></a>
+  </header>
+
   @if (studentsResource.isLoading()) {
-  <div class="loading-state" role="status" aria-live="polite">
-    Loading students...
-  </div>
+    <div class="state-card">
+      <span class="state-loader"></span>
+      <strong>Loading students</strong>
+      <p>Fetching student records...</p>
+    </div>
   } @else if (studentsResource.error()) {
-  <p class="error" role="alert">Could not load students.</p>
+    <div class="state-card state-card--error">
+      <svg lucideTriangleAlert></svg>
+      <strong>Unable to load students</strong>
+      <p>Please try again.</p>
+    </div>
   } @else {
-  <div class="table-container">
-    <table>
-      <thead>
-        <tr>
-          <th>Roll #</th>
-          <th>Name</th>
-          <th>Email</th>
-          <th>Phone</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        @for (student of studentsResource.value()?.data?.items ?? []; track student.id) {
-        <tr>
-          <td>{{ student.rollNumber }}</td>
-          <td>{{ student.fullName }}</td>
-          <td>{{ student.email }}</td>
-          <td>{{ student.phone || '—' }}</td>
-          <td class="table-actions-cell">
-            <div class="table-actions">
-              <a class="action-link" [routerLink]="['/students', student.id, 'edit']">
-                Edit
-              </a>
-              <button class="btn-danger" (click)="deleteStudent(student.id)">
-                Delete
-              </button>
-            </div>
-          </td>
-        </tr>
-        } @empty {
-        <tr>
-          <td colspan="5" class="empty-state-cell">
-            No students yet.
-          </td>
-        </tr>
-        }
-      </tbody>
-    </table>
-  </div>
-  <app-pagination [pageNumber]="
-    studentsResource.value()?.data?.pageNumber ??
-    pageNumber()
-  " [totalPages]="
-    studentsResource.value()?.data?.totalPages ??
-    0
-  " [totalCount]="
-    studentsResource.value()?.data?.totalCount ??
-    0
-  " [isLoading]="
-    studentsResource.isLoading()
-  " (pageChange)="changePage($event)">
-  </app-pagination>
+    <section class="data-card">
+      <div class="data-card__header">
+        <div>
+          <strong>Student directory</strong>
+          <span>Registered students</span>
+        </div>
+        <span class="record-badge">{{ studentsResource.value()?.data?.totalCount ?? 0 }} total</span>
+      </div>
+
+      <div class="table-container">
+        <table>
+          <thead>
+            <tr><th>Student</th><th>Roll number</th><th>Contact</th><th>Phone</th><th>Actions</th></tr>
+          </thead>
+          <tbody>
+            @for (student of studentsResource.value()?.data?.items ?? []; track student.id) {
+              <tr>
+                <td>
+                  <div class="student-cell">
+                    <span class="student-avatar"><svg lucideUserRound></svg></span>
+                    <div><strong>{{ student.fullName }}</strong><span>ID #{{ student.id }}</span></div>
+                  </div>
+                </td>
+                <td><span class="roll-badge">{{ student.rollNumber }}</span></td>
+                <td><span class="contact-cell"><svg lucideMail></svg>{{ student.email }}</span></td>
+                <td>
+                  @if (student.phone) {
+                    <span class="contact-cell"><svg lucidePhone></svg>{{ student.phone }}</span>
+                  } @else {
+                    <span class="muted-value">Not provided</span>
+                  }
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <a [routerLink]="['/students', student.id, 'edit']" title="Edit student" aria-label="Edit student"><svg lucidePencil></svg></a>
+                    <button type="button" class="danger" title="Delete student" aria-label="Delete student" (click)="requestDelete(student)"><svg lucideTrash2></svg></button>
+                  </div>
+                </td>
+              </tr>
+            } @empty {
+              <tr>
+                <td colspan="5">
+                  <div class="empty-state">
+                    <span><svg lucideUsers></svg></span>
+                    <strong>No students yet</strong>
+                    <p>Add your first student to get started.</p>
+                    <a routerLink="/students/new"><svg lucidePlus></svg>Add student</a>
+                  </div>
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <app-pagination [pageNumber]="studentsResource.value()?.data?.pageNumber ?? pageNumber()" [totalPages]="studentsResource.value()?.data?.totalPages ?? 0" [totalCount]="studentsResource.value()?.data?.totalCount ?? 0" [isLoading]="studentsResource.isLoading()" (pageChange)="changePage($event)" />
   }
 </div>
+
+@if (studentPendingDelete(); as student) {
+  <div class="delete-backdrop" (click)="cancelDelete()">
+    <section class="delete-dialog" role="dialog" aria-modal="true" (click)="$event.stopPropagation()">
+      <button type="button" class="delete-dialog__close" (click)="cancelDelete()" [disabled]="isDeleting()"><svg lucideX></svg></button>
+      <span class="delete-dialog__icon"><svg lucideTrash2></svg></span>
+      <h3>Delete student?</h3>
+      <p><strong>{{ student.fullName }}</strong> will be permanently removed.</p>
+      <div class="delete-dialog__warning"><svg lucideTriangleAlert></svg>This action cannot be undone.</div>
+      <div class="delete-dialog__actions">
+        <button type="button" (click)="cancelDelete()" [disabled]="isDeleting()">Cancel</button>
+        <button type="button" class="delete-confirm" (click)="deleteStudent()" [disabled]="isDeleting()"><svg lucideTrash2></svg>{{ isDeleting() ? 'Deleting...' : 'Delete student' }}</button>
+      </div>
+    </section>
+  </div>
+}

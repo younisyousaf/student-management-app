@@ -1,39 +1,78 @@
 .version-navigator {
+  width: fit-content;
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: .3rem;
-  margin-top: .6rem;
+  gap: 3px;
+  margin-top: 10px;
+  padding: 3px;
+  border: 1px solid #e5e8ef;
+  border-radius: 10px;
+  background: #fafbfc;
+  animation: navigatorEnter .2s ease;
+
+  &__branch {
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    color: #8177ea;
+
+    svg {
+      width: 12px;
+      height: 12px;
+    }
+  }
+
+  button {
+    width: 25px;
+    height: 25px;
+    display: grid;
+    place-items: center;
+    padding: 0;
+    border: 0;
+    border-radius: 7px;
+    background: transparent;
+    color: #64748b;
+
+    svg {
+      width: 13px;
+      height: 13px;
+    }
+
+    &:hover:not(:disabled) {
+      background: #eceaff;
+      color: #635bff;
+    }
+
+    &:disabled {
+      opacity: .25;
+    }
+  }
+
+  &__label {
+    min-width: 36px;
+    color: #697386;
+    text-align: center;
+    font-size: .61rem;
+    font-weight: 700;
+  }
 }
 
-.version-navigator button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 28px;
-  height: 28px;
-  padding: 0;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius);
-  background: var(--color-surface);
-  color: var(--color-text);
-  font-size: 1.1rem;
-  cursor: pointer;
+.version-loading {
+  width: 11px;
+  height: 11px;
+  display: inline-block;
+  border: 1.5px solid #d8dbe5;
+  border-top-color: #635bff;
+  border-radius: 50%;
+  animation: versionSpin .7s linear infinite;
 }
 
-.version-navigator button:hover:not(:disabled) {
-  background: var(--color-surface-subtle);
+@keyframes versionSpin {
+  to { transform: rotate(360deg); }
 }
 
-.version-navigator button:disabled {
-  cursor: default;
-  opacity: .35;
-}
-
-.version-navigator__label {
-  min-width: 42px;
-  color: var(--color-text-muted);
-  font-size: .75rem;
-  font-weight: 600;
-  text-align: center;
+@keyframes navigatorEnter {
+  from { opacity: 0; transform: translateY(3px); }
+  to { opacity: 1; transform: translateY(0); }
 }

@@ -1,49 +1,99 @@
-<div class="form-page">
-  <h2>{{ isEditMode() ? 'Edit Attendance' : 'Mark Attendance' }}</h2>
+<div class="attendance-form-page">
+  <a routerLink="/attendance" class="back-link"><svg lucideArrowLeft></svg><span>Back to attendance</span></a>
+
+  <header class="form-header">
+    <span class="form-header__icon"><svg lucideCalendarCheck></svg></span>
+    <div>
+      <h1>{{ isEditMode() ? 'Edit attendance' : 'Mark attendance' }}</h1>
+      <p>{{ isEditMode() ? 'Update attendance status and remarks.' : 'Record attendance for a student and course.' }}</p>
+    </div>
+  </header>
+
   @if (isLoading()) {
-  <div class="form-loading-state">
-    Loading attendance...
-  </div>
+    <div class="form-loading">
+      <span class="state-loader"></span>
+      <strong>Loading attendance</strong>
+    </div>
   } @else {
-  <form (ngSubmit)="onSubmit()">
-    @if (!isEditMode()) {
-    <label>Student
-      <select [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
-        <option [ngValue]="null">-- Select a student --</option>
-        @for (student of studentsResource.value()?.data ?? []; track student.id) {
-        <option [ngValue]="student.id">{{ student.fullName }} ({{ student.rollNumber }})</option>
-        }
-      </select>
-    </label>
-    <label>Course
-      <select [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
-        <option [ngValue]="null">-- Select a course --</option>
-        @for (course of coursesResource.value()?.data ?? []; track course.id) {
-        <option [ngValue]="course.id">{{ course.name }} ({{ course.code }})</option>
-        }
-      </select>
-    </label>
-    <label>Date
-      <input type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" name="date" required />
-    </label>
-    }
-    <label>Status
-      <select [ngModel]="status()" (ngModelChange)="status.set($event)" name="status" required>
-        @for (option of statusOptions; track option.value) {
-        <option [ngValue]="option.value">{{ option.label }}</option>
-        }
-      </select>
-    </label>
-    <label>Remarks
-      <input type="text" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" />
-    </label>
-    @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-    }
-    <button type="submit" [disabled]="isSaving()">
-      {{ isSaving() ? 'Saving...' : 'Save' }}
-    </button>
-  </form>
+    <form class="form-card" (ngSubmit)="onSubmit()">
+      <section class="form-section">
+        <div class="form-section__heading">
+          <strong>Attendance details</strong>
+          <span>{{ isEditMode() ? 'Recorded attendance context cannot be changed.' : 'Choose the student, course and attendance date.' }}</span>
+        </div>
+
+        <div class="form-grid">
+          @if (!isEditMode()) {
+            <div class="field">
+              <label for="student">Student</label>
+              <div class="select-wrapper">
+                <svg lucideUserRound></svg>
+                <select id="student" [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
+                  <option [ngValue]="null">Select a student</option>
+                  @for (student of studentsResource.value()?.data ?? []; track student.id) {
+                    <option [ngValue]="student.id">{{ student.fullName }} — {{ student.rollNumber }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="course">Course</label>
+              <div class="select-wrapper">
+                <svg lucideBookOpen></svg>
+                <select id="course" [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
+                  <option [ngValue]="null">Select a course</option>
+                  @for (course of coursesResource.value()?.data ?? []; track course.id) {
+                    <option [ngValue]="course.id">{{ course.name }} — {{ course.code }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="date">Attendance date</label>
+              <div class="input-icon">
+                <svg lucideCalendarDays></svg>
+                <input id="date" type="date" [ngModel]="date()" (ngModelChange)="date.set($event)" name="date" required>
+              </div>
+            </div>
+          } @else {
+            <div class="context-card">
+              <span><svg lucideUserRound></svg></span>
+              <div><small>Student</small><strong>{{ selectedStudent()?.fullName || 'Student #' + selectedStudentId() }}</strong><small>{{ selectedStudent()?.rollNumber || '' }}</small></div>
+            </div>
+
+            <div class="context-card">
+              <span><svg lucideBookOpen></svg></span>
+              <div><small>Course</small><strong>{{ selectedCourse()?.name || 'Course #' + selectedCourseId() }}</strong><small>{{ selectedCourse()?.code || '' }}</small></div>
+            </div>
+
+            <div class="context-card">
+              <span><svg lucideCalendarDays></svg></span>
+              <div><small>Date</small><strong>{{ date() }}</strong></div>
+            </div>
+          }
+
+          <div class="field">
+            <label for="status">Attendance status</label>
+            <select id="status" [ngModel]="status()" (ngModelChange)="status.set($event)" name="status" required>
+              @for (option of statusOptions; track option.value) {
+                <option [ngValue]="option.value">{{ option.label }}</option>
+              }
+            </select>
+          </div>
+
+          <div class="field field--full">
+            <label for="remarks">Remarks <span>Optional</span></label>
+            <textarea id="remarks" rows="4" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" placeholder="Add attendance notes..."></textarea>
+          </div>
+        </div>
+      </section>
+
+      <div class="form-actions">
+        <a routerLink="/attendance">Cancel</a>
+        <button type="submit" [disabled]="isSaving()"><svg lucideSave></svg><span>{{ isSaving() ? 'Saving...' : isEditMode() ? 'Save changes' : 'Mark attendance' }}</span></button>
+      </div>
+    </form>
   }
-  <a routerLink="/attendance">Cancel</a>
 </div>

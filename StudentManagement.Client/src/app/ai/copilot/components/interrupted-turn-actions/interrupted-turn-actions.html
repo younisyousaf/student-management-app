@@ -1,22 +1,12 @@
 <div class="interrupted-actions">
-  <div class="interrupted-actions__message">
-    <span class="interrupted-actions__icon">ⓘ</span>
-    <span>SmartCampus response was interrupted.</span>
+  <div class="interrupted-actions__message"><span><svg lucideCircleAlert></svg></span>
+    <div><strong>Generation stopped</strong><small>The response was interrupted before completion.</small></div>
   </div>
 
   <div class="interrupted-actions__buttons">
-    <button
-      type="button"
-      [disabled]="disabled() || !canEdit()"
-      (click)="editPrompt.emit()">
-      Edit prompt
-    </button>
-
-    <button
-      type="button"
-      [disabled]="disabled() || !canRetry()"
-      (click)="tryAgain.emit()">
-      Try again
-    </button>
+    <button type="button" [disabled]="disabled() || !canEdit()" (click)="editPrompt.emit()"><svg
+        lucidePencil></svg><span>Edit</span></button>
+    <button type="button" class="retry" [disabled]="disabled() || !canRetry()" (click)="tryAgain.emit()"><svg
+        lucideRotateCcw></svg><span>Retry</span></button>
   </div>
 </div>

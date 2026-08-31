@@ -1,28 +1,64 @@
-<div class="form-page">
-  <h2>Enroll Student</h2>
-  <form (ngSubmit)="onSubmit()">
-    <label>Student
-      <select [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
-        <option [ngValue]="null">-- Select a student --</option>
-        @for (student of studentsResource.value()?.data ?? []; track student.id) {
-          <option [ngValue]="student.id">{{ student.fullName }} ({{ student.rollNumber }})</option>
-        }
-      </select>
-    </label>
-    <label>Course
-      <select [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
-        <option [ngValue]="null">-- Select a course --</option>
-        @for (course of coursesResource.value()?.data ?? []; track course.id) {
-          <option [ngValue]="course.id">{{ course.name }} ({{ course.code }})</option>
-        }
-      </select>
-    </label>
-    @if (errorMessage()) {
-      <p class="error">{{ errorMessage() }}</p>
-    }
-    <button type="submit" [disabled]="isSaving()">
-      {{ isSaving() ? 'Enrolling...' : 'Enroll' }}
-    </button>
+<div class="enrollment-form-page">
+  <a routerLink="/enrollments" class="back-link"><svg lucideArrowLeft></svg><span>Back to enrollments</span></a>
+
+  <header class="form-header">
+    <span class="form-header__icon"><svg lucideGraduationCap></svg></span>
+    <div>
+      <h1>Enroll student</h1>
+      <p>Connect a student with an academic course.</p>
+    </div>
+  </header>
+
+  <form class="form-card" (ngSubmit)="onSubmit()">
+    <section class="form-section">
+      <div class="form-section__heading">
+        <strong>Enrollment details</strong>
+        <span>Select the student and course for this enrollment.</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="student">Student</label>
+          <div class="select-wrapper">
+            <svg lucideUserRound></svg>
+            <select id="student" [ngModel]="selectedStudentId()" (ngModelChange)="selectedStudentId.set($event)" name="studentId" required>
+              <option [ngValue]="null">Select a student</option>
+              @for (student of studentsResource.value()?.data ?? []; track student.id) {
+                <option [ngValue]="student.id">{{ student.fullName }} — {{ student.rollNumber }}</option>
+              }
+            </select>
+          </div>
+          @if (studentsResource.isLoading()) { <span class="field-hint">Loading students...</span> }
+          @if (studentsResource.error()) { <span class="field-error">Students could not be loaded.</span> }
+        </div>
+
+        <div class="field">
+          <label for="course">Course</label>
+          <div class="select-wrapper">
+            <svg lucideBookOpen></svg>
+            <select id="course" [ngModel]="selectedCourseId()" (ngModelChange)="selectedCourseId.set($event)" name="courseId" required>
+              <option [ngValue]="null">Select a course</option>
+              @for (course of coursesResource.value()?.data ?? []; track course.id) {
+                <option [ngValue]="course.id">{{ course.name }} — {{ course.code }}</option>
+              }
+            </select>
+          </div>
+          @if (coursesResource.isLoading()) { <span class="field-hint">Loading courses...</span> }
+          @if (coursesResource.error()) { <span class="field-error">Courses could not be loaded.</span> }
+        </div>
+      </div>
+
+      @if (selectedStudentId() && selectedCourseId()) {
+        <div class="selection-ready">
+          <svg lucideGraduationCap></svg>
+          <div><strong>Ready to enroll</strong><span>The selected student will be enrolled in the selected course.</span></div>
+        </div>
+      }
+    </section>
+
+    <div class="form-actions">
+      <a routerLink="/enrollments">Cancel</a>
+      <button type="submit" [disabled]="isSaving() || studentsResource.isLoading() || coursesResource.isLoading()"><svg lucideSave></svg><span>{{ isSaving() ? 'Enrolling...' : 'Enroll student' }}</span></button>
+    </div>
   </form>
-  <a routerLink="/enrollments">Cancel</a>
 </div>

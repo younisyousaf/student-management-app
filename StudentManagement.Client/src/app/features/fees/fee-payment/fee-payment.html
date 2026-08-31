@@ -1,54 +1,87 @@
-<div class="form-page">
-  <h2>Record Payment</h2>
+<div class="payment-page">
+  <a routerLink="/fees" class="back-link"><svg lucideArrowLeft></svg><span>Back to fee ledger</span></a>
+
+  <header class="form-header">
+    <span class="form-header__icon"><svg lucideCreditCard></svg></span>
+    <div>
+      <h1>Record payment</h1>
+      <p>Process a payment against the student's course fee.</p>
+    </div>
+  </header>
+
   @if (isLoadingStatement()) {
-  <p class="form-loading-state">Loading fee statement...</p>
+    <div class="form-loading">
+      <span class="state-loader"></span>
+      <strong>Loading fee statement</strong>
+    </div>
   } @else if (statement(); as fee) {
-  <div class="payment-summary">
-    <div class="payment-summary__item">
-      <span>
-        Amount Due
-      </span>
-      <strong>
-        {{ fee.amountDue | currency }}
-      </strong>
-    </div>
-    <div class="payment-summary__item">
-      <span>
-        Already Paid
-      </span>
-      <strong>
-        {{ fee.amountPaid | currency }}
-      </strong>
-    </div>
-    <div class="
-      payment-summary__item
-      payment-summary__item--balance
-    ">
-      <span>
-        Remaining Balance
-      </span>
-      <strong>
-        {{ fee.remainingBalance | currency }}
-      </strong>
-    </div>
-  </div>
-  <form (ngSubmit)="onSubmit()">
-    <label>Amount to Pay
-      <input type="number" min="0.01" [max]="fee.remainingBalance" step="0.01" [ngModel]="amountPaid()"
-        (ngModelChange)="amountPaid.set($event)" name="amountPaid" required />
-    </label>
-    <label>Remarks
-      <input type="text" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" />
-    </label>
-    @if (errorMessage()) {
-    <p class="error">{{ errorMessage() }}</p>
-    }
-    <button type="submit" [disabled]="isSaving()">
-      {{ isSaving() ? 'Processing...' : 'Submit Payment' }}
-    </button>
-  </form>
+    <section class="payment-card">
+      <div class="payment-context">
+        <div class="context-item">
+          <span><svg lucideUserRound></svg></span>
+          <div><small>Student</small><strong>{{ student()?.fullName || 'Student #' + studentId() }}</strong><small>{{ student()?.rollNumber || '' }}</small></div>
+        </div>
+
+        <div class="context-item">
+          <span><svg lucideBookOpen></svg></span>
+          <div><small>Course</small><strong>{{ course()?.name || 'Course #' + courseId() }}</strong><small>{{ course()?.code || '' }}</small></div>
+        </div>
+      </div>
+
+      <div class="payment-summary">
+        <div class="summary-card">
+          <span>Amount due</span>
+          <strong>{{ fee.amountDue | currency }}</strong>
+          <svg lucideReceiptText></svg>
+        </div>
+
+        <div class="summary-card summary-card--paid">
+          <span>Already paid</span>
+          <strong>{{ fee.amountPaid | currency }}</strong>
+          <svg lucideWalletCards></svg>
+        </div>
+
+        <div class="summary-card summary-card--balance">
+          <span>Remaining balance</span>
+          <strong>{{ fee.remainingBalance | currency }}</strong>
+          <svg lucideCreditCard></svg>
+        </div>
+      </div>
+
+      <form (ngSubmit)="onSubmit()">
+        <div class="form-section">
+          <div class="form-section__heading">
+            <strong>Payment details</strong>
+            <span>Enter the amount being received.</span>
+          </div>
+
+          <div class="field">
+            <label for="amount">Amount to pay</label>
+            <div class="amount-input">
+              <input id="amount" type="number" min="0.01" [max]="fee.remainingBalance" step="0.01" [ngModel]="amountPaid()" (ngModelChange)="amountPaid.set($event)" name="amountPaid" required>
+              <button type="button" (click)="payFullBalance()">Pay full balance</button>
+            </div>
+            <span class="field-hint">Maximum {{ fee.remainingBalance | currency }}</span>
+          </div>
+
+          <div class="field">
+            <label for="remarks">Remarks <span>Optional</span></label>
+            <textarea id="remarks" rows="4" [ngModel]="remarks()" (ngModelChange)="remarks.set($event)" name="remarks" placeholder="Add payment notes..."></textarea>
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <a routerLink="/fees">Cancel</a>
+          <button type="submit" [disabled]="isSaving()"><svg lucideCreditCard></svg><span>{{ isSaving() ? 'Processing...' : 'Record payment' }}</span></button>
+        </div>
+      </form>
+    </section>
   } @else {
-  <p class="error">{{ errorMessage() }}</p>
+    <div class="statement-error">
+      <svg lucideReceiptText></svg>
+      <strong>Fee statement unavailable</strong>
+      <p>Return to the fee ledger and try again.</p>
+      <a routerLink="/fees">Return to fee ledger</a>
+    </div>
   }
-  <a routerLink="/fees">Back</a>
 </div>

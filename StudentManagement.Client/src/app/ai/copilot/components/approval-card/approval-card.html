@@ -1,42 +1,30 @@
-<div class="approval-card">
+<section class="approval-card">
   <div class="approval-card__header">
+    <span class="approval-card__icon"><svg lucideShieldAlert></svg></span>
     <div>
-      <span class="approval-label">Approval Required</span>
-      <h3>{{ approval().displayTitle || 'Confirm Action' }}</h3>
+      <span class="approval-label">Human approval required</span>
+      <h3>{{ approval().displayTitle || 'Confirm action' }}</h3>
+      <p>SmartCampus needs your permission before executing this action.</p>
     </div>
   </div>
-  <p class="approval-description">
-    Review the details below before allowing the Copilot to continue.
-  </p>
+
   @if (approval().displayDetails?.length) {
     <div class="approval-details">
       @for (detail of approval().displayDetails; track detail.label) {
         <div class="approval-detail">
-          <span class="approval-detail__label">{{ detail.label }}</span>
-          <span class="approval-detail__value">{{ detail.value }}</span>
+          <span>{{ detail.label }}</span>
+          <strong>{{ detail.value }}</strong>
         </div>
       }
     </div>
   }
+
   @if (approval().warning) {
-    <div class="approval-warning">
-      {{ approval().warning }}
-    </div>
+    <div class="approval-warning"><svg lucideTriangleAlert></svg><span>{{ approval().warning }}</span></div>
   }
+
   <div class="approval-actions">
-    <button
-      type="button"
-      class="approval-reject"
-      (click)="reject.emit()"
-      [disabled]="isSending()">
-      Reject
-    </button>
-    <button
-      type="button"
-      class="approval-confirm"
-      (click)="approve.emit()"
-      [disabled]="isSending()">
-      Approve
-    </button>
+    <button type="button" class="approval-reject" (click)="reject.emit()" [disabled]="isSending()"><svg lucideX></svg><span>Reject</span></button>
+    <button type="button" class="approval-confirm" (click)="approve.emit()" [disabled]="isSending()"><svg lucideCheck></svg><span>Approve action</span></button>
   </div>
-</div>
+</section>

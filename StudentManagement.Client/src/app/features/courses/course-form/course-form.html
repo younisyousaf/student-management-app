@@ -1,38 +1,60 @@
-<div class="form-page">
-  <h2>{{ isEditMode() ? 'Edit Course' : 'Add Course' }}</h2>
-  <form (ngSubmit)="onSubmit()">
-    <label>Code
-      <input type="text" [ngModel]="code()" (ngModelChange)="code.set($event)" name="code" [disabled]="isEditMode()" required />
-    </label>
-    @if (fieldError('code')) {
-    <p class="field-error">{{ fieldError('code') }}</p>
-    }
-    <label>Name
-      <input type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" name="name" required />
-    </label>
-    @if (fieldError('name')) {
-    <p class="field-error">{{ fieldError('name') }}</p>
-    }
-    <label>Description
-      <textarea [ngModel]="description()" (ngModelChange)="description.set($event)" name="description"></textarea>
-    </label>
-    <label>Duration (months)
-      <input type="number" min="1" max="120" [ngModel]="durationMonths()" (ngModelChange)="durationMonths.set($event)" name="durationMonths" required />
-    </label>
-    @if (fieldError('durationMonths')) {
-    <p class="field-error">{{ fieldError('durationMonths') }}</p>
-    }
-    <label>Fee Amount
-      <input type="number" min="0" step="0.01" [ngModel]="feeAmount()" (ngModelChange)="feeAmount.set($event)" name="feeAmount" required />
-    </label>
-    @if (fieldError('feeAmount')) {
-    <p class="field-error">{{ fieldError('feeAmount') }}</p>
-    }
-    @if (errorMessage()) {
-      <p class="error">{{ errorMessage() }}</p>
-    }
-    <button type="submit" [disabled]="isSaving()">
-      {{ isSaving() ? 'Saving...' : 'Save' }}
-    </button>
+<div class="course-form-page">
+  <a routerLink="/courses" class="back-link"><svg lucideArrowLeft></svg><span>Back to courses</span></a>
+
+  <header class="form-header">
+    <span class="form-header__icon"><svg lucideBookOpen></svg></span>
+    <div>
+      <h1>{{ isEditMode() ? 'Edit course' : 'Create course' }}</h1>
+      <p>{{ isEditMode() ? 'Update academic course information.' : 'Add a new course to the SmartCampus catalog.' }}</p>
+    </div>
+  </header>
+
+  <form class="form-card" (ngSubmit)="onSubmit()">
+    <div class="form-section">
+      <div class="form-section__heading">
+        <strong>Course information</strong>
+        <span>Basic academic and pricing details.</span>
+      </div>
+
+      <div class="form-grid">
+        <div class="field">
+          <label for="code">Course code</label>
+          <input id="code" type="text" [ngModel]="code()" (ngModelChange)="code.set($event)" name="code" [disabled]="isEditMode()" placeholder="e.g. CS101" required>
+          @if (fieldError('code')) { <span class="field-error">{{ fieldError('code') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="name">Course name</label>
+          <input id="name" type="text" [ngModel]="name()" (ngModelChange)="name.set($event)" name="name" placeholder="e.g. Introduction to Programming" required>
+          @if (fieldError('name')) { <span class="field-error">{{ fieldError('name') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="duration">Duration</label>
+          <div class="input-suffix">
+            <input id="duration" type="number" min="1" max="120" [ngModel]="durationMonths()" (ngModelChange)="durationMonths.set($event)" name="durationMonths" required>
+            <span>months</span>
+          </div>
+          @if (fieldError('durationMonths')) { <span class="field-error">{{ fieldError('durationMonths') }}</span> }
+        </div>
+
+        <div class="field">
+          <label for="fee">Fee amount</label>
+          <input id="fee" type="number" min="0" step="0.01" [ngModel]="feeAmount()" (ngModelChange)="feeAmount.set($event)" name="feeAmount" required>
+          @if (fieldError('feeAmount')) { <span class="field-error">{{ fieldError('feeAmount') }}</span> }
+        </div>
+
+        <div class="field field--full">
+          <label for="description">Description <span>Optional</span></label>
+          <textarea id="description" rows="5" [ngModel]="description()" (ngModelChange)="description.set($event)" name="description" placeholder="Describe the course..."></textarea>
+          @if (fieldError('description')) { <span class="field-error">{{ fieldError('description') }}</span> }
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a routerLink="/courses">Cancel</a>
+      <button type="submit" [disabled]="isSaving()"><svg lucideSave></svg><span>{{ isSaving() ? 'Saving...' : isEditMode() ? 'Save changes' : 'Create course' }}</span></button>
+    </div>
   </form>
 </div>

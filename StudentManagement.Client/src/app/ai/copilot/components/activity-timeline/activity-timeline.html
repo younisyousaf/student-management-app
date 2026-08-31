@@ -1,54 +1,50 @@
 @if (activities().length > 0 || stopped()) {
-<div class="activity-panel">
+  <section class="agent-activity" [class.agent-activity--running]="isSending()" [class.agent-activity--stopped]="stopped()">
+    <button type="button" class="agent-activity__summary" (click)="toggle.emit()">
+      <span class="agent-activity__summary-icon"><svg lucideWorkflow></svg></span>
 
-  <button type="button" class="activity-summary" (click)="toggle.emit()">
-
-    @if (isSending()) {
-    <span class="activity-summary__status">
-      <span class="activity-spinner"></span>
-      Working...
-    </span>
-    } @else if (stopped()) {
-    <span class="activity-summary__status stopped">
-      ■ Stopped
-    </span>
-    } @else {
-    <span class="activity-summary__status completed">
-      ✓ Completed {{ activities().length }}
-      {{ activities().length === 1 ? 'step' : 'steps' }}
-    </span>
-    }
-
-    <span class="activity-chevron" [class.expanded]="expanded()">
-    </span>
-  </button>
-
-  @if (expanded() && activities().length > 0) {
-  <div class="activity-list">
-
-    @for (
-    activity of activities();
-    track activity.id
-    ) {
-    <div class="activity-item" [class.running]="activity.status === 'running'"
-      [class.waiting]="activity.status === 'waiting'" [class.stopped]="activity.status === 'stopped'" [class.failed]="
-              activity.status === 'failed' ||
-              activity.status === 'rejected'
-            ">
-
-      <span class="activity-status">
-        {{ activityStatusSymbol(activity.status) }}
+      <span class="agent-activity__summary-content">
+        <strong>Agent activity</strong>
+        @if (isSending()) {
+          <span class="summary-status summary-status--running"><span class="status-pulse"></span>Executing tools</span>
+        } @else if (stopped()) {
+          <span class="summary-status summary-status--stopped"><svg lucideSquare></svg>Stopped</span>
+        } @else {
+          <span class="summary-status summary-status--completed"><svg lucideCheck></svg>{{ completedCount() }} {{ completedCount() === 1 ? 'step' : 'steps' }} completed</span>
+        }
       </span>
 
-      <span>
-        {{ activityText(activity) }}
-      </span>
+      <svg lucideChevronDown class="agent-activity__chevron" [class.agent-activity__chevron--expanded]="expanded()"></svg>
+    </button>
 
-    </div>
+    @if (expanded() && activities().length > 0) {
+      <div class="agent-activity__body">
+        @for (activity of activities(); track activity.id; let last = $last) {
+          <div class="agent-step" [class]="'agent-step agent-step--' + activity.status">
+            <div class="agent-step__rail">
+              <span class="agent-step__status">
+                @switch (activity.status) {
+                  @case ('completed') { <svg lucideCheck></svg> }
+                  @case ('waiting') { <svg lucideClock3></svg> }
+                  @case ('rejected') { <svg lucideX></svg> }
+                  @case ('stopped') { <svg lucideSquare></svg> }
+                  @case ('failed') { <svg lucideTriangleAlert></svg> }
+                  @default { <svg lucideCircleDot></svg> }
+                }
+              </span>
+              @if (!last) { <span class="agent-step__line"></span> }
+            </div>
+
+            <div class="agent-step__content">
+              <div class="agent-step__heading">
+                <strong>{{ activityText(activity) }}</strong>
+                <span class="agent-step__badge">{{ activity.status }}</span>
+              </div>
+              <span class="agent-step__tool">{{ toolLabel(activity.toolName) }}</span>
+            </div>
+          </div>
+        }
+      </div>
     }
-
-  </div>
-  }
-
-</div>
+  </section>
 }
