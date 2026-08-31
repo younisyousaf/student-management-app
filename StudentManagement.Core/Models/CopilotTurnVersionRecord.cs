@@ -2,7 +2,7 @@
 
 namespace StudentManagement.Core.Models;
 
-public sealed class CopilotTurnRecord
+public sealed class CopilotTurnVersionRecord
 {
     public int Id { get; set; }
 
@@ -12,9 +12,15 @@ public sealed class CopilotTurnRecord
 
     public string UserMessageId { get; set; } = string.Empty;
 
-    public CopilotTurnStatus Status { get; set; }
+    public int VersionNumber { get; set; }
 
-    public int CurrentVersionNumber { get; set; } = 1;
+    public string UserContent { get; set; } = string.Empty;
+
+    public string? AssistantMessageId { get; set; }
+
+    public string AssistantContent { get; set; } = string.Empty;
+
+    public CopilotTurnStatus Status { get; set; }
 
     public string ActivitiesJson { get; set; } = "[]";
 

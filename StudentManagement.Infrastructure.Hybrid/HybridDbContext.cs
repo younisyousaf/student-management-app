@@ -280,6 +280,9 @@ namespace StudentManagement.Infrastructure.Hybrid
                         .HasConversion<string>()
                         .HasMaxLength(30)
                         .IsRequired();
+                    entity.Property(x => x.CurrentVersionNumber)
+                        .IsRequired()
+                        .HasDefaultValue(1);
 
                     entity.Property(x => x.ActivitiesJson)
                         .IsRequired()
@@ -306,6 +309,68 @@ namespace StudentManagement.Infrastructure.Hybrid
                         x.CreatedAt
                     });
                 });
+
+            // copilot turn versions
+            modelBuilder.Entity<CopilotTurnVersionRecord>(
+                entity =>
+                {
+                    entity.ToTable("CopilotTurnVersions");
+
+                    entity.HasKey(x => x.Id);
+
+                    entity.Property(x => x.ThreadId)
+                        .IsRequired()
+                        .HasMaxLength(100);
+
+                    entity.Property(x => x.UserMessageId)
+                        .IsRequired()
+                        .HasMaxLength(200);
+
+                    entity.Property(x => x.VersionNumber)
+                        .IsRequired();
+
+                    entity.Property(x => x.UserContent)
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    entity.Property(x => x.AssistantMessageId)
+                        .HasMaxLength(200);
+
+                    entity.Property(x => x.AssistantContent)
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    entity.Property(x => x.Status)
+                        .HasConversion<string>()
+                        .HasMaxLength(30)
+                        .IsRequired();
+
+                    entity.Property(x => x.ActivitiesJson)
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    entity.Property(x => x.CreatedAt)
+                        .IsRequired();
+
+                    entity.Property(x => x.UpdatedAt)
+                        .IsRequired();
+
+                    entity.HasIndex(x => new
+                    {
+                        x.UserId,
+                        x.ThreadId,
+                        x.UserMessageId,
+                        x.VersionNumber
+                    })
+                    .IsUnique();
+
+                    entity.HasIndex(x => new
+                    {
+                        x.UserId,
+                        x.ThreadId,
+                        x.UserMessageId
+                    });
+                });
         }
 
         public DbSet<Student> Students => Set<Student>();
@@ -327,5 +392,7 @@ namespace StudentManagement.Infrastructure.Hybrid
             => Set<CopilotConversationRecord>();
         public DbSet<CopilotTurnRecord> CopilotTurns
             => Set<CopilotTurnRecord>();
+        public DbSet<CopilotTurnVersionRecord> CopilotTurnVersions
+            => Set<CopilotTurnVersionRecord>();
     }
 }

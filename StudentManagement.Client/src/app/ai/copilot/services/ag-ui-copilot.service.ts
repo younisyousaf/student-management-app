@@ -4,7 +4,7 @@ import { HttpAgent } from '@ag-ui/client';
 import { BaseEvent, EventType, RunAgentInput } from '@ag-ui/core';
 import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment.development';
-import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity } from '../models/copilot.model';
+import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity, CopilotCompletedTurnEditResponse } from '../models/copilot.model';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 
 @Injectable({
@@ -362,7 +362,12 @@ export class AgUiCopilotService {
     );
   }
 
-  completeTurn(userMessageId: string): Observable<void> {
+  completeTurn(
+    userMessageId: string,
+    assistantMessageId: string,
+    assistantContent: string,
+    activities: CopilotActivity[]
+  ): Observable<void> {
     this.ensureSession();
 
     const threadId = encodeURIComponent(this.agent.threadId);
@@ -370,7 +375,30 @@ export class AgUiCopilotService {
     return this.http.post<void>(
       `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/complete-turn`,
       {
-        userMessageId
+        userMessageId,
+        assistantMessageId,
+        assistantContent,
+        activities
+      },
+      {
+        withCredentials: true
+      }
+    );
+  }
+
+  editCompletedTurn(
+    userMessageId: string,
+    message: string
+  ): Observable<CopilotCompletedTurnEditResponse> {
+    this.ensureSession();
+
+    const threadId = encodeURIComponent(this.agent.threadId);
+
+    return this.http.post<CopilotCompletedTurnEditResponse>(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/edit-completed-turn`,
+      {
+        userMessageId,
+        message
       },
       {
         withCredentials: true

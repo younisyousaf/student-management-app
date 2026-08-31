@@ -56,74 +56,83 @@
         let isLast = $last
       ) {
                 @if (message.role === 'user') {
-          <div class="user-turn">
-            @if (editingUserMessageId() === message.id) {
-              <app-prompt-editor
-                [value]="editedPrompt()"
-                [disabled]="isSending()"
-                (valueChange)="onEditedPromptChange($event)"
-                (cancel)="cancelEditPrompt()"
-                (submit)="submitEditedPrompt()">
-              </app-prompt-editor>
-            } @else {
-              <div class="user-message">
-                {{ message.content }}
-              </div>
-            }
-          </div>
-        } @else {
-          <article class="assistant-turn">
-            <div class="assistant-header">
-              <span class="assistant-avatar">AI</span>
-              <strong>Copilot</strong>
-            </div>
+                  <div class="user-turn">
+                    @if (editingUserMessageId() === message.id) {
+                      <app-prompt-editor
+                        [value]="editedPrompt()"
+                        [disabled]="isSending()"
+                        (valueChange)="onEditedPromptChange($event)"
+                        (cancel)="cancelEditPrompt()"
+                        (submit)="submitEditedPrompt()">
+                      </app-prompt-editor>
+                    } @else {
+                      <div class="user-turn__content">
+                        <div class="user-message">
+                          {{ message.content }}
+                        </div>
 
-            <!-- Persisted Stopped Activity -->
-            @if (message.turnStopped) {
-              <app-activity-timeline
-                [activities]="message.activities ?? []"
-                [expanded]="message.activityExpanded ?? true"
-                [isSending]="false"
-                [stopped]="true"
-                (toggle)="toggleMessageActivity(message.id)">
-              </app-activity-timeline>
+                        @if (canEditCompletedUserMessage(message.id)) {
+                          <app-completed-turn-actions
+                            [disabled]="editingUserMessageId() !== null"
+                            (editPrompt)="beginEditCompletedPrompt(message)">
+                          </app-completed-turn-actions>
+                        }
+                      </div>
+                    }
+                  </div>
+                } @else {
+                    <article class="assistant-turn">
+                      <div class="assistant-header">
+                        <span class="assistant-avatar">AI</span>
+                        <strong>Copilot</strong>
+                      </div>
 
-              <app-interrupted-turn-actions
-                [disabled]="isSending()"
-                  [canEdit]="canRetryStoppedTurn(message.turnUserMessageId)"
-                  [canRetry]="canRetryStoppedTurn(message.turnUserMessageId)"
-                  (editPrompt)="beginEditStoppedPrompt(message)"
-                  (tryAgain)="retryStoppedTurn(message)">
-              </app-interrupted-turn-actions>
-            } @else if (
-              isLast &&
-              activities().length > 0
-            ) {
-              <app-activity-timeline
-                [activities]="activities()"
-                [expanded]="activityExpanded()"
-                [isSending]="isSending()"
-                [stopped]="runStopped()"
-                (toggle)="toggleActivity()">
-              </app-activity-timeline>
-            }
+                      <!-- Persisted Stopped Activity -->
+                      @if (message.turnStopped) {
+                        <app-activity-timeline
+                          [activities]="message.activities ?? []"
+                          [expanded]="message.activityExpanded ?? true"
+                          [isSending]="false"
+                          [stopped]="true"
+                          (toggle)="toggleMessageActivity(message.id)">
+                        </app-activity-timeline>
 
-            <!-- Assistant Content -->
-            @if (message.content) {
-              <div class="markdown-content" [innerHTML]="message.content | markdown">
-              </div>
-            } @else if (
-              !message.turnStopped &&
-              isLast &&
-              isSending() &&
-              activities().length === 0
-            ) {
-              <div class="assistant-thinking">
-                <span class="thinking-spinner"></span>
-                Thinking...
-              </div>
-            }
-          </article>
+                        <app-interrupted-turn-actions
+                          [disabled]="isSending()"
+                            [canEdit]="canRetryStoppedTurn(message.turnUserMessageId)"
+                            [canRetry]="canRetryStoppedTurn(message.turnUserMessageId)"
+                            (editPrompt)="beginEditStoppedPrompt(message)"
+                            (tryAgain)="retryStoppedTurn(message)">
+                        </app-interrupted-turn-actions>
+                      } @else if (
+                        isLast &&
+                        activities().length > 0
+                      ) {
+                        <app-activity-timeline
+                          [activities]="activities()"
+                          [expanded]="activityExpanded()"
+                          [isSending]="isSending()"
+                          [stopped]="runStopped()"
+                          (toggle)="toggleActivity()">
+                        </app-activity-timeline>
+                      }
+
+                      <!-- Assistant Content -->
+                      @if (message.content) {
+                        <div class="markdown-content" [innerHTML]="message.content | markdown">
+                        </div>
+                      } @else if (
+                        !message.turnStopped &&
+                        isLast &&
+                        isSending() &&
+                        activities().length === 0
+                      ) {
+                        <div class="assistant-thinking">
+                          <span class="thinking-spinner"></span>
+                          Thinking...
+                        </div>
+                      }
+                    </article>
         }
       }
 

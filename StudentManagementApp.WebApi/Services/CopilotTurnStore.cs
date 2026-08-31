@@ -46,6 +46,7 @@ public sealed class CopilotTurnStore
             ThreadId = threadId,
             UserMessageId = userMessageId,
             Status = CopilotTurnStatus.Prepared,
+            CurrentVersionNumber = 1,
             ActivitiesJson = "[]",
             CreatedAt = now,
             UpdatedAt = now
@@ -106,6 +107,10 @@ public sealed class CopilotTurnStore
     public async Task<CopilotTurnRecord?> MarkCompletedAsync(
     string threadId,
     string userMessageId,
+    string userContent,
+    string assistantMessageId,
+    string assistantContent,
+    string activitiesJson,
     CancellationToken cancellationToken = default)
     {
         int userId = GetRequiredUserId();
@@ -122,8 +127,46 @@ public sealed class CopilotTurnStore
             return null;
         }
 
+        int versionNumber = turn.CurrentVersionNumber;
+        DateTime now = DateTime.UtcNow;
+
+        /*
+         * Idempotency:
+         * RUN_FINISHED or the HTTP request could theoretically be retried.
+         * Never create Version 1 twice.
+         */
+        var existingVersion = await _dbContext.CopilotTurnVersions
+            .SingleOrDefaultAsync(
+                x =>
+                    x.UserId == userId &&
+                    x.ThreadId == threadId &&
+                    x.UserMessageId == userMessageId &&
+                    x.VersionNumber == versionNumber,
+                cancellationToken);
+
+        if (existingVersion is null)
+        {
+            var version = new CopilotTurnVersionRecord
+            {
+                UserId = userId,
+                ThreadId = threadId,
+                UserMessageId = userMessageId,
+                VersionNumber = versionNumber,
+                UserContent = userContent,
+                AssistantMessageId = assistantMessageId,
+                AssistantContent = assistantContent,
+                Status = CopilotTurnStatus.Completed,
+                ActivitiesJson = activitiesJson,
+                CreatedAt = now,
+                UpdatedAt = now
+            };
+
+            _dbContext.CopilotTurnVersions.Add(version);
+        }
+
         turn.Status = CopilotTurnStatus.Completed;
-        turn.UpdatedAt = DateTime.UtcNow;
+        turn.ActivitiesJson = activitiesJson;
+        turn.UpdatedAt = now;
 
         await _dbContext.SaveChangesAsync(cancellationToken);
 
@@ -163,11 +206,76 @@ public sealed class CopilotTurnStore
         return latestTurn;
     }
 
-    public async Task DeleteByThreadAsync(
-        string threadId,
-        CancellationToken cancellationToken = default)
+    public async Task<CopilotTurnRecord?> BeginNextVersionAsync(
+    string threadId,
+    string userMessageId,
+    CancellationToken cancellationToken = default)
     {
         int userId = GetRequiredUserId();
+
+        var latestTurn = await _dbContext.CopilotTurns
+            .Where(x =>
+                x.UserId == userId &&
+                x.ThreadId == threadId)
+            .OrderByDescending(x => x.CreatedAt)
+            .ThenByDescending(x => x.Id)
+            .FirstOrDefaultAsync(cancellationToken);
+
+        /*
+         * For the first implementation we only allow
+         * regeneration of the latest completed turn.
+         *
+         * Older-turn branching comes later.
+         */
+        if (
+            latestTurn is null ||
+            latestTurn.UserMessageId != userMessageId ||
+            latestTurn.Status != CopilotTurnStatus.Completed
+        )
+        {
+            return null;
+        }
+
+        /*
+         * Never move to Version 2 unless Version 1 has
+         * actually been persisted successfully.
+         */
+        bool currentVersionExists =
+            await _dbContext.CopilotTurnVersions.AnyAsync(
+                x =>
+                    x.UserId == userId &&
+                    x.ThreadId == threadId &&
+                    x.UserMessageId == userMessageId &&
+                    x.VersionNumber == latestTurn.CurrentVersionNumber &&
+                    x.Status == CopilotTurnStatus.Completed,
+                cancellationToken);
+
+        if (!currentVersionExists)
+        {
+            return null;
+        }
+
+        latestTurn.CurrentVersionNumber++;
+        latestTurn.Status = CopilotTurnStatus.Prepared;
+        latestTurn.ActivitiesJson = "[]";
+        latestTurn.UpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync(cancellationToken);
+
+        return latestTurn;
+    }
+
+    public async Task DeleteByThreadAsync(
+    string threadId,
+    CancellationToken cancellationToken = default)
+    {
+        int userId = GetRequiredUserId();
+
+        await _dbContext.CopilotTurnVersions
+            .Where(x =>
+                x.UserId == userId &&
+                x.ThreadId == threadId)
+            .ExecuteDeleteAsync(cancellationToken);
 
         await _dbContext.CopilotTurns
             .Where(x =>

@@ -1,0 +1,26 @@
+.completed-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin: .4rem .75rem 0rem 0rem;
+}
+
+.completed-actions button {
+  padding: .35rem .6rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius);
+  background: var(--color-surface-subtle);
+  color: var(--color-text-muted);
+  font-size: .75rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.completed-actions button:hover:not(:disabled) {
+  background: var(--color-border);
+  color: var(--color-text);
+}
+
+.completed-actions button:disabled {
+  cursor: not-allowed;
+  opacity: .55;
+}

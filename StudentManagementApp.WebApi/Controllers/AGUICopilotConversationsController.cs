@@ -53,7 +53,10 @@ public sealed record CopilotTurnResponse(
     DateTime UpdatedAt);
 
 public sealed record CompleteCopilotTurnRequest(
-    string UserMessageId);
+    string UserMessageId,
+    string AssistantMessageId,
+    string AssistantContent,
+    IReadOnlyList<CopilotTurnActivityRequest> Activities);
 
 public sealed record RetryCopilotTurnRequest(
     string UserMessageId);
@@ -62,6 +65,14 @@ public sealed record EditCopilotTurnRequest(
     string UserMessageId,
     string Message);
 
+public sealed record EditCompletedCopilotTurnRequest(
+    string UserMessageId,
+    string Message);
+
+public sealed record EditCompletedCopilotTurnResponse(
+    string UserMessageId,
+    int VersionNumber,
+    string Status);
 
 [ApiController]
 [Route("api/ag-ui/copilot/conversations")]
@@ -704,9 +715,68 @@ public sealed class AGUICopilotConversationsController
             });
         }
 
+        if (string.IsNullOrWhiteSpace(request.AssistantMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "Assistant message ID is required."
+            });
+        }
+
+        /*
+         * The user prompt was already persisted by prepare-turn,
+         * so read it from the authoritative MAF session rather than
+         * trusting another copy from the browser.
+         */
+        var session = await _sessionStore.GetSessionAsync(
+            _agent,
+            threadId,
+            cancellationToken);
+
+        var historyProvider = _agent.GetService<InMemoryChatHistoryProvider>();
+
+        if (historyProvider is null)
+        {
+            return Problem(
+                title: "Copilot history is unavailable.",
+                detail: "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+        }
+
+        var storedMessages = historyProvider.GetMessages(session);
+
+        var userMessage = storedMessages.FirstOrDefault(message =>
+            string.Equals(
+                message.MessageId,
+                request.UserMessageId,
+                StringComparison.Ordinal));
+
+        if (userMessage is null || userMessage.Role != ChatRole.User)
+        {
+            return NotFound(new
+            {
+                Message = "The original user message was not found."
+            });
+        }
+
+        string userContent = userMessage.Text ?? string.Empty;
+
+        var activities = request.Activities
+            .Select(activity =>
+                new CopilotTurnActivityResponse(
+                    activity.Id,
+                    activity.ToolName,
+                    activity.Status))
+            .ToList();
+
+        string activitiesJson = JsonSerializer.Serialize(activities);
+
         var turn = await _turnStore.MarkCompletedAsync(
             threadId,
             request.UserMessageId,
+            userContent,
+            request.AssistantMessageId,
+            request.AssistantContent,
+            activitiesJson,
             cancellationToken);
 
         if (turn is null)
@@ -719,6 +789,173 @@ public sealed class AGUICopilotConversationsController
 
         return NoContent();
     }
+
+    [HttpPost("{threadId}/edit-completed-turn")]
+    public async Task<ActionResult<EditCompletedCopilotTurnResponse>>
+    EditCompletedTurn(
+        string threadId,
+        EditCompletedCopilotTurnRequest request,
+        CancellationToken cancellationToken)
+        {
+            if (string.IsNullOrWhiteSpace(threadId))
+            {
+                return BadRequest(new
+                {
+                    Message = "Thread ID is required."
+                });
+            }
+
+            if (string.IsNullOrWhiteSpace(request.UserMessageId))
+            {
+                return BadRequest(new
+                {
+                    Message = "User message ID is required."
+                });
+            }
+
+            string editedMessage = request.Message.Trim();
+
+            if (string.IsNullOrWhiteSpace(editedMessage))
+            {
+                return BadRequest(new
+                {
+                    Message = "Edited message is required."
+                });
+            }
+
+            /*
+             * Load the currently active MAF branch.
+             */
+            var session = await _sessionStore.GetSessionAsync(
+                _agent,
+                threadId,
+                cancellationToken);
+
+            var historyProvider =
+                _agent.GetService<InMemoryChatHistoryProvider>();
+
+            if (historyProvider is null)
+            {
+                return Problem(
+                    title: "Copilot history is unavailable.",
+                    detail: "The hosted Copilot does not expose an InMemoryChatHistoryProvider.");
+            }
+
+            var storedMessages =
+                historyProvider.GetMessages(session);
+
+            int userMessageIndex =
+                storedMessages.FindIndex(message =>
+                    string.Equals(
+                        message.MessageId,
+                        request.UserMessageId,
+                        StringComparison.Ordinal));
+
+            if (userMessageIndex < 0)
+            {
+                return NotFound(new
+                {
+                    Message = "The original user message was not found."
+                });
+            }
+
+            var userMessage =
+                storedMessages[userMessageIndex];
+
+            if (userMessage.Role != ChatRole.User)
+            {
+                return Conflict(new
+                {
+                    Message = "The edit target is not a user message."
+                });
+            }
+
+            /*
+             * First version of branching:
+             * only the latest completed user turn can be edited.
+             *
+             * Editing older turns will come later when we support
+             * complete conversation branches.
+             */
+            bool hasNewerUserMessage =
+                storedMessages
+                    .Skip(userMessageIndex + 1)
+                    .Any(message =>
+                        message.Role == ChatRole.User);
+
+            if (hasNewerUserMessage)
+            {
+                return Conflict(new
+                {
+                    Message = "Only the latest completed request can be edited."
+                });
+            }
+
+            /*
+             * Version 1 is already safely persisted in
+             * CopilotTurnVersions.
+             *
+             * Advance the logical turn to Version 2.
+             */
+            var turn = await _turnStore.BeginNextVersionAsync(
+                threadId,
+                request.UserMessageId,
+                cancellationToken);
+
+            if (turn is null)
+            {
+                return Conflict(new
+                {
+                    Message = "Only the latest completed Copilot turn can be edited."
+                });
+            }
+
+            /*
+             * Replace the user prompt in the ACTIVE MAF branch.
+             *
+             * Keep the same MessageId because Version 1 and
+             * Version 2 belong to the same logical turn.
+             */
+            userMessage.Contents =
+            [
+                new TextContent(editedMessage)
+            ];
+
+            /*
+             * Remove the completed response belonging to Version 1
+             * from the ACTIVE MAF branch.
+             *
+             * This does NOT delete Version 1 from CopilotTurnVersions.
+             *
+             * Tool calls, tool results and assistant messages after
+             * this user message are all part of the old response branch.
+             */
+            int firstResponseMessageIndex =
+                userMessageIndex + 1;
+
+            if (firstResponseMessageIndex < storedMessages.Count)
+            {
+                storedMessages.RemoveRange(
+                    firstResponseMessageIndex,
+                    storedMessages.Count - firstResponseMessageIndex);
+            }
+
+            historyProvider.SetMessages(
+                session,
+                storedMessages);
+
+            await _sessionStore.SaveSessionAsync(
+                _agent,
+                threadId,
+                session,
+                cancellationToken);
+
+            return Ok(
+                new EditCompletedCopilotTurnResponse(
+                    turn.UserMessageId,
+                    turn.CurrentVersionNumber,
+                    turn.Status.ToString()));
+        }
 
     [HttpGet("{threadId}/turns")]
     public async Task<ActionResult<IReadOnlyList<CopilotTurnResponse>>> GetTurns(

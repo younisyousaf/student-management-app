@@ -67,3 +67,9 @@ export interface CopilotTurn {
   createdAt: string;
   updatedAt: string;
 }
+
+export interface CopilotCompletedTurnEditResponse {
+  userMessageId: string;
+  versionNumber: number;
+  status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+}
