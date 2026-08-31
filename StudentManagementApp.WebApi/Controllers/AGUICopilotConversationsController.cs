@@ -48,6 +48,7 @@ public sealed record CopilotTurnActivityResponse(
 public sealed record CopilotTurnResponse(
     string UserMessageId,
     string Status,
+    int CurrentVersionNumber,
     IReadOnlyList<CopilotTurnActivityResponse> Activities,
     DateTime CreatedAt,
     DateTime UpdatedAt);
@@ -73,6 +74,16 @@ public sealed record EditCompletedCopilotTurnResponse(
     string UserMessageId,
     int VersionNumber,
     string Status);
+
+public sealed record CopilotTurnVersionResponse(
+    int VersionNumber,
+    string UserContent,
+    string? AssistantMessageId,
+    string AssistantContent,
+    string Status,
+    IReadOnlyList<CopilotTurnActivityResponse> Activities,
+    DateTime CreatedAt,
+    DateTime UpdatedAt);
 
 [ApiController]
 [Route("api/ag-ui/copilot/conversations")]
@@ -410,6 +421,7 @@ public sealed class AGUICopilotConversationsController
             new CopilotTurnResponse(
                 turn.UserMessageId,
                 turn.Status.ToString(),
+                turn.CurrentVersionNumber,
                 activities,
                 turn.CreatedAt,
                 turn.UpdatedAt));
@@ -540,6 +552,7 @@ public sealed class AGUICopilotConversationsController
             new CopilotTurnResponse(
                 turn.UserMessageId,
                 turn.Status.ToString(),
+                turn.CurrentVersionNumber,
                 [],
                 turn.CreatedAt,
                 turn.UpdatedAt));
@@ -688,6 +701,7 @@ public sealed class AGUICopilotConversationsController
             new CopilotTurnResponse(
                 turn.UserMessageId,
                 turn.Status.ToString(),
+                turn.CurrentVersionNumber,
                 [],
                 turn.CreatedAt,
                 turn.UpdatedAt));
@@ -871,27 +885,6 @@ public sealed class AGUICopilotConversationsController
             }
 
             /*
-             * First version of branching:
-             * only the latest completed user turn can be edited.
-             *
-             * Editing older turns will come later when we support
-             * complete conversation branches.
-             */
-            bool hasNewerUserMessage =
-                storedMessages
-                    .Skip(userMessageIndex + 1)
-                    .Any(message =>
-                        message.Role == ChatRole.User);
-
-            if (hasNewerUserMessage)
-            {
-                return Conflict(new
-                {
-                    Message = "Only the latest completed request can be edited."
-                });
-            }
-
-            /*
              * Version 1 is already safely persisted in
              * CopilotTurnVersions.
              *
@@ -985,9 +978,74 @@ public sealed class AGUICopilotConversationsController
                 return new CopilotTurnResponse(
                     turn.UserMessageId,
                     turn.Status.ToString(),
+                    turn.CurrentVersionNumber,
                     activities,
                     turn.CreatedAt,
                     turn.UpdatedAt);
+            })
+            .ToList();
+
+        return Ok(response);
+    }
+
+    [HttpGet(
+    "{threadId}/turns/{userMessageId}/versions")]
+    public async Task<ActionResult<
+    IReadOnlyList<CopilotTurnVersionResponse>>>
+    GetTurnVersions(
+        string threadId,
+        string userMessageId,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(threadId))
+        {
+            return BadRequest(new
+            {
+                Message = "Thread ID is required."
+            });
+        }
+
+        if (string.IsNullOrWhiteSpace(userMessageId))
+        {
+            return BadRequest(new
+            {
+                Message = "User message ID is required."
+            });
+        }
+
+        var versions =
+            await _turnStore.GetVersionsAsync(
+                threadId,
+                userMessageId,
+                cancellationToken);
+
+        if (versions.Count == 0)
+        {
+            return NotFound(new
+            {
+                Message =
+                    "No versions were found for this Copilot turn."
+            });
+        }
+
+        var response = versions
+            .Select(version =>
+            {
+                var activities =
+                    JsonSerializer.Deserialize<
+                        List<CopilotTurnActivityResponse>>(
+                            version.ActivitiesJson)
+                    ?? [];
+
+                return new CopilotTurnVersionResponse(
+                    version.VersionNumber,
+                    version.UserContent,
+                    version.AssistantMessageId,
+                    version.AssistantContent,
+                    version.Status.ToString(),
+                    activities,
+                    version.CreatedAt,
+                    version.UpdatedAt);
             })
             .ToList();
 

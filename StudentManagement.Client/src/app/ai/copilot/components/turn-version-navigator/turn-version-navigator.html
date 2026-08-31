@@ -1,0 +1,28 @@
+<div
+  class="version-navigator"
+  aria-label="Response version navigator">
+
+  <button
+    type="button"
+    aria-label="Previous version"
+    [disabled]="!canGoPrevious()"
+    (click)="previous.emit()">
+    ‹
+  </button>
+
+  <span class="version-navigator__label">
+    @if (loading()) {
+      Loading...
+    } @else {
+      {{ currentVersion() }} / {{ totalVersions() }}
+    }
+  </span>
+
+  <button
+    type="button"
+    aria-label="Next version"
+    [disabled]="!canGoNext()"
+    (click)="next.emit()">
+    ›
+  </button>
+</div>

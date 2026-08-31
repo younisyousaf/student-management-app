@@ -206,63 +206,85 @@ public sealed class CopilotTurnStore
         return latestTurn;
     }
 
-    public async Task<CopilotTurnRecord?> BeginNextVersionAsync(
-    string threadId,
-    string userMessageId,
-    CancellationToken cancellationToken = default)
+    public async Task<CopilotTurnRecord?>
+    BeginNextVersionAsync(
+        string threadId,
+        string userMessageId,
+        CancellationToken cancellationToken = default)
     {
         int userId = GetRequiredUserId();
 
-        var latestTurn = await _dbContext.CopilotTurns
-            .Where(x =>
-                x.UserId == userId &&
-                x.ThreadId == threadId)
-            .OrderByDescending(x => x.CreatedAt)
-            .ThenByDescending(x => x.Id)
-            .FirstOrDefaultAsync(cancellationToken);
+        var turn =
+            await _dbContext.CopilotTurns
+                .SingleOrDefaultAsync(
+                    x =>
+                        x.UserId == userId &&
+                        x.ThreadId == threadId &&
+                        x.UserMessageId == userMessageId,
+                    cancellationToken);
 
-        /*
-         * For the first implementation we only allow
-         * regeneration of the latest completed turn.
-         *
-         * Older-turn branching comes later.
-         */
         if (
-            latestTurn is null ||
-            latestTurn.UserMessageId != userMessageId ||
-            latestTurn.Status != CopilotTurnStatus.Completed
+            turn is null ||
+            turn.Status !=
+                CopilotTurnStatus.Completed
         )
         {
             return null;
         }
 
         /*
-         * Never move to Version 2 unless Version 1 has
-         * actually been persisted successfully.
+         * Do not create Version N+1 unless
+         * Version N was successfully persisted.
          */
         bool currentVersionExists =
-            await _dbContext.CopilotTurnVersions.AnyAsync(
-                x =>
-                    x.UserId == userId &&
-                    x.ThreadId == threadId &&
-                    x.UserMessageId == userMessageId &&
-                    x.VersionNumber == latestTurn.CurrentVersionNumber &&
-                    x.Status == CopilotTurnStatus.Completed,
-                cancellationToken);
+            await _dbContext
+                .CopilotTurnVersions
+                .AnyAsync(
+                    x =>
+                        x.UserId == userId &&
+                        x.ThreadId == threadId &&
+                        x.UserMessageId ==
+                            userMessageId &&
+                        x.VersionNumber ==
+                            turn.CurrentVersionNumber &&
+                        x.Status ==
+                            CopilotTurnStatus.Completed,
+                    cancellationToken);
 
         if (!currentVersionExists)
         {
             return null;
         }
 
-        latestTurn.CurrentVersionNumber++;
-        latestTurn.Status = CopilotTurnStatus.Prepared;
-        latestTurn.ActivitiesJson = "[]";
-        latestTurn.UpdatedAt = DateTime.UtcNow;
+        turn.CurrentVersionNumber++;
+        turn.Status =
+            CopilotTurnStatus.Prepared;
 
-        await _dbContext.SaveChangesAsync(cancellationToken);
+        turn.ActivitiesJson = "[]";
+        turn.UpdatedAt = DateTime.UtcNow;
 
-        return latestTurn;
+        await _dbContext.SaveChangesAsync(
+            cancellationToken);
+
+        return turn;
+    }
+
+    public async Task<IReadOnlyList<CopilotTurnVersionRecord>>
+    GetVersionsAsync(
+        string threadId,
+        string userMessageId,
+        CancellationToken cancellationToken = default)
+    {
+        int userId = GetRequiredUserId();
+
+        return await _dbContext.CopilotTurnVersions
+            .AsNoTracking()
+            .Where(x =>
+                x.UserId == userId &&
+                x.ThreadId == threadId &&
+                x.UserMessageId == userMessageId)
+            .OrderBy(x => x.VersionNumber)
+            .ToListAsync(cancellationToken);
     }
 
     public async Task DeleteByThreadAsync(

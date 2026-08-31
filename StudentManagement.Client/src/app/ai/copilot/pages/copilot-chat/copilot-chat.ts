@@ -3,7 +3,7 @@ import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { BaseEvent, EventType } from '@ag-ui/core';
 import { forkJoin, Subscription } from 'rxjs';
 import { AgUiCopilotService } from '../../services/ag-ui-copilot.service';
-import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotConversation, CopilotMessage, CopilotTurn } from '../../models/copilot.model';
+import { CopilotActivity, CopilotActivityStatus, CopilotApprovalRequest, CopilotConversation, CopilotMessage, CopilotTurn, CopilotTurnVersion } from '../../models/copilot.model';
 import { MarkdownPipe } from '../../pipes/markdown.pipe';
 import { ActivityTimeline } from '../../components/activity-timeline/activity-timeline';
 import { ApprovalCard } from '../../components/approval-card/approval-card';
@@ -11,11 +11,11 @@ import { ConversationSidebar } from '../../components/conversation-sidebar/conve
 import { InterruptedTurnActions } from '../../components/interrupted-turn-actions/interrupted-turn-actions';
 import { PromptEditor } from '../../components/prompt-editor/prompt-editor';
 import { CompletedTurnActions } from '../../components/completed-turn-actions/completed-turn-actions';
-
+import { TurnVersionNavigator } from '../../components/turn-version-navigator/turn-version-navigator';
 @Component({
   selector: 'app-copilot-chat',
   standalone: true,
-  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions],
+  imports: [MarkdownPipe, ActivityTimeline, ApprovalCard, ConversationSidebar, InterruptedTurnActions, PromptEditor, CompletedTurnActions, TurnVersionNavigator],
   templateUrl: './copilot-chat.html',
   styleUrl: './copilot-chat.scss'
 })
@@ -61,6 +61,9 @@ export class CopilotChat {
   readonly editingUserMessageId = signal<string | null>(null);
   readonly editedPrompt = signal('');
   readonly editingCompletedTurn = signal(false);
+
+  private readonly turnVersions = new Map<string, CopilotTurnVersion[]>();
+  readonly loadingVersionUserMessageId = signal<string | null>(null);
 
   // Delete confirmation
   readonly conversationPendingDelete = signal<CopilotConversation | null>(null);
@@ -213,57 +216,168 @@ export class CopilotChat {
           return;
         }
 
-        const stoppedTurns = new Map<string, CopilotTurn>(
-          result.turns
-            .filter(turn => turn.status === 'Stopped')
-            .map(turn => [turn.userMessageId, turn])
-        );
+        /*
+         * Keep every persisted turn, not only stopped turns.
+         *
+         * This allows us to restore:
+         * - completed Step Blocks
+         * - stopped Step Blocks
+         * - version information
+         */
+        const turnsByUserMessageId =
+          new Map<string, CopilotTurn>(
+            result.turns.map(turn => [
+              turn.userMessageId,
+              turn
+            ])
+          );
 
         const messages: CopilotMessage[] = [];
 
+        /*
+         * Tracks which user message the next
+         * assistant response belongs to.
+         */
+        let currentUserMessageId: string | null = null;
+
         for (const historyMessage of result.history) {
+
+          /*
+           * USER MESSAGE
+           */
+          if (historyMessage.role === 'user') {
+            currentUserMessageId = historyMessage.id;
+
+            messages.push({
+              id: historyMessage.id,
+              role: historyMessage.role,
+              content: historyMessage.content,
+              createdAt: historyMessage.createdAt
+                ? new Date(historyMessage.createdAt)
+                : null
+            });
+
+            const turn =
+              turnsByUserMessageId.get(
+                historyMessage.id
+              );
+
+            /*
+             * A stopped turn does not have a normal
+             * visible assistant response in MAF history.
+             *
+             * Recreate its assistant presentation
+             * from CopilotTurns.
+             */
+            if (turn?.status === 'Stopped') {
+              messages.push({
+                id: `stopped-${historyMessage.id}`,
+                role: 'assistant',
+                content: '',
+                createdAt:
+                  new Date(turn.updatedAt),
+                activities:
+                  turn.activities,
+                turnStopped: true,
+                activityExpanded: true,
+                turnUserMessageId:
+                  turn.userMessageId
+              });
+
+              currentUserMessageId = null;
+            }
+
+            continue;
+          }
+
+          /*
+           * ASSISTANT MESSAGE
+           */
+          const turn =
+            currentUserMessageId
+              ? turnsByUserMessageId.get(
+                currentUserMessageId
+              )
+              : undefined;
+
           messages.push({
             id: historyMessage.id,
             role: historyMessage.role,
             content: historyMessage.content,
-            createdAt: historyMessage.createdAt ? new Date(historyMessage.createdAt) : null
+
+            createdAt:
+              historyMessage.createdAt
+                ? new Date(historyMessage.createdAt)
+                : null,
+
+            /*
+             * Restore completed Step Block.
+             */
+            activities:
+              turn?.status === 'Completed'
+                ? turn.activities
+                : undefined,
+
+            activityExpanded: false,
+
+            /*
+             * Link assistant response back
+             * to its user prompt.
+             */
+            turnUserMessageId:
+              currentUserMessageId
+              ?? undefined,
+
+            /*
+             * Version information.
+             *
+             * If CurrentVersionNumber = 2,
+             * the UI can later show:
+             *
+             * < 2 / 2 >
+             */
+            versionNumber:
+              turn?.status === 'Completed'
+                ? turn.currentVersionNumber
+                : undefined,
+
+            totalVersions:
+              turn?.status === 'Completed'
+                ? turn.currentVersionNumber
+                : undefined
           });
 
-          if (historyMessage.role !== 'user') {
-            continue;
-          }
-
-          const stoppedTurn = stoppedTurns.get(historyMessage.id);
-
-          if (!stoppedTurn) {
-            continue;
-          }
-
-          messages.push({
-            id: `stopped-${historyMessage.id}`,
-            role: 'assistant',
-            content: '',
-            createdAt: new Date(stoppedTurn.updatedAt),
-            activities: stoppedTurn.activities,
-            turnStopped: true,
-            activityExpanded: true,
-            turnUserMessageId: stoppedTurn.userMessageId
-          });
+          /*
+           * User → assistant pair completed.
+           */
+          currentUserMessageId = null;
         }
 
         this.messages.set(messages);
+
         this.shouldAutoScroll = true;
         this.scheduleScrollToBottom(true);
-        this.pendingApproval.set(result.pendingApproval);
+
+        this.pendingApproval.set(
+          result.pendingApproval
+        );
       },
+
       error: error => {
-        console.error('Failed to load Copilot conversation:', error);
+        console.error(
+          'Failed to load Copilot conversation:',
+          error
+        );
 
         if (this.currentThreadId() === threadId) {
-          this.errorMessage.set('The conversation could not be loaded.');
+          this.errorMessage.set(
+            'The conversation could not be loaded.'
+          );
+
           this.isLoadingHistory.set(false);
         }
       },
+
       complete: () => {
         if (this.currentThreadId() === threadId) {
           this.isLoadingHistory.set(false);
@@ -352,6 +466,197 @@ export class CopilotChat {
   toggleActivity(): void {
     this.activityExpanded.update(expanded => !expanded);
     this.scheduleScrollToBottom();
+  }
+
+  showPreviousVersion(
+    assistantMessage: CopilotMessage
+  ): void {
+    const currentVersion =
+      assistantMessage.versionNumber ?? 1;
+
+    this.loadTurnVersion(
+      assistantMessage,
+      currentVersion - 1
+    );
+  }
+
+  showNextVersion(
+    assistantMessage: CopilotMessage
+  ): void {
+    const currentVersion =
+      assistantMessage.versionNumber ?? 1;
+
+    this.loadTurnVersion(
+      assistantMessage,
+      currentVersion + 1
+    );
+  }
+
+  hasCompletedResponse(
+    userMessageId: string
+  ): boolean {
+    const messages = this.messages();
+
+    const userIndex = messages.findIndex(
+      message =>
+        message.id === userMessageId &&
+        message.role === 'user'
+    );
+
+    if (userIndex < 0) {
+      return false;
+    }
+
+    const nextUserIndex = messages.findIndex(
+      (message, index) =>
+        index > userIndex &&
+        message.role === 'user'
+    );
+
+    const endIndex =
+      nextUserIndex >= 0
+        ? nextUserIndex
+        : messages.length;
+
+    return messages
+      .slice(userIndex + 1, endIndex)
+      .some(message =>
+        message.role === 'assistant' &&
+        !message.turnStopped &&
+        !!message.content
+      );
+  }
+
+  private loadTurnVersion(
+    assistantMessage: CopilotMessage,
+    targetVersionNumber: number
+  ): void {
+    const userMessageId =
+      assistantMessage.turnUserMessageId;
+
+    const totalVersions =
+      assistantMessage.totalVersions ?? 1;
+
+    if (
+      !userMessageId ||
+      targetVersionNumber < 1 ||
+      targetVersionNumber > totalVersions ||
+      this.isSending()
+    ) {
+      return;
+    }
+
+    /*
+     * Already loaded?
+     *
+     * Use the cached version without making
+     * another HTTP request.
+     */
+    const cachedVersions =
+      this.turnVersions.get(userMessageId);
+
+    if (cachedVersions) {
+      const version =
+        cachedVersions.find(
+          item =>
+            item.versionNumber ===
+            targetVersionNumber
+        );
+
+      if (version) {
+        this.applyTurnVersion(
+          assistantMessage.id,
+          userMessageId,
+          version,
+          cachedVersions.length
+        );
+      }
+
+      return;
+    }
+
+    this.loadingVersionUserMessageId.set(userMessageId);
+    this.errorMessage.set('');
+
+    this.copilotService
+      .getTurnVersions(userMessageId)
+      .pipe(
+        takeUntilDestroyed(this.destroyRef)
+      )
+      .subscribe({
+        next: versions => {
+          this.turnVersions.set(
+            userMessageId,
+            versions
+          );
+
+          const version =
+            versions.find(item => item.versionNumber === targetVersionNumber);
+
+          if (!version) {
+            this.errorMessage.set(
+              'The selected response version could not be found.'
+            );
+            return;
+          }
+
+          this.applyTurnVersion(
+            assistantMessage.id,
+            userMessageId,
+            version,
+            versions.length
+          );
+        },
+
+        error: error => {
+          console.error('Failed to load Copilot turn versions:', error);
+          this.errorMessage.set('The response versions could not be loaded.');
+        },
+
+        complete: () => {
+          this.loadingVersionUserMessageId.set(null);
+        }
+      });
+  }
+
+  private applyTurnVersion(
+    assistantMessageId: string,
+    userMessageId: string,
+    version: CopilotTurnVersion,
+    totalVersions: number
+  ): void {
+    this.messages.update(messages =>
+      messages.map(message => {
+        /*
+         * Change the visible user prompt.
+         */
+        if (message.id === userMessageId) {
+          return {
+            ...message,
+            content: version.userContent
+          };
+        }
+
+        /*
+         * Change the visible assistant response,
+         * Step Block and version indicator.
+         */
+        if (message.id === assistantMessageId) {
+          return {
+            ...message,
+            content: version.assistantContent,
+            activities: version.activities,
+            activityExpanded: false,
+            versionNumber: version.versionNumber,
+            totalVersions,
+            turnUserMessageId: userMessageId
+          };
+        }
+        return message;
+      })
+    );
+
+    this.shouldAutoScroll = false;
   }
 
   startNewConversation(): void {
@@ -569,27 +874,65 @@ export class CopilotChat {
         'type' in outcome &&
         outcome.type === 'success'
       ) {
-        const userMessageId = this.activeUserMessageId;
+        const userMessageId =
+          this.activeUserMessageId;
+
+        const completedActivities =
+          this.activities().map(activity => ({
+            ...activity
+          }));
+
+        /*
+         * Move the live activity state onto the
+         * completed assistant message.
+         *
+         * From this point the message owns its
+         * Step Block instead of the global live state.
+         */
+        this.messages.update(messages =>
+          messages.map(message =>
+            message.id === assistantMessageId
+              ? {
+                ...message,
+                activities:
+                  completedActivities,
+                activityExpanded: false,
+                turnStopped: false,
+                turnUserMessageId:
+                  userMessageId ?? undefined
+              }
+              : message
+          )
+        );
 
         if (userMessageId) {
-          const assistantMessage = this.messages().find(
-            message => message.id === assistantMessageId
-          );
+          const assistantMessage =
+            this.messages().find(
+              message =>
+                message.id ===
+                assistantMessageId
+            );
 
-          this.copilotService.completeTurn(
-            userMessageId,
-            assistantMessageId,
-            assistantMessage?.content ?? '',
-            this.activities()
-          ).subscribe({
-            error: error => {
-              console.error('Failed to persist completed Copilot turn:', error);
-            }
-          });
+          this.copilotService
+            .completeTurn(
+              userMessageId,
+              assistantMessageId,
+              assistantMessage?.content ?? '',
+              completedActivities
+            )
+            .subscribe({
+              error: error => {
+                console.error(
+                  'Failed to persist completed Copilot turn:',
+                  error
+                );
+              }
+            });
         }
 
         this.pendingApproval.set(null);
         this.activityExpanded.set(false);
+
         return;
       }
 
@@ -1222,7 +1565,9 @@ export class CopilotChat {
     return latestCompletedAssistant?.id === assistantMessage.id;
   }
 
-  beginEditCompletedPrompt(userMessage: CopilotMessage): void {
+  beginEditCompletedPrompt(
+    userMessage: CopilotMessage
+  ): void {
     if (
       this.isSending() ||
       this.isLoadingHistory() ||
@@ -1231,17 +1576,18 @@ export class CopilotChat {
       return;
     }
 
-    if (!this.canEditCompletedUserMessage(userMessage.id)) {
-      this.errorMessage.set(
-        'Only the latest completed request can be edited.'
-      );
+    if (!this.hasCompletedResponse(userMessage.id)) {
       return;
     }
 
     this.errorMessage.set('');
     this.editingCompletedTurn.set(true);
-    this.editingUserMessageId.set(userMessage.id);
-    this.editedPrompt.set(userMessage.content);
+    this.editingUserMessageId.set(
+      userMessage.id
+    );
+    this.editedPrompt.set(
+      userMessage.content
+    );
   }
 
   submitEditedPrompt(): void {

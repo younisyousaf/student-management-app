@@ -2,22 +2,29 @@ export interface CopilotChatRequest {
   message: string;
   sessionId?: string | null;
 }
+
 export interface CopilotChatResponse {
   response: string;
   sessionId: string;
 }
+
 export type CopilotMessageRole =
   | 'user'
   | 'assistant';
+
 export interface CopilotMessage {
   id: string;
   role: CopilotMessageRole;
   content: string;
   createdAt: Date | null;
+
   activities?: CopilotActivity[];
   turnStopped?: boolean;
   activityExpanded?: boolean;
   turnUserMessageId?: string;
+
+  versionNumber?: number;
+  totalVersions?: number;
 }
 
 export interface CopilotHistoryMessage {
@@ -26,10 +33,12 @@ export interface CopilotHistoryMessage {
   content: string;
   createdAt: string | null;
 }
+
 export interface CopilotApprovalDisplayItem {
   label: string;
   value: string;
 }
+
 export interface CopilotApprovalRequest {
   interruptId: string;
   toolCallId: string;
@@ -40,6 +49,7 @@ export interface CopilotApprovalRequest {
   displayDetails?: CopilotApprovalDisplayItem[];
   warning?: string | null;
 }
+
 export interface CopilotConversation {
   threadId: string;
   title: string;
@@ -47,6 +57,7 @@ export interface CopilotConversation {
   createdAt: string;
   updatedAt: string;
 }
+
 export type CopilotActivityStatus =
   | 'running'
   | 'completed'
@@ -54,6 +65,7 @@ export type CopilotActivityStatus =
   | 'rejected'
   | 'stopped'
   | 'failed';
+
 export interface CopilotActivity {
   id: string;
   toolName: string;
@@ -63,6 +75,7 @@ export interface CopilotActivity {
 export interface CopilotTurn {
   userMessageId: string;
   status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+  currentVersionNumber: number;
   activities: CopilotActivity[];
   createdAt: string;
   updatedAt: string;
@@ -72,4 +85,15 @@ export interface CopilotCompletedTurnEditResponse {
   userMessageId: string;
   versionNumber: number;
   status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+}
+
+export interface CopilotTurnVersion {
+  versionNumber: number;
+  userContent: string;
+  assistantMessageId: string | null;
+  assistantContent: string;
+  status: 'Prepared' | 'Completed' | 'Stopped' | 'Failed';
+  activities: CopilotActivity[];
+  createdAt: string;
+  updatedAt: string;
 }

@@ -4,7 +4,7 @@ import { HttpAgent } from '@ag-ui/client';
 import { BaseEvent, EventType, RunAgentInput } from '@ag-ui/core';
 import { Observable, Subject, tap } from 'rxjs';
 import { environment } from '../../../../environments/environment.development';
-import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity, CopilotCompletedTurnEditResponse } from '../models/copilot.model';
+import { CopilotApprovalRequest, CopilotHistoryMessage, CopilotConversation, CopilotTurn, CopilotActivity, CopilotCompletedTurnEditResponse, CopilotTurnVersion } from '../models/copilot.model';
 import { PaginatedResult } from '../../../shared/models/paginated-result.model';
 
 @Injectable({
@@ -436,6 +436,31 @@ export class AgUiCopilotService {
         userMessageId,
         message
       },
+      {
+        withCredentials: true
+      }
+    );
+  }
+
+  getTurnVersions(
+    userMessageId: string
+  ): Observable<CopilotTurnVersion[]> {
+    this.ensureSession();
+
+    const threadId =
+      encodeURIComponent(
+        this.agent.threadId
+      );
+
+    const messageId =
+      encodeURIComponent(
+        userMessageId
+      );
+
+    return this.http.get<
+      CopilotTurnVersion[]
+    >(
+      `${environment.apiUrl}/ag-ui/copilot/conversations/${threadId}/turns/${messageId}/versions`,
       {
         withCredentials: true
       }
