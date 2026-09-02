@@ -9,18 +9,21 @@ public class EnrollmentService : IEnrollmentService
     private readonly IStudentRepository _studentRepository;
     private readonly ICourseRepository _courseRepository;
     private readonly IFeeRepository _feeRepository;
+    private readonly ITransactionManager _transactionManager;
 
     // Orchestrating multiple repositories allows us to implement transactional compound rules cleanly
     public EnrollmentService(
         IEnrollmentRepository enrollmentRepository,
         IStudentRepository studentRepository,
         ICourseRepository courseRepository,
-        IFeeRepository feeRepository)
+        IFeeRepository feeRepository,
+        ITransactionManager transactionManager)
     {
         _enrollmentRepository = enrollmentRepository;
         _studentRepository = studentRepository;
         _courseRepository = courseRepository;
         _feeRepository = feeRepository;
+        _transactionManager = transactionManager;
     }
 
     public void EnrollStudent(int studentId, int courseId)
@@ -39,13 +42,16 @@ public class EnrollmentService : IEnrollmentService
 
         // Core Domain Execution - Create and save the Enrollment
         var enrollment = new Enrollment(studentId, courseId);
-        _enrollmentRepository.Add(enrollment);
 
         // Automated Invoice Generation
         // We capture the real-time pricing directly from the rich Course domain model 
         // to prevent hardcoded pricing or UI variance bugs.
         var initialInvoice = new Fee(studentId, courseId, course.FeeAmount);
-        _feeRepository.Add(initialInvoice);
+        _transactionManager.Execute(() =>
+        {
+            _enrollmentRepository.Add(enrollment);
+            _feeRepository.Add(initialInvoice);
+        });
     }
 
     public Enrollment? GetEnrollmentById(int id)

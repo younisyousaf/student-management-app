@@ -2,6 +2,7 @@
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Helpers;
 using StudentManagement.Infrastructure.Repositories;
+using StudentManagement.Infrastructure.Services;
 using StudentManagementSystem.Controllers;
 using StudentManagementSystem.Helpers;
 using StudentManagementSystem.Services;
@@ -33,12 +34,14 @@ internal class Program
             IStudentService studentService = new StudentService(studentRepository);
             ICourseService courseService = new CourseService(courseRepository);
             IFeeService feeService = new FeeService(feeRepository);
+            ITransactionManager transactionManager = new AdoNetTransactionManager();
             IEnrollmentService enrollmentService = 
                 new EnrollmentService(
                     enrollmentRepository,
                     studentRepository,
                     courseRepository,
-                    feeRepository);
+                    feeRepository,
+                    transactionManager);
 
             ICurrentSchoolTimeProvider schoolTime =
             new ConsoleSchoolTimeProvider(

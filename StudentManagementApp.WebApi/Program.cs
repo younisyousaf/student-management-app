@@ -87,6 +87,7 @@ builder.Services.AddScoped<IStudentService,StudentService>();
 builder.Services.AddScoped<ICourseService,CourseService>();
 builder.Services.AddScoped<IEnrollmentService,EnrollmentService>();
 builder.Services.AddScoped<IFeeService,FeeService>();
+builder.Services.AddScoped<ITransactionManager, TransactionManager>();
 builder.Services.AddScoped<IAttendanceService,AttendanceService>();
 
 builder.Services.AddScoped<ISchoolService, SchoolService>();
