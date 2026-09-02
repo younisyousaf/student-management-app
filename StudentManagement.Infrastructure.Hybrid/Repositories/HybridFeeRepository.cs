@@ -1,61 +1,105 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Dapper;
+﻿using Dapper;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 
-namespace StudentManagement.Infrastructure.Hybrid.Repositories
+namespace StudentManagement.Infrastructure.Hybrid.Repositories;
+
+public class HybridFeeRepository : IFeeRepository
 {
-    public class HybridFeeRepository : IFeeRepository
+    private readonly HybridDbContext _context;
+    private readonly ICurrentUserContext _currentUser;
+
+    public HybridFeeRepository(
+        HybridDbContext context,
+        ICurrentUserContext currentUser)
     {
-        private readonly HybridDbContext _context;
+        _context = context;
+        _currentUser = currentUser;
+    }
 
-        public HybridFeeRepository(HybridDbContext context)
-        {
-            _context = context;
-        }
+    private int CurrentSchoolId =>
+        _currentUser.SchoolId
+        ?? throw new InvalidOperationException(
+            "A school must be selected.");
 
-        // READ OPERATIONS: Dapper
-        public Fee? GetById(int id)
-        {
-            string sql = "SELECT * FROM Fees WHERE Id = @Id";
-            return _context.Connection.QuerySingleOrDefault<Fee>(sql, new { Id = id });
-        }
+    public Fee? GetById(int id)
+    {
+        const string sql = """
+            SELECT *
+            FROM Fees
+            WHERE Id = @Id
+            AND SchoolId = @SchoolId
+            """;
 
-        public IEnumerable<Fee> GetAll()
-        {
-            string sql = "SELECT * FROM Fees";
-            return _context.Connection.Query<Fee>(sql);
-        }
+        return _context.Connection.QuerySingleOrDefault<Fee>(
+            sql,
+            new { Id = id, SchoolId = CurrentSchoolId });
+    }
 
-        public Fee? GetByStudentAndCourse(int studentId, int courseId)
-        {
-            string sql = "SELECT * FROM Fees WHERE StudentId = @StudentId AND CourseId = @CourseId";
-            return _context.Connection.QuerySingleOrDefault<Fee>(sql, new { StudentId = studentId, CourseId = courseId });
-        }
+    public IEnumerable<Fee> GetAll()
+    {
+        const string sql = """
+            SELECT *
+            FROM Fees
+            WHERE SchoolId = @SchoolId
+            """;
 
-        // WRITE OPERATIONS: EF Core
-        public void Add(Fee entity)
-        {
-            _context.Fees.Add(entity);
-            _context.SaveChanges();
-        }
+        return _context.Connection.Query<Fee>(
+            sql,
+            new { SchoolId = CurrentSchoolId });
+    }
 
-        public void Update(Fee entity)
-        {
-            _context.Entry(entity).State = EntityState.Modified;
-            _context.SaveChanges();
-        }
+    public Fee? GetByStudentAndCourse(
+        int studentId,
+        int courseId)
+    {
+        const string sql = """
+            SELECT *
+            FROM Fees
+            WHERE StudentId = @StudentId
+            AND CourseId = @CourseId
+            AND SchoolId = @SchoolId
+            """;
 
-        public void Delete(int id)
-        {
-            var entity = _context.Fees.Find(id);
-            if (entity != null)
+        return _context.Connection.QuerySingleOrDefault<Fee>(
+            sql,
+            new
             {
-                _context.Fees.Remove(entity);
-                _context.SaveChanges();
-            }
-        }
+                StudentId = studentId,
+                CourseId = courseId,
+                SchoolId = CurrentSchoolId
+            });
+    }
+
+    public void Add(Fee entity)
+    {
+        entity.AssignToSchool(CurrentSchoolId);
+        _context.Fees.Add(entity);
+        _context.SaveChanges();
+    }
+
+    public void Update(Fee entity)
+    {
+        if (entity.SchoolId != CurrentSchoolId)
+            throw new UnauthorizedAccessException(
+                "Fee does not belong to the current school.");
+
+        _context.Entry(entity).State = EntityState.Modified;
+        _context.SaveChanges();
+    }
+
+    public void Delete(int id)
+    {
+        var entity = _context.Fees
+            .SingleOrDefault(x =>
+                x.Id == id &&
+                x.SchoolId == CurrentSchoolId);
+
+        if (entity is null)
+            return;
+
+        _context.Fees.Remove(entity);
+        _context.SaveChanges();
     }
 }

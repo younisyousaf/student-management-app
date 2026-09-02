@@ -1,67 +1,128 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using Dapper;
+﻿using Dapper;
 using Microsoft.EntityFrameworkCore;
 using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 
-namespace StudentManagement.Infrastructure.Hybrid.Repositories
+namespace StudentManagement.Infrastructure.Hybrid.Repositories;
+
+public class HybridEnrollmentRepository : IEnrollmentRepository
 {
-    public class HybridEnrollmentRepository : IEnrollmentRepository
+    private readonly HybridDbContext _context;
+    private readonly ICurrentUserContext _currentUser;
+
+    public HybridEnrollmentRepository(
+        HybridDbContext context,
+        ICurrentUserContext currentUser)
     {
-        private readonly HybridDbContext _context;
+        _context = context;
+        _currentUser = currentUser;
+    }
 
-        public HybridEnrollmentRepository(HybridDbContext context)
-        {
-            _context = context;
-        }
+    private int CurrentSchoolId =>
+        _currentUser.SchoolId
+        ?? throw new InvalidOperationException(
+            "A school must be selected.");
 
-        // READ OPERATIONS: Dapper
-        public Enrollment? GetById(int id)
-        {
-            string sql = "SELECT * FROM Enrollments WHERE Id = @Id";
-            return _context.Connection.QuerySingleOrDefault<Enrollment>(sql, new { Id = id });
-        }
+    public Enrollment? GetById(int id)
+    {
+        const string sql = """
+            SELECT *
+            FROM Enrollments
+            WHERE Id = @Id
+            AND SchoolId = @SchoolId
+            """;
 
-        public IEnumerable<Enrollment> GetAll()
-        {
-            string sql = "SELECT * FROM Enrollments";
-            return _context.Connection.Query<Enrollment>(sql);
-        }
+        return _context.Connection
+            .QuerySingleOrDefault<Enrollment>(
+                sql,
+                new { Id = id, SchoolId = CurrentSchoolId });
+    }
 
-        public bool IsAlreadyEnrolled(int studentId, int courseId)
-        {
-            string sql = "SELECT COUNT(1) FROM Enrollments WHERE StudentId = @StudentId AND CourseId = @CourseId AND Status <> 'Dropped'";
-            return _context.Connection.ExecuteScalar<int>(sql, new { StudentId = studentId, CourseId = courseId }) > 0;
-        }
+    public IEnumerable<Enrollment> GetAll()
+    {
+        const string sql = """
+            SELECT *
+            FROM Enrollments
+            WHERE SchoolId = @SchoolId
+            """;
 
-        public IEnumerable<Enrollment> GetByStudentId(int studentId)
-        {
-            string sql = "SELECT * FROM Enrollments WHERE StudentId = @StudentId";
-            return _context.Connection.Query<Enrollment>(sql, new { StudentId = studentId });
-        }
+        return _context.Connection.Query<Enrollment>(
+            sql,
+            new { SchoolId = CurrentSchoolId });
+    }
 
-        // WRITE OPERATIONS: EF Core
-        public void Add(Enrollment entity)
-        {
-            _context.Enrollments.Add(entity);
-            _context.SaveChanges();
-        }
+    public bool IsAlreadyEnrolled(
+        int studentId,
+        int courseId)
+    {
+        const string sql = """
+            SELECT COUNT(1)
+            FROM Enrollments
+            WHERE StudentId = @StudentId
+            AND CourseId = @CourseId
+            AND SchoolId = @SchoolId
+            AND Status <> 'Dropped'
+            """;
 
-        public void Update(Enrollment entity)
-        {
-            _context.Entry(entity).State = EntityState.Modified;
-            _context.SaveChanges();
-        }
-
-        public void Delete(int id)
-        {
-            var entity = _context.Enrollments.Find(id);
-            if (entity != null)
+        return _context.Connection.ExecuteScalar<int>(
+            sql,
+            new
             {
-                _context.Enrollments.Remove(entity);
-                _context.SaveChanges();
-            }
-        }
+                StudentId = studentId,
+                CourseId = courseId,
+                SchoolId = CurrentSchoolId
+            }) > 0;
+    }
+
+    public IEnumerable<Enrollment> GetByStudentId(
+        int studentId)
+    {
+        const string sql = """
+            SELECT *
+            FROM Enrollments
+            WHERE StudentId = @StudentId
+            AND SchoolId = @SchoolId
+            """;
+
+        return _context.Connection.Query<Enrollment>(
+            sql,
+            new
+            {
+                StudentId = studentId,
+                SchoolId = CurrentSchoolId
+            });
+    }
+
+    public void Add(Enrollment entity)
+    {
+        entity.AssignToSchool(CurrentSchoolId);
+        _context.Enrollments.Add(entity);
+        _context.SaveChanges();
+    }
+
+    public void Update(Enrollment entity)
+    {
+        if (entity.SchoolId != CurrentSchoolId)
+            throw new UnauthorizedAccessException(
+                "Enrollment does not belong to the current school.");
+
+        _context.Entry(entity).State =
+            EntityState.Modified;
+
+        _context.SaveChanges();
+    }
+
+    public void Delete(int id)
+    {
+        var entity = _context.Enrollments
+            .SingleOrDefault(x =>
+                x.Id == id &&
+                x.SchoolId == CurrentSchoolId);
+
+        if (entity is null)
+            return;
+
+        _context.Enrollments.Remove(entity);
+        _context.SaveChanges();
     }
 }

@@ -4,6 +4,7 @@ namespace StudentManagement.Core.Models;
 
 public class Fee : BaseEntity
 {
+    public int SchoolId { get; private set; }
     public int StudentId { get; init; }
     public Student? Student { get; set; }
     public int CourseId { get; init; }
@@ -47,6 +48,18 @@ public class Fee : BaseEntity
         AmountPaid += amount;
         PaymentDate = DateTime.UtcNow;
         Remarks = string.IsNullOrEmpty(transactionRemarks) ? Remarks : $"{Remarks} | Paid {amount:C} on {PaymentDate:d}: {transactionRemarks}";
+    }
+
+    public void AssignToSchool(int schoolId)
+    {
+        if (schoolId <= 0)
+            throw new ArgumentException("Valid school ID is required.");
+
+        if (SchoolId != 0 && SchoolId != schoolId)
+            throw new InvalidOperationException(
+                "Fee is already assigned to another school.");
+
+        SchoolId = schoolId;
     }
 
     public override string ToString() => $"Invoice #{Id} | Remaining Overdue balance: ${RemainingBalance:F2} (Paid: ${AmountPaid:F2}/${AmountDue:F2})";

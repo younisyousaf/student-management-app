@@ -4,6 +4,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Security;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.WebApi.Controllers
 {
@@ -20,6 +22,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet]
+        [RequirePermission(Permissions.Attendance.Read)]
         public ActionResult<ApiResponse<IEnumerable<AttendanceResponseDto>>> GetAll()
         {
             var records = _attendanceService.GetAllAttendance();
@@ -32,18 +35,19 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("paged")]
+        [RequirePermission(Permissions.Attendance.Read)]
         public async Task<ActionResult<
-    ApiResponse<
-        PaginatedResult<
-            AttendanceResponseDto>>>>
-    GetPaged(
-        [FromQuery]
-        PaginationQuery pagination,
+            ApiResponse<
+                PaginatedResult<
+                AttendanceResponseDto>>>>
+        GetPaged(
+            [FromQuery]
+            PaginationQuery pagination,
 
-        [FromServices]
-        ManagementPaginationStore paginationStore,
+            [FromServices]
+            ManagementPaginationStore paginationStore,
 
-        CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             var result =
                 await paginationStore
@@ -79,6 +83,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("{id}")]
+        [RequirePermission(Permissions.Attendance.Read)]
         public ActionResult<ApiResponse<AttendanceResponseDto>> GetById(int id)
         {
             var record = _attendanceService.GetAttendanceById(id);
@@ -93,6 +98,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("student/{studentId}")]
+        [RequirePermission(Permissions.Attendance.Read)]
         public ActionResult<ApiResponse<IEnumerable<AttendanceResponseDto>>> GetByStudent(int studentId)
         {
             var records = _attendanceService.GetAttendanceForStudent(studentId);
@@ -105,6 +111,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("course")]
+        [RequirePermission(Permissions.Attendance.Read)]
         public ActionResult<ApiResponse<IEnumerable<AttendanceResponseDto>>> GetByCourseOnDate([FromQuery] int courseId, [FromQuery] DateTime date)
         {
             var records = _attendanceService.GetAttendanceForCourseOnDate(courseId, date);
@@ -117,6 +124,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpPost]
+        [RequirePermission(Permissions.Attendance.Mark)]
         public ActionResult Mark([FromBody] MarkAttendanceDto request)
         {
             try
@@ -146,6 +154,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpPut("{id}")]
+        [RequirePermission(Permissions.Attendance.Update)]
         public ActionResult Update(int id, [FromBody] UpdateAttendanceDto request)
         {
             try

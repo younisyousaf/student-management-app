@@ -4,6 +4,7 @@ namespace StudentManagement.Core.Models;
 
 public class Attendance : BaseEntity
 {
+    public int SchoolId { get; private set; }
     public int StudentId { get; init; }
     public int CourseId { get; init; }
     public DateTime Date { get; init; }
@@ -14,8 +15,6 @@ public class Attendance : BaseEntity
     {
         if (studentId <= 0 || courseId <= 0)
             throw new ArgumentException("Identifiers must point to authentic items.");
-        if (date.Date > DateTime.UtcNow.Date)
-            throw new ArgumentException("Cannot record attendance for a future date.");
 
         StudentId = studentId;
         CourseId = courseId;
@@ -30,6 +29,18 @@ public class Attendance : BaseEntity
     {
         Status = status;
         Remarks = remarks;
+    }
+
+    public void AssignToSchool(int schoolId)
+    {
+        if (schoolId <= 0)
+            throw new ArgumentException("Valid school ID is required.");
+
+        if (SchoolId != 0 && SchoolId != schoolId)
+            throw new InvalidOperationException(
+                "Attendance is already assigned to another school.");
+
+        SchoolId = schoolId;
     }
 
     public override string ToString() =>

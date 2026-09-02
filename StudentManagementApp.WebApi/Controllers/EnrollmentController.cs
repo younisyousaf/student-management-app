@@ -4,6 +4,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Security;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.API.Controllers
 {
@@ -20,6 +22,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet]
+        [RequirePermission(Permissions.Enrollments.Read)]
         public ActionResult<ApiResponse<IEnumerable<Enrollment>>> GetAll()
         {
             var enrollments = _enrollmentService.GetAllEnrollments();
@@ -31,17 +34,18 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("paged")]
+        [RequirePermission(Permissions.Enrollments.Read)]
         public async Task<ActionResult<
-    ApiResponse<
-        PaginatedResult<Enrollment>>>>
-    GetPaged(
-        [FromQuery]
-        PaginationQuery pagination,
+            ApiResponse<
+            PaginatedResult<Enrollment>>>>
+        GetPaged(
+            [FromQuery]
+            PaginationQuery pagination,
 
-        [FromServices]
-        ManagementPaginationStore paginationStore,
+            [FromServices]
+            ManagementPaginationStore paginationStore,
 
-        CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             var result =
                 await paginationStore
@@ -63,6 +67,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [RequirePermission(Permissions.Enrollments.Read)]
         public ActionResult<ApiResponse<Enrollment>> GetById(int id)
         {
             try
@@ -84,6 +89,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("student/{studentId}")]
+        [RequirePermission(Permissions.Enrollments.Read)]
         public ActionResult<ApiResponse<IEnumerable<Enrollment>>> GetByStudent(int studentId)
         {
             try
@@ -102,6 +108,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPost]
+        [RequirePermission(Permissions.Enrollments.Create)]
         public ActionResult Enroll([FromBody] EnrollStudentDto request)
         {
             try
@@ -124,6 +131,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPost("drop")]
+        [RequirePermission(Permissions.Enrollments.Drop)]
         public ActionResult Drop([FromBody] DropRequest request)
         {
             try
@@ -142,6 +150,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPost("complete")]
+        [RequirePermission(Permissions.Enrollments.Complete)]
         public ActionResult Complete([FromBody] CompleteRequest request)
         {
             try
@@ -160,6 +169,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [RequirePermission(Permissions.Enrollments.Drop)]
         public ActionResult Delete(int id)
         {
             _enrollmentService.DropCourse(id);

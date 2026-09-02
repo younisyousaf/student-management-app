@@ -8,22 +8,46 @@ public class AttendanceService : IAttendanceService
 {
     private readonly IAttendanceRepository _attendanceRepository;
     private readonly IEnrollmentRepository _enrollmentRepository;
+    private readonly ICurrentSchoolTimeProvider _schoolTime;
 
-    public AttendanceService(IAttendanceRepository attendanceRepository, IEnrollmentRepository enrollmentRepository)
+    public AttendanceService(IAttendanceRepository attendanceRepository, IEnrollmentRepository enrollmentRepository, ICurrentSchoolTimeProvider schoolTime)
     {
         _attendanceRepository = attendanceRepository;
         _enrollmentRepository = enrollmentRepository;
+        _schoolTime = schoolTime;
     }
 
-    public void MarkAttendance(int studentId, int courseId, DateTime date, AttendanceStatus status, string? remarks = null)
+    public void MarkAttendance(
+    int studentId,
+    int courseId,
+    DateTime date,
+    AttendanceStatus status,
+    string? remarks = null)
     {
-        if (!_enrollmentRepository.IsAlreadyEnrolled(studentId, courseId))
-            throw new InvalidOperationException("Student is not actively enrolled in this course.");
+        if (date.Date > _schoolTime.Today)
+            throw new ArgumentException(
+                "Cannot record attendance for a future date.");
 
-        if (_attendanceRepository.GetByStudentCourseAndDate(studentId, courseId, date) != null)
-            throw new InvalidOperationException("Attendance for this student, course, and date is already recorded. Use update instead.");
+        if (!_enrollmentRepository.IsAlreadyEnrolled(
+            studentId,
+            courseId))
+            throw new InvalidOperationException(
+                "Student is not actively enrolled in this course.");
 
-        _attendanceRepository.Add(new Attendance(studentId, courseId, date, status, remarks));
+        if (_attendanceRepository.GetByStudentCourseAndDate(
+            studentId,
+            courseId,
+            date) != null)
+            throw new InvalidOperationException(
+                "Attendance for this student, course, and date is already recorded. Use update instead.");
+
+        _attendanceRepository.Add(
+            new Attendance(
+                studentId,
+                courseId,
+                date,
+                status,
+                remarks));
     }
 
     public void UpdateAttendance(int attendanceId, AttendanceStatus status, string? remarks = null)

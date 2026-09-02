@@ -4,6 +4,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Security;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.API.Controllers
 {
@@ -20,6 +22,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet]
+        [RequirePermission(Permissions.Students.Read)]
         public ActionResult<ApiResponse<IEnumerable<Student>>> GetAll()
         {
             var students = _studentService.GetAllStudents();
@@ -31,17 +34,18 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("paged")]
+        [RequirePermission(Permissions.Students.Read)]
         public async Task<ActionResult<
-    ApiResponse<PaginatedResult<Student>>>>
-    GetPaged(
-        [FromQuery]
-        PaginationQuery pagination,
+        ApiResponse<PaginatedResult<Student>>>>
+        GetPaged(
+            [FromQuery]
+            PaginationQuery pagination,
 
-        [FromServices]
-        ManagementPaginationStore paginationStore,
+            [FromServices]
+            ManagementPaginationStore paginationStore,
 
-        CancellationToken cancellationToken)
-        {
+            CancellationToken cancellationToken)
+            {
             var result =
             await paginationStore
             .GetStudentsAsync(
@@ -62,6 +66,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [RequirePermission(Permissions.Students.Read)]
         public ActionResult<ApiResponse<Student>> GetById(int id)
         {
             var student = _studentService.GetStudentById(id);
@@ -76,6 +81,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("roll/{rollNumber}")]
+        [RequirePermission(Permissions.Students.Read)]
         public ActionResult<ApiResponse<Student>> GetByRollNumber(string rollNumber)
         {
             var student = _studentService.GetStudentByRollNumber(rollNumber);
@@ -90,6 +96,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPost]
+        [RequirePermission(Permissions.Students.Create)]
         public ActionResult Create([FromBody] CreateStudentDto request)
         {
             try
@@ -129,6 +136,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [RequirePermission(Permissions.Students.Update)]
         public ActionResult Update(int id, [FromBody] UpdateStudentDto request)
         {
             try
@@ -162,6 +170,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [RequirePermission(Permissions.Students.Delete)]
         public ActionResult Delete(int id)
         {
             try

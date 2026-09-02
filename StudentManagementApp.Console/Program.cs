@@ -1,9 +1,10 @@
-﻿using StudentManagementSystem.Controllers;
-using StudentManagement.Infrastructure.Helpers;
-using StudentManagementSystem.Helpers;
-using StudentManagement.Infrastructure.Repositories;
-using StudentManagement.Core.Interfaces;
+﻿using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Services;
+using StudentManagement.Infrastructure.Helpers;
+using StudentManagement.Infrastructure.Repositories;
+using StudentManagementSystem.Controllers;
+using StudentManagementSystem.Helpers;
+using StudentManagementSystem.Services;
 
 namespace StudentManagementSystem;
 
@@ -32,13 +33,22 @@ internal class Program
             IStudentService studentService = new StudentService(studentRepository);
             ICourseService courseService = new CourseService(courseRepository);
             IFeeService feeService = new FeeService(feeRepository);
-            IEnrollmentService enrollmentService = new EnrollmentService(
+            IEnrollmentService enrollmentService = 
+                new EnrollmentService(
+                    enrollmentRepository,
+                    studentRepository,
+                    courseRepository,
+                    feeRepository);
+
+            ICurrentSchoolTimeProvider schoolTime =
+            new ConsoleSchoolTimeProvider(
+                "Pakistan Standard Time",
+                TimeProvider.System);
+
+            IAttendanceService attendanceService = new AttendanceService(
+                attendanceRepository,
                 enrollmentRepository,
-                studentRepository,
-                courseRepository,
-                feeRepository
-            );
-            IAttendanceService attendanceService = new AttendanceService(attendanceRepository, enrollmentRepository);
+                schoolTime);
 
             // 6. Controllers Assembly (Presentation Orchestration Layer)
             var studentController = new StudentController(studentService);

@@ -18,12 +18,12 @@ public class StudentService : IStudentService
         if (!student.Email.Contains('@'))
             throw new ArgumentException($"Registration rejected: '{student.Email}' is not a structurally valid email address.");
 
-        // Roll number must be globally unique
+        // Roll number must be unique within the current school
         var existingRoll = _studentRepository.GetByRollNumber(student.RollNumber);
         if (existingRoll != null)
             throw new InvalidOperationException($"Registration rejected: Roll Number '{student.RollNumber}' is already assigned to another student.");
 
-        // Email must be unique across the school system
+        // Email must be unique within the current school
         var existingEmail = _studentRepository.GetByEmail(student.Email);
         if (existingEmail != null)
             throw new InvalidOperationException($"Registration rejected: Email '{student.Email}' is already registered.");

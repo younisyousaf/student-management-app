@@ -2,7 +2,7 @@
 
 public class Student : BaseEntity
 {
-    public int? SchoolId { get; private set; }
+    public int SchoolId { get; private set; }
     public string RollNumber { get; private set; }
     public string FirstName { get; private set; }
     public string LastName { get; private set; }
@@ -51,6 +51,10 @@ public class Student : BaseEntity
     {
         if (schoolId <= 0)
             throw new ArgumentException("Valid school ID is required.");
+
+        if (SchoolId != 0 && SchoolId != schoolId)
+            throw new InvalidOperationException(
+                "Student is already assigned to another school.");
 
         SchoolId = schoolId;
     }

@@ -63,24 +63,4 @@ public sealed class SchoolsController(
             message = "School administrator provisioned successfully."
         });
     }
-
-    [HttpGet("permission-test")]
-    [RequirePermission(Permissions.Students.Read)]
-    public IActionResult TestSchoolPermission()
-    {
-        return Ok(new
-        {
-            message = "School-scoped permission works."
-        });
-    }
-
-    [HttpGet("permission-denied-test")]
-    [RequirePermission(
-    Permissions.Schools.Create,
-    PermissionScope.School)]
-    public IActionResult TestDeniedPermission()
-    {
-        return Ok();
-    }
-
 }

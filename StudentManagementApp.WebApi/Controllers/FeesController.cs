@@ -4,6 +4,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Security;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.WebApi.Controllers
 {
@@ -15,6 +17,7 @@ namespace StudentManagementApp.WebApi.Controllers
         private readonly IFeeService _feeService = feeService;
 
         [HttpGet]
+        [RequirePermission(Permissions.Fees.Read)]
         public ActionResult<ApiResponse<IEnumerable<FeeResponseDto>>> GetAll()
         {
             var fees = _feeService.GetAllFeeLedgers();
@@ -41,18 +44,19 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("paged")]
+        [RequirePermission(Permissions.Fees.Read)]
         public async Task<ActionResult<
-    ApiResponse<
-        PaginatedResult<
+            ApiResponse<
+            PaginatedResult<
             FeeResponseDto>>>>
-    GetPaged(
-        [FromQuery]
-        PaginationQuery pagination,
+        GetPaged(
+            [FromQuery]
+            PaginationQuery pagination,
 
-        [FromServices]
-        ManagementPaginationStore paginationStore,
+            [FromServices]
+            ManagementPaginationStore paginationStore,
 
-        CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             var result =
                 await paginationStore
@@ -121,6 +125,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("{id}")]
+        [RequirePermission(Permissions.Fees.Read)]
         public ActionResult<ApiResponse<Fee>> GetById(int id)
         {
             try
@@ -142,6 +147,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpGet("statement")]
+        [RequirePermission(Permissions.Fees.Read)]
         public ActionResult<ApiResponse<Fee>> GetStatement([FromQuery] int studentId, [FromQuery] int courseId)
         {
             try
@@ -165,6 +171,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpPost("pay")]
+        [RequirePermission(Permissions.Fees.RecordPayment)]
         public ActionResult ProcessPayment([FromBody] FeeDto request)
         {
             try
@@ -192,6 +199,7 @@ namespace StudentManagementApp.WebApi.Controllers
         }
 
         [HttpDelete("{id}")]
+        [RequirePermission(Permissions.Fees.Read)]
         public ActionResult Delete(int id)
         {
             return BadRequest(new ApiResponse

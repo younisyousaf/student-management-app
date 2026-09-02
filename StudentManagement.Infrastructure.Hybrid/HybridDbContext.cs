@@ -86,6 +86,11 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(c => c.Code).IsRequired();
                 entity.Property(c => c.Name).IsRequired();
                 entity.Property(c => c.FeeAmount).HasColumnType("decimal(18,2)");
+
+                entity.HasOne<School>()
+                    .WithMany()
+                    .HasForeignKey(c => c.SchoolId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Enrollment>(entity =>
@@ -93,14 +98,26 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.ToTable("Enrollments");
                 entity.HasKey(e => e.Id);
                 entity.Property(e => e.Status).IsRequired();
+
+                entity.HasOne<School>()
+                    .WithMany()
+                    .HasForeignKey(e => e.SchoolId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Fee>(entity =>
             {
                 entity.ToTable("Fees");
                 entity.HasKey(f => f.Id);
-                entity.Property(f => f.AmountDue).HasColumnType("decimal(18,2)");
-                entity.Property(f => f.AmountPaid).HasColumnType("decimal(18,2)");
+                entity.Property(f => f.AmountDue)
+                    .HasColumnType("decimal(18,2)");
+                entity.Property(f => f.AmountPaid)
+                    .HasColumnType("decimal(18,2)");
+
+                entity.HasOne<School>()
+                    .WithMany()
+                    .HasForeignKey(f => f.SchoolId)
+                    .OnDelete(DeleteBehavior.Restrict);
             });
 
             //Attendances
@@ -110,6 +127,10 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.HasKey(a => a.Id);
                 entity.Property(a => a.Status).HasConversion<byte>();
                 entity.Property(a => a.Remarks).HasMaxLength(255);
+                entity.HasOne<School>()
+                      .WithMany()
+                      .HasForeignKey(a => a.SchoolId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             // Agent Session Mapping

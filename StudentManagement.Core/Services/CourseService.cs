@@ -15,7 +15,7 @@ public class CourseService : ICourseService
 
     public void CreateCourse(Course course)
     {
-        // Course Code must be unique across the system
+        // Course code must be unique within the current school
         var existingCourse = _courseRepository.GetByCode(course.Code);
         if (existingCourse != null)
             throw new InvalidOperationException($"Creation rejected: Course Code '{course.Code}' is already assigned to '{existingCourse.Name}'.");

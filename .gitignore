@@ -139,3 +139,11 @@ pnpm-debug.log*
 # Temporary files
 *.tmp
 *.temp
+
+# Local authentication/test artifacts
+*cookies.txt
+*login.json
+provision-admin.json
+*no-school.txt
+attendance-timezone-test.json
+attendance-timezone-response.txt

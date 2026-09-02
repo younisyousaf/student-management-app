@@ -91,6 +91,8 @@ builder.Services.AddScoped<IAttendanceService,AttendanceService>();
 
 builder.Services.AddScoped<ISchoolService, SchoolService>();
 builder.Services.AddScoped<ISchoolContextService,SchoolContextService>();
+builder.Services.AddSingleton(TimeProvider.System);
+builder.Services.AddScoped<ICurrentSchoolTimeProvider, CurrentSchoolTimeProvider>();
 
 // Current User Context
 builder.Services.AddHttpContextAccessor();

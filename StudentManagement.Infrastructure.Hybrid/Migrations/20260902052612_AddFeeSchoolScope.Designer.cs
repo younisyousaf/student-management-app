@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentManagement.Infrastructure.Hybrid;
 
@@ -11,9 +12,11 @@ using StudentManagement.Infrastructure.Hybrid;
 namespace StudentManagement.Infrastructure.Hybrid.Migrations
 {
     [DbContext(typeof(HybridDbContext))]
-    partial class HybridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902052612_AddFeeSchoolScope")]
+    partial class AddFeeSchoolScope
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -195,9 +198,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                         .HasMaxLength(255)
                         .HasColumnType("nvarchar(255)");
 
-                    b.Property<int>("SchoolId")
-                        .HasColumnType("int");
-
                     b.Property<byte>("Status")
                         .HasColumnType("tinyint");
 
@@ -205,8 +205,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                         .HasColumnType("int");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("SchoolId");
 
                     b.ToTable("Attendances", (string)null);
                 });
@@ -652,7 +650,7 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                     b.Property<string>("Remarks")
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int>("SchoolId")
+                    b.Property<int?>("SchoolId")
                         .HasColumnType("int");
 
                     b.Property<int>("StudentId")
@@ -1074,15 +1072,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                         .IsRequired();
                 });
 
-            modelBuilder.Entity("StudentManagement.Core.Models.Attendance", b =>
-                {
-                    b.HasOne("StudentManagement.Core.Models.School", null)
-                        .WithMany()
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-                });
-
             modelBuilder.Entity("StudentManagement.Core.Models.Course", b =>
                 {
                     b.HasOne("StudentManagement.Core.Models.School", null)
@@ -1112,8 +1101,7 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                     b.HasOne("StudentManagement.Core.Models.School", null)
                         .WithMany()
                         .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
+                        .OnDelete(DeleteBehavior.Restrict);
 
                     b.HasOne("StudentManagement.Core.Models.Student", "Student")
                         .WithMany()

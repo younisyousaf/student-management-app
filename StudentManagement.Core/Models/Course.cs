@@ -2,6 +2,7 @@
 
 public class Course : BaseEntity
 {
+    public int SchoolId { get; private set; }
     public string Code { get; private set; }
     public string Name { get; private set; }
     public string? Description { get; set; }
@@ -35,6 +36,18 @@ public class Course : BaseEntity
 
         Name = name;
         DurationMonths = durationMonths;
+    }
+
+    public void AssignToSchool(int schoolId)
+    {
+        if (schoolId <= 0)
+            throw new ArgumentException("Valid school ID is required.");
+
+        if (SchoolId != 0 && SchoolId != schoolId)
+            throw new InvalidOperationException(
+                "Course is already assigned to another school.");
+
+        SchoolId = schoolId;
     }
 
     public override string ToString() => $"({Code}) {Name} - {DurationMonths} Months | Base Rate: ${FeeAmount:F2}";

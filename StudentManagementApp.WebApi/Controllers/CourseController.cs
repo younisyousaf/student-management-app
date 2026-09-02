@@ -4,6 +4,8 @@ using StudentManagement.Core.Interfaces;
 using StudentManagement.Core.Models;
 using StudentManagementApp.WebApi.DTOs;
 using StudentManagementApp.WebApi.Services;
+using StudentManagement.Core.Security;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.API.Controllers
 {
@@ -20,6 +22,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet]
+        [RequirePermission(Permissions.Courses.Read)]
         public ActionResult<ApiResponse<IEnumerable<Course>>> GetAll()
         {
             var courses = _courseService.GetAllCourses();
@@ -31,16 +34,17 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("paged")]
+        [RequirePermission(Permissions.Courses.Read)]
         public async Task<ActionResult<
-    ApiResponse<PaginatedResult<Course>>>>
-    GetPaged(
-        [FromQuery]
-        PaginationQuery pagination,
+        ApiResponse<PaginatedResult<Course>>>>
+        GetPaged(
+            [FromQuery]
+            PaginationQuery pagination,
 
-        [FromServices]
-        ManagementPaginationStore paginationStore,
+            [FromServices]
+            ManagementPaginationStore paginationStore,
 
-        CancellationToken cancellationToken)
+            CancellationToken cancellationToken)
         {
             var result =
                 await paginationStore
@@ -62,6 +66,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpGet("{id}")]
+        [RequirePermission(Permissions.Courses.Read)]
         public ActionResult<ApiResponse<Course>> GetById(int id)
         {
             var course = _courseService.GetCourseById(id);
@@ -76,6 +81,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPost]
+        [RequirePermission(Permissions.Courses.Create)]
         public ActionResult Create([FromBody] CreateCourseDto request)
         {
             try
@@ -111,6 +117,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpPut("{id}")]
+        [RequirePermission(Permissions.Courses.Update)]
         public ActionResult Update(int id, [FromBody] CreateCourseDto request)
         {
             try
@@ -149,6 +156,7 @@ namespace StudentManagementApp.API.Controllers
         }
 
         [HttpDelete("{id}")]
+        [RequirePermission(Permissions.Courses.Delete)]
         public ActionResult Delete(int id)
         {
             try
