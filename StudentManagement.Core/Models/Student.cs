@@ -2,6 +2,7 @@
 
 public class Student : BaseEntity
 {
+    public int? SchoolId { get; private set; }
     public string RollNumber { get; private set; }
     public string FirstName { get; private set; }
     public string LastName { get; private set; }
@@ -44,6 +45,14 @@ public class Student : BaseEntity
     {
         if (!newEmail.Contains('@')) throw new ArgumentException("Invalid Email syntax structural format.");
         Email = newEmail;
+    }
+
+    public void AssignToSchool(int schoolId)
+    {
+        if (schoolId <= 0)
+            throw new ArgumentException("Valid school ID is required.");
+
+        SchoolId = schoolId;
     }
 
     public override string ToString() => $"[{RollNumber}] {FullName} | Contact: {Email}";

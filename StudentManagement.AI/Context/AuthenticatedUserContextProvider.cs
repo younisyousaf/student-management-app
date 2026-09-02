@@ -34,13 +34,20 @@ public sealed class AuthenticatedUserContextProvider : AIContextProvider
                 new AIContext());
         }
 
+        var roles = _currentUser.Roles.Count > 0
+        ? string.Join(", ", _currentUser.Roles)
+        : "None";
+
+            var schoolId = _currentUser.SchoolId?.ToString() ?? "None";
+
         var userContext = $"""
             Current authenticated application user:
 
             User ID: {_currentUser.UserId}
             Username: {_currentUser.Username}
             Email: {_currentUser.Email}
-            Role: {_currentUser.Role}
+            Platform Roles: {roles}
+            Current School ID: {schoolId}
 
             This identity comes from the authenticated ASP.NET Core user.
 

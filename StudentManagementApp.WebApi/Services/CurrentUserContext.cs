@@ -1,37 +1,20 @@
 ﻿using System.Security.Claims;
 using StudentManagement.Core.Interfaces;
+using StudentManagementApp.WebApi.Security;
 
 namespace StudentManagementApp.WebApi.Services;
 
-public sealed class CurrentUserContext : ICurrentUserContext
+public sealed class CurrentUserContext(IHttpContextAccessor accessor) : ICurrentUserContext
 {
-    private readonly IHttpContextAccessor _httpContextAccessor;
-
-    public CurrentUserContext(
-        IHttpContextAccessor httpContextAccessor)
-    {
-        _httpContextAccessor = httpContextAccessor;
-    }
-
-    private ClaimsPrincipal? User =>
-        _httpContextAccessor.HttpContext?.User;
+    private ClaimsPrincipal? User => accessor.HttpContext?.User;
 
     public bool IsAuthenticated =>
         User?.Identity?.IsAuthenticated == true;
 
-    public int? UserId
-    {
-        get
-        {
-            string? value =
-                User?.FindFirstValue(
-                    ClaimTypes.NameIdentifier);
-
-            return int.TryParse(value, out int id)
-                ? id
-                : null;
-        }
-    }
+    public int? UserId =>
+        int.TryParse(User?.FindFirstValue(ClaimTypes.NameIdentifier), out var id)
+            ? id
+            : null;
 
     public string? Username =>
         User?.FindFirstValue(ClaimTypes.Name);
@@ -39,6 +22,15 @@ public sealed class CurrentUserContext : ICurrentUserContext
     public string? Email =>
         User?.FindFirstValue(ClaimTypes.Email);
 
-    public string? Role =>
-        User?.FindFirstValue(ClaimTypes.Role);
+    public IReadOnlyCollection<string> Roles =>
+        User?.FindAll(ClaimTypes.Role)
+            .Select(x => x.Value)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray()
+        ?? [];
+
+    public int? SchoolId =>
+        int.TryParse(User?.FindFirstValue(SmartCampusClaimTypes.SchoolId), out var id)
+            ? id
+            : null;
 }

@@ -1,30 +1,38 @@
-using System.Security.Claims;
 using Microsoft.Agents.AI;
+using Microsoft.Agents.AI.Hosting;
+using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
 using Microsoft.Agents.AI.Workflows;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.AI;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi;
-using StudentManagement.AI.Extensions;
-using StudentManagement.AI.RAG;
 using StudentManagement.AI.Agents;
 using StudentManagement.AI.Context;
+using StudentManagement.AI.Extensions;
+using StudentManagement.AI.RAG;
 using StudentManagement.AI.Reliability;
 using StudentManagement.AI.Sessions;
 using StudentManagement.AI.Workflows.Enrollment;
 using StudentManagement.Core.Interfaces;
+using StudentManagement.Core.Security;
 using StudentManagement.Core.Services;
 using StudentManagement.Infrastructure.Hybrid;
+using StudentManagement.Infrastructure.Hybrid.Identity;
 using StudentManagement.Infrastructure.Hybrid.Repositories;
+using StudentManagement.Infrastructure.Hybrid.Security;
+using StudentManagement.Infrastructure.Hybrid.Services;
+using StudentManagementApp.WebApi.AGUI;
 using StudentManagementApp.WebApi.ExceptionHandling;
+using StudentManagementApp.WebApi.Identity;
+using StudentManagementApp.WebApi.Security;
 using StudentManagementApp.WebApi.Services;
 using StudentManagementApp.WebApi.Sessions;
 using StudentManagementApp.WebApi.Workflows;
-using Microsoft.Agents.AI.Hosting.AGUI.AspNetCore;
-using Microsoft.Agents.AI.Hosting;
-using StudentManagementApp.WebApi.AGUI;
+using System.Security.Claims;
 using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -37,63 +45,52 @@ var connectionString =
 
 // 2. Register HybridDbContext
 builder.Services.AddDbContextFactory<HybridDbContext>(
+    options => options.UseSqlServer(connectionString));
+
+builder.Services.AddIdentityCore<ApplicationUser>(
     options =>
-        options.UseSqlServer(connectionString));
+        {
+            options.User.RequireUniqueEmail = true;
+
+            options.Password.RequiredLength = 8;
+            options.Password.RequireDigit = true;
+            options.Password.RequireLowercase = true;
+            options.Password.RequireUppercase = true;
+            options.Password.RequireNonAlphanumeric = false;
+
+            options.Lockout.AllowedForNewUsers = true;
+            options.Lockout.MaxFailedAccessAttempts = 5;
+            options.Lockout.DefaultLockoutTimeSpan = TimeSpan.FromMinutes(15);
+        })
+    .AddRoles<ApplicationRole>()
+    .AddEntityFrameworkStores<HybridDbContext>()
+    .AddDefaultTokenProviders();
 
 // SQL Server Session
-builder.Services.AddScoped<
-    ISessionStore,
-    SqlServerSessionStore>();
+builder.Services.AddScoped<ISessionStore,SqlServerSessionStore>();
 
 // 3. Register All Hybrid Repositories
-builder.Services.AddScoped<
-    IStudentRepository,
-    HybridStudentRepository>();
+builder.Services.AddScoped<IStudentRepository,HybridStudentRepository>();
 
-builder.Services.AddScoped<
-    ICourseRepository,
-    HybridCourseRepository>();
+builder.Services.AddScoped<ICourseRepository,HybridCourseRepository>();
+builder.Services.AddScoped<IEnrollmentRepository,HybridEnrollmentRepository>();
+builder.Services.AddScoped<IFeeRepository,HybridFeeRepository>();
+builder.Services.AddScoped<IAttendanceRepository,HybridAttendanceRepository>();
 
-builder.Services.AddScoped<
-    IEnrollmentRepository,
-    HybridEnrollmentRepository>();
+// 4. Register All Core Business Services 
+builder.Services.AddScoped<IJwtTokenService, JwtTokenService>();
+builder.Services.AddScoped<IIdentityAuthenticationService, IdentityAuthenticationService>();
+builder.Services.AddScoped<IAccessControlService, AccessControlService>();
+builder.Services.AddScoped<IAuthorizationHandler,PermissionAuthorizationHandler>();
+builder.Services.AddSingleton<IAuthorizationPolicyProvider,PermissionPolicyProvider>();
+builder.Services.AddScoped<IStudentService,StudentService>();
+builder.Services.AddScoped<ICourseService,CourseService>();
+builder.Services.AddScoped<IEnrollmentService,EnrollmentService>();
+builder.Services.AddScoped<IFeeService,FeeService>();
+builder.Services.AddScoped<IAttendanceService,AttendanceService>();
 
-builder.Services.AddScoped<
-    IFeeRepository,
-    HybridFeeRepository>();
-
-builder.Services.AddScoped<
-    IUserRepository,
-    HybridUserRepository>();
-
-builder.Services.AddScoped<
-    IAttendanceRepository,
-    HybridAttendanceRepository>();
-
-// 4. Register All Core Business Services
-builder.Services.AddScoped<
-    IStudentService,
-    StudentService>();
-
-builder.Services.AddScoped<
-    ICourseService,
-    CourseService>();
-
-builder.Services.AddScoped<
-    IEnrollmentService,
-    EnrollmentService>();
-
-builder.Services.AddScoped<
-    IFeeService,
-    FeeService>();
-
-builder.Services.AddScoped<
-    IUserService,
-    UserService>();
-
-builder.Services.AddScoped<
-    IAttendanceService,
-    AttendanceService>();
+builder.Services.AddScoped<ISchoolService, SchoolService>();
+builder.Services.AddScoped<ISchoolContextService,SchoolContextService>();
 
 // Current User Context
 builder.Services.AddHttpContextAccessor();
@@ -378,19 +375,19 @@ builder.Services.AddSwaggerGen(
 builder.Services.AddCors(
     options =>
     {
-        options.AddPolicy(
-            "AngularPolicy",
+        options.AddPolicy("AngularPolicy",
             policy =>
             {
-                policy
-                    .WithOrigins("http://localhost:4200")
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
+                policy.WithOrigins("http://localhost:4200")
+                      .AllowAnyHeader()
+                      .AllowAnyMethod()
+                      .AllowCredentials();
             });
     });
 
 var app = builder.Build();
+
+await IdentityDataSeeder.SeedAsync(app.Services, app.Configuration);
 
 // Centralized Exception Handler
 app.UseExceptionHandler();

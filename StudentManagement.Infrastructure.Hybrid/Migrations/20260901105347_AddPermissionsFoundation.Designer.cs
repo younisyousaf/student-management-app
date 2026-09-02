@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentManagement.Infrastructure.Hybrid;
 
@@ -11,9 +12,11 @@ using StudentManagement.Infrastructure.Hybrid;
 namespace StudentManagement.Infrastructure.Hybrid.Migrations
 {
     [DbContext(typeof(HybridDbContext))]
-    partial class HybridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901105347_AddPermissionsFoundation")]
+    partial class AddPermissionsFoundation
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -722,12 +725,7 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("SchoolId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("SchoolId");
 
                     b.ToTable("Students", (string)null);
                 });
@@ -1071,14 +1069,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                     b.Navigation("Course");
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("StudentManagement.Core.Models.Student", b =>
-                {
-                    b.HasOne("StudentManagement.Core.Models.School", null)
-                        .WithMany()
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Restrict);
                 });
 
             modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.RolePermission", b =>

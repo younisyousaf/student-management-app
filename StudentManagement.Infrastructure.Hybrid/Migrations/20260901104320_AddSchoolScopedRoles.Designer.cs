@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using StudentManagement.Infrastructure.Hybrid;
 
@@ -11,9 +12,11 @@ using StudentManagement.Infrastructure.Hybrid;
 namespace StudentManagement.Infrastructure.Hybrid.Migrations
 {
     [DbContext(typeof(HybridDbContext))]
-    partial class HybridDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260901104320_AddSchoolScopedRoles")]
+    partial class AddSchoolScopedRoles
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -722,12 +725,7 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
-                    b.Property<int?>("SchoolId")
-                        .HasColumnType("int");
-
                     b.HasKey("Id");
-
-                    b.HasIndex("SchoolId");
 
                     b.ToTable("Students", (string)null);
                 });
@@ -892,55 +890,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                     b.ToTable("IdentityUsers", (string)null);
                 });
 
-            modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.Permission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<string>("Description")
-                        .HasMaxLength(250)
-                        .HasColumnType("nvarchar(250)");
-
-                    b.Property<string>("Name")
-                        .IsRequired()
-                        .HasMaxLength(100)
-                        .HasColumnType("nvarchar(100)");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("Name")
-                        .IsUnique();
-
-                    b.ToTable("Permissions", (string)null);
-                });
-
-            modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.RolePermission", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<int>("PermissionId")
-                        .HasColumnType("int");
-
-                    b.Property<int>("RoleId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("PermissionId");
-
-                    b.HasIndex("RoleId", "PermissionId")
-                        .IsUnique();
-
-                    b.ToTable("RolePermissions", (string)null);
-                });
-
             modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.SchoolMembership", b =>
                 {
                     b.Property<int>("Id")
@@ -1071,33 +1020,6 @@ namespace StudentManagement.Infrastructure.Hybrid.Migrations
                     b.Navigation("Course");
 
                     b.Navigation("Student");
-                });
-
-            modelBuilder.Entity("StudentManagement.Core.Models.Student", b =>
-                {
-                    b.HasOne("StudentManagement.Core.Models.School", null)
-                        .WithMany()
-                        .HasForeignKey("SchoolId")
-                        .OnDelete(DeleteBehavior.Restrict);
-                });
-
-            modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.RolePermission", b =>
-                {
-                    b.HasOne("StudentManagement.Infrastructure.Hybrid.Security.Permission", "Permission")
-                        .WithMany()
-                        .HasForeignKey("PermissionId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.HasOne("StudentManagement.Infrastructure.Hybrid.Identity.ApplicationRole", "Role")
-                        .WithMany()
-                        .HasForeignKey("RoleId")
-                        .OnDelete(DeleteBehavior.Restrict)
-                        .IsRequired();
-
-                    b.Navigation("Permission");
-
-                    b.Navigation("Role");
                 });
 
             modelBuilder.Entity("StudentManagement.Infrastructure.Hybrid.Security.SchoolMembership", b =>

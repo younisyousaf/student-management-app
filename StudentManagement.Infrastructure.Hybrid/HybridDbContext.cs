@@ -1,12 +1,16 @@
-﻿using System.Data;
-using Microsoft.EntityFrameworkCore;
-using StudentManagement.Core.Models;
-using StudentManagement.Core.Enums;
+﻿using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.Data.SqlClient;
+using Microsoft.EntityFrameworkCore;
+using StudentManagement.Core.Enums;
+using StudentManagement.Core.Models;
+using StudentManagement.Infrastructure.Hybrid.Identity;
+using StudentManagement.Infrastructure.Hybrid.Security;
+using System.Data;
 
 namespace StudentManagement.Infrastructure.Hybrid
 {
-    public class HybridDbContext : DbContext
+    public class HybridDbContext : IdentityDbContext<ApplicationUser, ApplicationRole, int>
     {
         public HybridDbContext(DbContextOptions<HybridDbContext> options) : base(options)
         {
@@ -29,6 +33,37 @@ namespace StudentManagement.Infrastructure.Hybrid
         {
             base.OnModelCreating(modelBuilder);
 
+            // ASP.NET Core Identity
+            modelBuilder.Entity<ApplicationUser>(entity =>
+            {
+                entity.ToTable("IdentityUsers");
+                entity.Property(x => x.IsActive).HasDefaultValue(true);
+                entity.Property(x => x.CreatedAt).IsRequired();
+            });
+
+            modelBuilder.Entity<ApplicationRole>(entity =>
+            {
+                entity.ToTable("IdentityRoles");
+                entity.Property(x => x.Description).HasMaxLength(250);
+                entity.Property(x => x.Scope).HasConversion<string>().HasMaxLength(20);
+                entity.Property(x => x.IsSystemRole).HasDefaultValue(true);
+            });
+
+            modelBuilder.Entity<IdentityUserRole<int>>()
+                .ToTable("IdentityUserRoles");
+
+            modelBuilder.Entity<IdentityUserClaim<int>>()
+                .ToTable("IdentityUserClaims");
+
+            modelBuilder.Entity<IdentityRoleClaim<int>>()
+                .ToTable("IdentityRoleClaims");
+
+            modelBuilder.Entity<IdentityUserLogin<int>>()
+                .ToTable("IdentityUserLogins");
+
+            modelBuilder.Entity<IdentityUserToken<int>>()
+                .ToTable("IdentityUserTokens");
+
             // Copy over fluent API mappings
             modelBuilder.Entity<Student>(entity =>
             {
@@ -38,6 +73,10 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.Property(s => s.FirstName).IsRequired();
                 entity.Property(s => s.LastName).IsRequired();
                 entity.Property(s => s.Email).IsRequired();
+                entity.HasOne<School>()
+                      .WithMany()
+                      .HasForeignKey(x => x.SchoolId)
+                      .OnDelete(DeleteBehavior.Restrict);
             });
 
             modelBuilder.Entity<Course>(entity =>
@@ -62,17 +101,6 @@ namespace StudentManagement.Infrastructure.Hybrid
                 entity.HasKey(f => f.Id);
                 entity.Property(f => f.AmountDue).HasColumnType("decimal(18,2)");
                 entity.Property(f => f.AmountPaid).HasColumnType("decimal(18,2)");
-            });
-
-            //Users
-            modelBuilder.Entity<User>(entity =>
-            {
-                entity.ToTable("Users");
-                entity.HasKey(u => u.Id);
-                entity.Property(u => u.Username).IsRequired().HasMaxLength(50);
-                entity.Property(u => u.Email).IsRequired().HasMaxLength(100);
-                entity.Property(u => u.PasswordHash).IsRequired();
-                entity.Property(u => u.Role).IsRequired().HasMaxLength(20);
             });
 
             //Attendances
@@ -429,13 +457,116 @@ namespace StudentManagement.Infrastructure.Hybrid
                     x.UserMessageId
                 }).IsUnique();
             });
+
+            //school
+            modelBuilder.Entity<School>(entity =>
+            {
+                entity.ToTable("Schools");
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.Name)
+                    .HasMaxLength(150)
+                    .IsRequired();
+
+                entity.Property(x => x.Code)
+                    .HasMaxLength(50)
+                    .IsRequired();
+
+                entity.Property(x => x.TimeZoneId)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.HasIndex(x => x.Code)
+                    .IsUnique();
+            });
+
+            //school membership
+            modelBuilder.Entity<SchoolMembership>(entity =>
+            {
+                entity.ToTable("SchoolMemberships");
+                entity.HasKey(x => x.Id);
+
+                entity.HasIndex(x => new { x.SchoolId, x.UserId })
+                    .IsUnique();
+
+                entity.HasOne(x => x.School)
+                    .WithMany()
+                    .HasForeignKey(x => x.SchoolId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.User)
+                    .WithMany()
+                    .HasForeignKey(x => x.UserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            //school user roles
+            modelBuilder.Entity<SchoolUserRole>(entity =>
+            {
+                entity.ToTable("SchoolUserRoles");
+                entity.HasKey(x => x.Id);
+
+                entity.HasIndex(x => new { x.SchoolMembershipId, x.RoleId })
+                    .IsUnique();
+
+                entity.HasOne(x => x.SchoolMembership)
+                    .WithMany()
+                    .HasForeignKey(x => x.SchoolMembershipId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.Role)
+                    .WithMany()
+                    .HasForeignKey(x => x.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.AssignedByUser)
+                    .WithMany()
+                    .HasForeignKey(x => x.AssignedByUserId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
+
+            //permissions
+            modelBuilder.Entity<Permission>(entity =>
+            {
+                entity.ToTable("Permissions");
+                entity.HasKey(x => x.Id);
+
+                entity.Property(x => x.Name)
+                    .HasMaxLength(100)
+                    .IsRequired();
+
+                entity.Property(x => x.Description)
+                    .HasMaxLength(250);
+
+                entity.HasIndex(x => x.Name)
+                    .IsUnique();
+            });
+
+            //rolepermission
+            modelBuilder.Entity<RolePermission>(entity =>
+            {
+                entity.ToTable("RolePermissions");
+                entity.HasKey(x => x.Id);
+
+                entity.HasIndex(x => new { x.RoleId, x.PermissionId })
+                    .IsUnique();
+
+                entity.HasOne(x => x.Role)
+                    .WithMany()
+                    .HasForeignKey(x => x.RoleId)
+                    .OnDelete(DeleteBehavior.Restrict);
+
+                entity.HasOne(x => x.Permission)
+                    .WithMany()
+                    .HasForeignKey(x => x.PermissionId)
+                    .OnDelete(DeleteBehavior.Restrict);
+            });
         }
 
         public DbSet<Student> Students => Set<Student>();
         public DbSet<Course> Courses => Set<Course>();
         public DbSet<Enrollment> Enrollments => Set<Enrollment>();
         public DbSet<Fee> Fees => Set<Fee>();
-        public DbSet<User> Users => Set<User>();
         public DbSet<Attendance> Attendances => Set<Attendance>();
         public DbSet<AgentSessionRecord> AgentSessions
             => Set<AgentSessionRecord>();
@@ -456,5 +587,11 @@ namespace StudentManagement.Infrastructure.Hybrid
             => Set<CopilotConversationBranchRecord>();
         public DbSet<CopilotBranchTurnRecord> CopilotBranchTurns
             => Set<CopilotBranchTurnRecord>();
+
+        public DbSet<School> Schools => Set<School>();
+        public DbSet<SchoolMembership> SchoolMemberships => Set<SchoolMembership>();
+        public DbSet<SchoolUserRole> SchoolUserRoles => Set<SchoolUserRole>();
+        public DbSet<Permission> Permissions => Set<Permission>();
+        public DbSet<RolePermission> RolePermissions => Set<RolePermission>();
     }
 }

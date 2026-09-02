@@ -1,94 +1,160 @@
 ﻿using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
 using StudentManagement.Core.Interfaces;
-using StudentManagement.Core.Models;
+using StudentManagement.Core.Security;
+using StudentManagement.Infrastructure.Hybrid.Identity;
 using StudentManagementApp.WebApi.DTOs;
+using StudentManagementApp.WebApi.Services;
 
-namespace StudentManagementApp.WebApi.Controllers
+namespace StudentManagementApp.WebApi.Controllers;
+
+[ApiController]
+[Route("api/[controller]")]
+public sealed class AuthController(
+    IIdentityAuthenticationService authenticationService,
+    UserManager<ApplicationUser> userManager,
+    IConfiguration configuration,
+    IJwtTokenService jwtTokenService,
+    ISchoolContextService schoolContextService,
+    ICurrentUserContext currentUser) : ControllerBase
 {
-    [ApiController]
-    [Route("api/[controller]")]
-    public class AuthController : ControllerBase
+    [AllowAnonymous]
+    [HttpPost("login")]
+    public async Task<IActionResult> Login(LoginDto request)
     {
-        private readonly IUserService _userService;
+        var result = await authenticationService.LoginAsync(
+            request.Username,
+            request.Password);
 
-        public AuthController(IUserService userService)
+        if (!result.Succeeded || string.IsNullOrWhiteSpace(result.Token))
+            return Unauthorized(new
+            {
+                message = result.Error ?? "Login failed."
+            });
+
+        SetAccessTokenCookie(result.Token);
+
+        return Ok(new
         {
-            _userService = userService;
-        }
+            message = "Login successful.",
+            token = result.Token
+        });
+    }
 
-        // POST: api/auth/register
-        [AllowAnonymous]
-        [HttpPost("register")]
-        public IActionResult Register([FromBody] RegisterDto request)
+    [Authorize]
+    [HttpPost("logout")]
+    public IActionResult Logout()
+    {
+        Response.Cookies.Delete("access_token");
+        return Ok(new { message = "Logged out." });
+    }
+
+    [Authorize]
+    [HttpGet("me")]
+    public async Task<IActionResult> Me()
+    {
+        var user = await userManager.GetUserAsync(User);
+
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        var roles = await userManager.GetRolesAsync(user);
+
+        return Ok(new
         {
-            try
-            {
-                // Use the domain constructor to enforce DDD encapsulation rules!
-                var user = new User(
-                    request.Username,
-                    request.Email,
-                    request.Role ?? "Admin"
-                );
+            id = user.Id,
+            username = user.UserName,
+            email = user.Email,
+            roles,
+            schoolId = currentUser.SchoolId,
+            isActive = user.IsActive
+        });
+    }
 
-                _userService.RegisterUser(user, request.Password);
-                return Ok(new { Message = "User registered successfully!" });
-            }
-            catch (ArgumentException ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-            catch (InvalidOperationException ex)
-            {
-                return BadRequest(new { Message = ex.Message });
-            }
-            catch (Exception)
-            {
-                return StatusCode(500, "An error occurred while creating the user.");
-            }
-        }
+    [Authorize]
+    [HttpGet("schools")]
+    public async Task<IActionResult> GetSchools(
+    CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not int userId)
+            return Unauthorized();
 
-        // POST: api/auth/login
-        [AllowAnonymous]
-        [HttpPost("login")]
-        public IActionResult Login([FromBody] LoginDto request)
+        var schools = await schoolContextService
+            .GetAccessibleSchoolsAsync(
+                userId,
+                cancellationToken);
+
+        return Ok(schools.Select(school => new
         {
-            var token = _userService.Login(request.Username, request.Password);
+            school.Id,
+            school.Name,
+            school.Code,
+            school.TimeZoneId
+        }));
+    }
 
-            if (token == null)
+    [Authorize]
+    [HttpPost("schools/{schoolId:int}/select")]
+    public async Task<IActionResult> SelectSchool(
+    int schoolId,
+    CancellationToken cancellationToken)
+    {
+        if (currentUser.UserId is not int userId)
+            return Unauthorized();
+
+        var school = await schoolContextService
+            .GetAccessibleSchoolAsync(
+                userId,
+                schoolId,
+                cancellationToken);
+
+        if (school is null)
+            return Forbid();
+
+        var user = await userManager
+            .FindByIdAsync(userId.ToString());
+
+        if (user is null || !user.IsActive)
+            return Unauthorized();
+
+        var roles = await userManager.GetRolesAsync(user);
+
+        var token = jwtTokenService.Generate(
+            user,
+            roles,
+            school.Id);
+
+        SetAccessTokenCookie(token);
+
+        return Ok(new
+        {
+            message = "School selected successfully.",
+            school = new
             {
-                return Unauthorized(new { Message = "Invalid username or password." });
+                school.Id,
+                school.Name,
+                school.Code,
+                school.TimeZoneId
             }
-            Response.Cookies.Append("access_token", token, new CookieOptions
+        });
+    }
+
+    private void SetAccessTokenCookie(string token)
+    {
+        var duration = double.Parse(
+            configuration["JwtSettings:DurationInMinutes"] ?? "180");
+
+        Response.Cookies.Append(
+            "access_token",
+            token,
+            new CookieOptions
             {
                 HttpOnly = true,
-                Secure = true,           // requires HTTPS
-                //SameSite = SameSiteMode.None, //Cross-Site Compatibility (https, http)
+                Secure = true,
                 SameSite = SameSiteMode.Lax,
-                Expires = DateTimeOffset.UtcNow.AddHours(2)
+                Expires = DateTimeOffset.UtcNow.AddMinutes(duration)
             });
-
-            return Ok(new
-            {
-                Token = token,
-                Message = "Login successful!"
-            });
-        }
-
-        [HttpPost("logout")]
-        public IActionResult Logout()
-        {
-            Response.Cookies.Delete("access_token");
-            return Ok(new { Message = "Logged out." });
-        }
-
-        [HttpGet("me")]
-        [Authorize]
-        public IActionResult Me()
-        {
-            // Confirms the cookie is valid — Angular calls this on app init to restore session
-            return Ok(new { Username = User.Identity?.Name });
-        }
     }
 
 }

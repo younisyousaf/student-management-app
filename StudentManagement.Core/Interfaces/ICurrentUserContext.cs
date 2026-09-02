@@ -3,12 +3,9 @@
 public interface ICurrentUserContext
 {
     int? UserId { get; }
-
     string? Username { get; }
-
     string? Email { get; }
-
-    string? Role { get; }
-
+    IReadOnlyCollection<string> Roles { get; }
+    int? SchoolId { get; }
     bool IsAuthenticated { get; }
 }
